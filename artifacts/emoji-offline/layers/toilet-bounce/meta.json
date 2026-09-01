@@ -1,0 +1,132 @@
+{
+  "id": "toilet-bounce",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 22,
+    "y": 0,
+    "w": 85,
+    "h": 128,
+    "greenPixels": 52547
+  },
+  "perFrame": [
+    {
+      "x": 22,
+      "y": 20,
+      "w": 85,
+      "h": 108,
+      "cx": 64.0336422240129,
+      "cy": 51.636180499597096,
+      "greenPixels": 4964,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 22,
+      "y": 27,
+      "w": 85,
+      "h": 101,
+      "cx": 63.89318280503691,
+      "cy": 55.14481111593574,
+      "greenPixels": 4606,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 22,
+      "y": 12,
+      "w": 85,
+      "h": 116,
+      "cx": 64.00911854103343,
+      "cy": 47.70174772036474,
+      "greenPixels": 5264,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 22,
+      "y": 1,
+      "w": 85,
+      "h": 127,
+      "cx": 64.11244769874477,
+      "cy": 42.4023709902371,
+      "greenPixels": 5736,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 22,
+      "y": 0,
+      "w": 85,
+      "h": 128,
+      "cx": 64.09604615645681,
+      "cy": 40.8808756151366,
+      "greenPixels": 5893,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 22,
+      "y": 6,
+      "w": 85,
+      "h": 122,
+      "cx": 64.11290322580645,
+      "cy": 44.666900420757365,
+      "greenPixels": 5704,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 22,
+      "y": 16,
+      "w": 85,
+      "h": 112,
+      "cx": 64.19708443771299,
+      "cy": 49.20465732677016,
+      "greenPixels": 5282,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 22,
+      "y": 23,
+      "w": 85,
+      "h": 105,
+      "cx": 64.05446577629382,
+      "cy": 52.781719532554256,
+      "greenPixels": 4792,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 22,
+      "y": 19,
+      "w": 85,
+      "h": 109,
+      "cx": 63.891939944685895,
+      "cy": 50.86092453575662,
+      "greenPixels": 5062,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 22,
+      "y": 16,
+      "w": 85,
+      "h": 112,
+      "cx": 64.0575896262395,
+      "cy": 49.29881769641495,
+      "greenPixels": 5244,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 14.3,
+  "areaRatio": 1.27,
+  "layerPixels": 48837,
+  "source": "greenscreen/raw/toilet-bounce.gif",
+  "animationMode": "per-frame-slot-mask"
+}

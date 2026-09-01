@@ -1,0 +1,132 @@
+{
+  "id": "radar-ping",
+  "kind": "transform-slot",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 60,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 163519
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.496123084437386,
+      "cy": 63.49984736552903,
+      "greenPixels": 16379,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.499786337830415,
+      "cy": 63.499786337830415,
+      "greenPixels": 16381,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.50415444770284,
+      "cy": 63.547409579667644,
+      "greenPixels": 16368,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.51707675358061,
+      "cy": 63.65173215815889,
+      "greenPixels": 16338,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5282117257857,
+      "cy": 63.69576670955094,
+      "greenPixels": 16323,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.53235294117647,
+      "cy": 63.70275735294118,
+      "greenPixels": 16320,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.52707669688802,
+      "cy": 63.696888017642735,
+      "greenPixels": 16324,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.51719916758477,
+      "cy": 63.65454768025462,
+      "greenPixels": 16338,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.50427663734116,
+      "cy": 63.55021994134897,
+      "greenPixels": 16368,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.49859584859585,
+      "cy": 63.5008547008547,
+      "greenPixels": 16380,
+      "visible": true,
+      "delayMs": 60
+    }
+  ],
+  "motionPx": 0.2,
+  "areaRatio": 1,
+  "layerPixels": 36,
+  "source": "greenscreen/raw/radar-ping.gif",
+  "animationMode": "per-frame-slot-mask"
+}

@@ -1,0 +1,132 @@
+{
+  "id": "plotge",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 1,
+    "y": 37,
+    "w": 127,
+    "h": 91,
+    "greenPixels": 71240
+  },
+  "perFrame": [
+    {
+      "x": 1,
+      "y": 37,
+      "w": 127,
+      "h": 82,
+      "cx": 65.40111888111888,
+      "cy": 78.01328671328672,
+      "greenPixels": 7150,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 1,
+      "y": 37,
+      "w": 127,
+      "h": 91,
+      "cx": 65.26430786580208,
+      "cy": 77.80842965886664,
+      "greenPixels": 7094,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 1,
+      "y": 37,
+      "w": 127,
+      "h": 91,
+      "cx": 65.60443259924253,
+      "cy": 77.7865058212933,
+      "greenPixels": 7129,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 1,
+      "y": 37,
+      "w": 127,
+      "h": 80,
+      "cx": 65.37950450450451,
+      "cy": 77.69059684684684,
+      "greenPixels": 7104,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 1,
+      "y": 37,
+      "w": 127,
+      "h": 90,
+      "cx": 65.65842349304482,
+      "cy": 77.77420261346073,
+      "greenPixels": 7117,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 1,
+      "y": 37,
+      "w": 127,
+      "h": 88,
+      "cx": 65.47703180212014,
+      "cy": 77.63759717314488,
+      "greenPixels": 7075,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 1,
+      "y": 37,
+      "w": 127,
+      "h": 82,
+      "cx": 65.47955024595925,
+      "cy": 77.70962754743499,
+      "greenPixels": 7115,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 1,
+      "y": 37,
+      "w": 127,
+      "h": 81,
+      "cx": 65.69016050244242,
+      "cy": 77.94780181437544,
+      "greenPixels": 7165,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 1,
+      "y": 37,
+      "w": 127,
+      "h": 80,
+      "cx": 65.42849122807017,
+      "cy": 77.76505263157895,
+      "greenPixels": 7125,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 1,
+      "y": 37,
+      "w": 127,
+      "h": 91,
+      "cx": 65.47641641082892,
+      "cy": 77.93552888640804,
+      "greenPixels": 7166,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0.6,
+  "areaRatio": 1.14,
+  "layerPixels": 23773,
+  "source": "greenscreen/raw/plotge.gif",
+  "animationMode": "per-frame-slot-mask"
+}

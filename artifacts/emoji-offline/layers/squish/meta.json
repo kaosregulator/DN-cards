@@ -1,0 +1,33 @@
+{
+  "id": "squish",
+  "kind": "transform-slot",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 1,
+    "y": 1,
+    "w": 127,
+    "h": 127,
+    "greenPixels": 16129
+  },
+  "perFrame": [
+    {
+      "x": 1,
+      "y": 1,
+      "w": 127,
+      "h": 127,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 16129,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
+  "layerPixels": 0,
+  "source": "greenscreen/raw/squish.png",
+  "animationMode": "per-frame-slot-mask"
+}

@@ -1,0 +1,132 @@
+{
+  "id": "jitter",
+  "kind": "transform-slot",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 40,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 162038
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.986953846153845,
+      "cy": 63.576123076923075,
+      "greenPixels": 16250,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.61246396368767,
+      "cy": 63.813960620744645,
+      "greenPixels": 16303,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 64.85167793638868,
+      "cy": 63.30534685699975,
+      "greenPixels": 15972,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.236993504485,
+      "cy": 64.1502010516548,
+      "greenPixels": 16165,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 1,
+      "w": 128,
+      "h": 127,
+      "cx": 63.64932562620424,
+      "cy": 64.49306979924172,
+      "greenPixels": 16089,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.192494916507485,
+      "cy": 63.42689013494362,
+      "greenPixels": 16229,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 64.17020481852705,
+      "cy": 64.22417979206872,
+      "greenPixels": 16063,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 62.97789987036237,
+      "cy": 63.28186925118835,
+      "greenPixels": 16199,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 40
+    }
+  ],
+  "motionPx": 2.2,
+  "areaRatio": 1.01,
+  "layerPixels": 0,
+  "source": "greenscreen/raw/jitter.gif",
+  "animationMode": "per-frame-slot-mask"
+}

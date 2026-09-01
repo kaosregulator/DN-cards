@@ -1,0 +1,132 @@
+{
+  "id": "portal-peek",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 80,
+  "size": 128,
+  "slot": {
+    "x": 3,
+    "y": 3,
+    "w": 123,
+    "h": 123,
+    "greenPixels": 72910
+  },
+  "perFrame": [
+    {
+      "x": 51,
+      "y": 51,
+      "w": 27,
+      "h": 27,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 477,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 35,
+      "y": 35,
+      "w": 59,
+      "h": 59,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 2641,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 19,
+      "y": 19,
+      "w": 91,
+      "h": 91,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 6161,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 8,
+      "y": 8,
+      "w": 113,
+      "h": 113,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 9965,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 3,
+      "y": 3,
+      "w": 123,
+      "h": 123,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 11633,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 3,
+      "y": 3,
+      "w": 123,
+      "h": 123,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 11633,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 3,
+      "y": 3,
+      "w": 123,
+      "h": 123,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 11633,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 8,
+      "y": 8,
+      "w": 113,
+      "h": 113,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 9965,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 19,
+      "y": 19,
+      "w": 91,
+      "h": 91,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 6161,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 35,
+      "y": 35,
+      "w": 59,
+      "h": 59,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 2641,
+      "visible": true,
+      "delayMs": 80
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 20.75,
+  "layerPixels": 3724,
+  "source": "greenscreen/raw/portal-peek.gif",
+  "animationMode": "per-frame-slot-mask"
+}

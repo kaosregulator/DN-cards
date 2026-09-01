@@ -1,0 +1,187 @@
+{
+  "id": "feels-rain-man",
+  "kind": "layer",
+  "frames": 15,
+  "sourcePages": 15,
+  "delayMs": 30,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 74267
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 8,
+      "w": 128,
+      "h": 120,
+      "cx": 44.94871794871795,
+      "cy": 85.20964102564102,
+      "greenPixels": 4875,
+      "visible": true,
+      "delayMs": 30
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 44.97022838499184,
+      "cy": 84.10460848287113,
+      "greenPixels": 4904,
+      "visible": true,
+      "delayMs": 30
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 45.147685374846375,
+      "cy": 83.27509217533797,
+      "greenPixels": 4882,
+      "visible": true,
+      "delayMs": 30
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 44.996309206479395,
+      "cy": 84.01804387943407,
+      "greenPixels": 4877,
+      "visible": true,
+      "delayMs": 30
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 44.74697092084006,
+      "cy": 84.02423263327948,
+      "greenPixels": 4952,
+      "visible": true,
+      "delayMs": 30
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 44.07323541411669,
+      "cy": 84.25520195838433,
+      "greenPixels": 4902,
+      "visible": true,
+      "delayMs": 30
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 44.006230529595015,
+      "cy": 84.57757009345795,
+      "greenPixels": 4815,
+      "visible": true,
+      "delayMs": 30
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 45.023972602739725,
+      "cy": 84.0068493150685,
+      "greenPixels": 4964,
+      "visible": true,
+      "delayMs": 30
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 44.61275208800163,
+      "cy": 84.27663475249541,
+      "greenPixels": 4909,
+      "visible": true,
+      "delayMs": 30
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 44.790665342601784,
+      "cy": 84.06276067527308,
+      "greenPixels": 5035,
+      "visible": true,
+      "delayMs": 30
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 44.88919944100619,
+      "cy": 84.48153324016769,
+      "greenPixels": 5009,
+      "visible": true,
+      "delayMs": 30
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 45.48977955911823,
+      "cy": 84.12004008016032,
+      "greenPixels": 4990,
+      "visible": true,
+      "delayMs": 30
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 45.37841584158416,
+      "cy": 83.73920792079208,
+      "greenPixels": 5050,
+      "visible": true,
+      "delayMs": 30
+    },
+    {
+      "x": 0,
+      "y": 8,
+      "w": 128,
+      "h": 120,
+      "cx": 44.57987816859894,
+      "cy": 84.72941638828847,
+      "greenPixels": 5089,
+      "visible": true,
+      "delayMs": 30
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 44.951136816912644,
+      "cy": 85.04068607897887,
+      "greenPixels": 5014,
+      "visible": true,
+      "delayMs": 30
+    }
+  ],
+  "motionPx": 2.4,
+  "areaRatio": 1.07,
+  "layerPixels": 82242,
+  "source": "greenscreen/raw/feels-rain-man.gif",
+  "animationMode": "per-frame-slot-mask"
+}

@@ -1,0 +1,132 @@
+{
+  "id": "roll",
+  "kind": "transform-slot",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 159340
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.84623887012588,
+      "cy": 63.86920478968376,
+      "greenPixels": 16285,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 65.41510868876355,
+      "cy": 65.45947144939477,
+      "greenPixels": 15779,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 65.26062632628127,
+      "cy": 65.37926821426275,
+      "greenPixels": 15551,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.973731650785474,
+      "cy": 64.2756889003348,
+      "greenPixels": 15532,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 62.64934646835361,
+      "cy": 63.01519541562037,
+      "greenPixels": 15531,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 61.47752376059594,
+      "cy": 61.82410737220653,
+      "greenPixels": 15572,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 62.109030561122246,
+      "cy": 62.28989228456914,
+      "greenPixels": 15968,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.38907912437324,
+      "cy": 63.38632750397456,
+      "greenPixels": 16354,
+      "visible": true,
+      "delayMs": 70
+    }
+  ],
+  "motionPx": 5.4,
+  "areaRatio": 1,
+  "layerPixels": 0,
+  "source": "greenscreen/raw/roll.gif",
+  "animationMode": "per-frame-slot-mask"
+}

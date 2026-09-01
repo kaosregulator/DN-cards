@@ -1,0 +1,132 @@
+{
+  "id": "ken-burns",
+  "kind": "transform-slot",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 100,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 160917
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 2,
+      "w": 120,
+      "h": 126,
+      "cx": 59.5,
+      "cy": 64.5,
+      "greenPixels": 15120,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 0,
+      "y": 1,
+      "w": 123,
+      "h": 127,
+      "cx": 61,
+      "cy": 64,
+      "greenPixels": 15621,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 127,
+      "h": 128,
+      "cx": 63,
+      "cy": 63.5,
+      "greenPixels": 16256,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 1,
+      "y": 0,
+      "w": 127,
+      "h": 128,
+      "cx": 64,
+      "cy": 63.5,
+      "greenPixels": 16256,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 5,
+      "y": 0,
+      "w": 123,
+      "h": 128,
+      "cx": 66,
+      "cy": 63.5,
+      "greenPixels": 15744,
+      "visible": true,
+      "delayMs": 100
+    }
+  ],
+  "motionPx": 6.6,
+  "areaRatio": 1.08,
+  "layerPixels": 0,
+  "source": "greenscreen/raw/ken-burns.gif",
+  "animationMode": "per-frame-slot-mask"
+}

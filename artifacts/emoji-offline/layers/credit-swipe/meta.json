@@ -1,0 +1,132 @@
+{
+  "id": "credit-swipe",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 112923
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 116,
+      "cx": 57.801787016776075,
+      "cy": 44.457603938730855,
+      "greenPixels": 10968,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 61.29664914586071,
+      "cy": 47.75952693823916,
+      "greenPixels": 12176,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 62.05635179153094,
+      "cy": 48.34584690553746,
+      "greenPixels": 12280,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 124,
+      "cx": 60.21848521528619,
+      "cy": 46.089918727304166,
+      "greenPixels": 11566,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 117,
+      "cx": 57.99145927082377,
+      "cy": 44.22857930021122,
+      "greenPixels": 10889,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 116,
+      "cx": 57.71494986326345,
+      "cy": 44.51686417502279,
+      "greenPixels": 10970,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 59.62076289937163,
+      "cy": 46.56863439242411,
+      "greenPixels": 11299,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 118,
+      "cx": 57.72399597475071,
+      "cy": 44.346811819595644,
+      "greenPixels": 10931,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 118,
+      "cx": 57.6941111823427,
+      "cy": 44.26998809414781,
+      "greenPixels": 10919,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 116,
+      "cx": 57.71304347826087,
+      "cy": 44.296109839816936,
+      "greenPixels": 10925,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 6,
+  "areaRatio": 1.1,
+  "layerPixels": 50917,
+  "source": "greenscreen/raw/credit-swipe.gif",
+  "animationMode": "per-frame-slot-mask"
+}

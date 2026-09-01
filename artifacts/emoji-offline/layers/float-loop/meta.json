@@ -1,0 +1,154 @@
+{
+  "id": "float-loop",
+  "kind": "transform-slot",
+  "frames": 12,
+  "sourcePages": 12,
+  "delayMs": 110,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 190450
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 126,
+      "cx": 63.5,
+      "cy": 62.5,
+      "greenPixels": 16128,
+      "visible": true,
+      "delayMs": 110
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 127,
+      "cx": 64.10028098657509,
+      "cy": 62.529253824539495,
+      "greenPixels": 16015,
+      "visible": true,
+      "delayMs": 110
+    },
+    {
+      "x": 1,
+      "y": 0,
+      "w": 127,
+      "h": 128,
+      "cx": 65.40751737207833,
+      "cy": 63.355780164245104,
+      "greenPixels": 15830,
+      "visible": true,
+      "delayMs": 110
+    },
+    {
+      "x": 1,
+      "y": 0,
+      "w": 127,
+      "h": 128,
+      "cx": 65.1846394984326,
+      "cy": 63.96532915360502,
+      "greenPixels": 15950,
+      "visible": true,
+      "delayMs": 110
+    },
+    {
+      "x": 1,
+      "y": 0,
+      "w": 127,
+      "h": 128,
+      "cx": 64.49026658400496,
+      "cy": 63.6863608183509,
+      "greenPixels": 16130,
+      "visible": true,
+      "delayMs": 110
+    },
+    {
+      "x": 1,
+      "y": 2,
+      "w": 127,
+      "h": 126,
+      "cx": 64,
+      "cy": 64.5,
+      "greenPixels": 16002,
+      "visible": true,
+      "delayMs": 110
+    },
+    {
+      "x": 0,
+      "y": 2,
+      "w": 128,
+      "h": 126,
+      "cx": 63.775948416176284,
+      "cy": 65.09703267810191,
+      "greenPixels": 15974,
+      "visible": true,
+      "delayMs": 110
+    },
+    {
+      "x": 0,
+      "y": 1,
+      "w": 128,
+      "h": 127,
+      "cx": 63.43965462910443,
+      "cy": 65.30617003844458,
+      "greenPixels": 15867,
+      "visible": true,
+      "delayMs": 110
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 126,
+      "h": 128,
+      "cx": 61.379741960331216,
+      "cy": 64.65094036844471,
+      "greenPixels": 15579,
+      "visible": true,
+      "delayMs": 110
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 123,
+      "h": 128,
+      "cx": 60.32273019961365,
+      "cy": 63.37997424339987,
+      "greenPixels": 15530,
+      "visible": true,
+      "delayMs": 110
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 124,
+      "h": 126,
+      "cx": 61.5,
+      "cy": 62.5,
+      "greenPixels": 15624,
+      "visible": true,
+      "delayMs": 110
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 126,
+      "cx": 63.40269262372796,
+      "cy": 61.508627773212815,
+      "greenPixels": 15821,
+      "visible": true,
+      "delayMs": 110
+    }
+  ],
+  "motionPx": 6.3,
+  "areaRatio": 1.04,
+  "layerPixels": 0,
+  "source": "greenscreen/raw/float-loop.gif",
+  "animationMode": "per-frame-slot-mask"
+}

@@ -1,0 +1,132 @@
+{
+  "id": "blaze",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 20,
+  "size": 128,
+  "slot": {
+    "x": 13,
+    "y": 13,
+    "w": 103,
+    "h": 103,
+    "greenPixels": 106090
+  },
+  "perFrame": [
+    {
+      "x": 13,
+      "y": 13,
+      "w": 103,
+      "h": 103,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 10609,
+      "visible": true,
+      "delayMs": 20
+    },
+    {
+      "x": 13,
+      "y": 13,
+      "w": 103,
+      "h": 103,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 10609,
+      "visible": true,
+      "delayMs": 20
+    },
+    {
+      "x": 13,
+      "y": 13,
+      "w": 103,
+      "h": 103,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 10609,
+      "visible": true,
+      "delayMs": 20
+    },
+    {
+      "x": 13,
+      "y": 13,
+      "w": 103,
+      "h": 103,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 10609,
+      "visible": true,
+      "delayMs": 20
+    },
+    {
+      "x": 13,
+      "y": 13,
+      "w": 103,
+      "h": 103,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 10609,
+      "visible": true,
+      "delayMs": 20
+    },
+    {
+      "x": 13,
+      "y": 13,
+      "w": 103,
+      "h": 103,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 10609,
+      "visible": true,
+      "delayMs": 20
+    },
+    {
+      "x": 13,
+      "y": 13,
+      "w": 103,
+      "h": 103,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 10609,
+      "visible": true,
+      "delayMs": 20
+    },
+    {
+      "x": 13,
+      "y": 13,
+      "w": 103,
+      "h": 103,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 10609,
+      "visible": true,
+      "delayMs": 20
+    },
+    {
+      "x": 13,
+      "y": 13,
+      "w": 103,
+      "h": 103,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 10609,
+      "visible": true,
+      "delayMs": 20
+    },
+    {
+      "x": 13,
+      "y": 13,
+      "w": 103,
+      "h": 103,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 10609,
+      "visible": true,
+      "delayMs": 20
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
+  "layerPixels": 35481,
+  "source": "greenscreen/raw/blaze.gif",
+  "animationMode": "per-frame-slot-mask"
+}

@@ -1,0 +1,132 @@
+{
+  "id": "banana-dance",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 60,
+  "size": 128,
+  "slot": {
+    "x": 32,
+    "y": 1,
+    "w": 65,
+    "h": 102,
+    "greenPixels": 42048
+  },
+  "perFrame": [
+    {
+      "x": 32,
+      "y": 19,
+      "w": 65,
+      "h": 65,
+      "cx": 64,
+      "cy": 51,
+      "greenPixels": 4225,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 32,
+      "y": 29,
+      "w": 65,
+      "h": 65,
+      "cx": 63.99039615846338,
+      "cy": 60.539015606242494,
+      "greenPixels": 4165,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 32,
+      "y": 38,
+      "w": 65,
+      "h": 65,
+      "cx": 64.01263408820024,
+      "cy": 69.77115613825983,
+      "greenPixels": 4195,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 32,
+      "y": 1,
+      "w": 65,
+      "h": 65,
+      "cx": 64,
+      "cy": 33,
+      "greenPixels": 4225,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 32,
+      "y": 10,
+      "w": 65,
+      "h": 65,
+      "cx": 63.975546058879395,
+      "cy": 42.098765432098766,
+      "greenPixels": 4212,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 32,
+      "y": 19,
+      "w": 65,
+      "h": 65,
+      "cx": 64,
+      "cy": 51,
+      "greenPixels": 4225,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 32,
+      "y": 29,
+      "w": 65,
+      "h": 65,
+      "cx": 64.04004796163069,
+      "cy": 60.5779376498801,
+      "greenPixels": 4170,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 32,
+      "y": 38,
+      "w": 65,
+      "h": 65,
+      "cx": 63.975667938931295,
+      "cy": 69.74809160305344,
+      "greenPixels": 4192,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 32,
+      "y": 1,
+      "w": 65,
+      "h": 65,
+      "cx": 64,
+      "cy": 33,
+      "greenPixels": 4225,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 32,
+      "y": 10,
+      "w": 65,
+      "h": 65,
+      "cx": 64.0078310393925,
+      "cy": 42.08353108685335,
+      "greenPixels": 4214,
+      "visible": true,
+      "delayMs": 60
+    }
+  ],
+  "motionPx": 36.8,
+  "areaRatio": 1,
+  "layerPixels": 21931,
+  "source": "greenscreen/raw/banana-dance.gif",
+  "animationMode": "per-frame-slot-mask"
+}

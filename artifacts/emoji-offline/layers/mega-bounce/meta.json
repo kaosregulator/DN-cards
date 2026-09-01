@@ -1,0 +1,132 @@
+{
+  "id": "mega-bounce",
+  "kind": "transform-slot",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 40,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 117632
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 123,
+      "cx": 63.5,
+      "cy": 61,
+      "greenPixels": 15744,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 116,
+      "cx": 63.5,
+      "cy": 57.5,
+      "greenPixels": 14848,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 91,
+      "cx": 63.5,
+      "cy": 45,
+      "greenPixels": 11648,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 116,
+      "cx": 63.5,
+      "cy": 57.5,
+      "greenPixels": 14848,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 45,
+      "w": 128,
+      "h": 83,
+      "cx": 63.5,
+      "cy": 86,
+      "greenPixels": 10624,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 77,
+      "w": 128,
+      "h": 51,
+      "cx": 63.5,
+      "cy": 102,
+      "greenPixels": 6528,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 96,
+      "w": 128,
+      "h": 32,
+      "cx": 63.5,
+      "cy": 111.5,
+      "greenPixels": 4096,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 77,
+      "w": 128,
+      "h": 51,
+      "cx": 63.5,
+      "cy": 102,
+      "greenPixels": 6528,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 40
+    }
+  ],
+  "motionPx": 66.5,
+  "areaRatio": 4,
+  "layerPixels": 0,
+  "source": "greenscreen/raw/mega-bounce.gif",
+  "animationMode": "per-frame-slot-mask"
+}

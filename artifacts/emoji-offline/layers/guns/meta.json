@@ -1,0 +1,132 @@
+{
+  "id": "guns",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 140389
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.82477759472817,
+      "cy": 58.83677100494234,
+      "greenPixels": 15175,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 64.2020007410152,
+      "cy": 53.81074472026677,
+      "greenPixels": 13495,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.47686395080707,
+      "cy": 53.538970023059186,
+      "greenPixels": 13010,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.48370773595032,
+      "cy": 53.637736717012956,
+      "greenPixels": 13043,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.490379455730164,
+      "cy": 53.65067075507857,
+      "greenPixels": 13045,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.4827136834036,
+      "cy": 53.644538137217324,
+      "greenPixels": 13045,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.48381640655032,
+      "cy": 53.52587068501576,
+      "greenPixels": 13007,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 64.4520686906746,
+      "cy": 54.24092457068328,
+      "greenPixels": 13801,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 10,
+  "areaRatio": 1,
+  "layerPixels": 23451,
+  "source": "greenscreen/raw/guns.gif",
+  "animationMode": "per-frame-slot-mask"
+}

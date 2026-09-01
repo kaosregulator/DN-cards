@@ -1,0 +1,132 @@
+{
+  "id": "touch-grass",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 131126
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 64.19530135855288,
+      "cy": 52.38827591383322,
+      "greenPixels": 13323,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 64.2334213504338,
+      "cy": 52.01320256506978,
+      "greenPixels": 13255,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.689655172413794,
+      "cy": 51.09684356040243,
+      "greenPixels": 13021,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 62.4389077445233,
+      "cy": 51.086933045356375,
+      "greenPixels": 12964,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 60.643789344388146,
+      "cy": 51.521495470597266,
+      "greenPixels": 13026,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 60.55047137272936,
+      "cy": 51.57507472982295,
+      "greenPixels": 13047,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 61.770781829419036,
+      "cy": 51.09680160692213,
+      "greenPixels": 12944,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.56507741836578,
+      "cy": 51.248735244519395,
+      "greenPixels": 13046,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 64.35573782942204,
+      "cy": 51.66894508999772,
+      "greenPixels": 13167,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 64.29858246456162,
+      "cy": 52.42398559963999,
+      "greenPixels": 13333,
+      "visible": true,
+      "delayMs": 70
+    }
+  ],
+  "motionPx": 4,
+  "areaRatio": 1,
+  "layerPixels": 32714,
+  "source": "greenscreen/raw/touch-grass.gif",
+  "animationMode": "per-frame-slot-mask"
+}

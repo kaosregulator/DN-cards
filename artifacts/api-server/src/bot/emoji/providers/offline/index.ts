@@ -9,6 +9,7 @@ export type { OfflineStyle, OfflinePackageManifest } from "./registry.js";
 export { renderOffline } from "./renderer.js";
 export { composeSequence, resolveAtlasDir, resolveFramesDir, resolveAssetDir } from "./atlas.js";
 export { composeOverlay, resolveOverlayPath } from "./overlay.js";
+export { composeLayerPack, hasLayerPack, loadLayerMeta, resolveLayerDir } from "./layer-pack.js";
 export { loadRecipes, findRecipe, readyRecipes, reloadRecipes } from "./recipes.js";
 export type { StyleRecipe, RecipeFamily } from "./recipes.js";
 export { effectFromPrimitive } from "./primitives.js";

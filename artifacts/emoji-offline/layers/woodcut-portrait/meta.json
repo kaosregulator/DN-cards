@@ -1,0 +1,33 @@
+{
+  "id": "woodcut-portrait",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 11,
+    "y": 11,
+    "w": 107,
+    "h": 107,
+    "greenPixels": 8846
+  },
+  "perFrame": [
+    {
+      "x": 11,
+      "y": 11,
+      "w": 107,
+      "h": 107,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 8846,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
+  "layerPixels": 5283,
+  "source": "greenscreen/raw/woodcut-portrait.png",
+  "animationMode": "per-frame-slot-mask"
+}

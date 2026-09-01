@@ -1,0 +1,33 @@
+{
+  "id": "blob-help",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 4,
+    "y": 13,
+    "w": 124,
+    "h": 105,
+    "greenPixels": 5523
+  },
+  "perFrame": [
+    {
+      "x": 4,
+      "y": 13,
+      "w": 124,
+      "h": 105,
+      "cx": 81.12294043092523,
+      "cy": 58.128734383487235,
+      "greenPixels": 5523,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
+  "layerPixels": 5257,
+  "source": "greenscreen/raw/blob-help.png",
+  "animationMode": "per-frame-slot-mask"
+}

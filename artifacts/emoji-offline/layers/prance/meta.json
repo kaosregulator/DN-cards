@@ -1,0 +1,132 @@
+{
+  "id": "prance",
+  "kind": "transform-slot",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 60,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 149178
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 8,
+      "y": 2,
+      "w": 120,
+      "h": 126,
+      "cx": 69.30755523877406,
+      "cy": 67.3687811831789,
+      "greenPixels": 14030,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 5,
+      "y": 1,
+      "w": 123,
+      "h": 127,
+      "cx": 66.88062596134554,
+      "cy": 65.74560288905236,
+      "greenPixels": 14953,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 1,
+      "w": 124,
+      "h": 127,
+      "cx": 60.62876476051479,
+      "cy": 65.75567201804431,
+      "greenPixels": 15074,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 2,
+      "w": 121,
+      "h": 126,
+      "cx": 58.2029262086514,
+      "cy": 67.37821600226181,
+      "greenPixels": 14148,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 8,
+      "y": 2,
+      "w": 120,
+      "h": 126,
+      "cx": 69.30755523877406,
+      "cy": 67.3687811831789,
+      "greenPixels": 14030,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 5,
+      "y": 1,
+      "w": 123,
+      "h": 127,
+      "cx": 66.88062596134554,
+      "cy": 65.74560288905236,
+      "greenPixels": 14953,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 1,
+      "w": 124,
+      "h": 127,
+      "cx": 60.62876476051479,
+      "cy": 65.75567201804431,
+      "greenPixels": 15074,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 2,
+      "w": 121,
+      "h": 126,
+      "cx": 58.2029262086514,
+      "cy": 67.37821600226181,
+      "greenPixels": 14148,
+      "visible": true,
+      "delayMs": 60
+    }
+  ],
+  "motionPx": 11.8,
+  "areaRatio": 1.08,
+  "layerPixels": 0,
+  "source": "greenscreen/raw/prance.gif",
+  "animationMode": "per-frame-slot-mask"
+}

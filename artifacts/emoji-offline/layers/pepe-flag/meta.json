@@ -1,0 +1,66 @@
+{
+  "id": "pepe-flag",
+  "kind": "layer",
+  "frames": 4,
+  "sourcePages": 4,
+  "delayMs": 170,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 121,
+    "greenPixels": 25550
+  },
+  "perFrame": [
+    {
+      "x": 6,
+      "y": 0,
+      "w": 122,
+      "h": 121,
+      "cx": 64.80571965628357,
+      "cy": 49.01315789473684,
+      "greenPixels": 7448,
+      "visible": true,
+      "delayMs": 170
+    },
+    {
+      "x": 7,
+      "y": 10,
+      "w": 121,
+      "h": 107,
+      "cx": 69.59322033898304,
+      "cy": 61.46822033898305,
+      "greenPixels": 5664,
+      "visible": true,
+      "delayMs": 170
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 118,
+      "h": 112,
+      "cx": 48.43893879842785,
+      "cy": 47.473469960696235,
+      "greenPixels": 7124,
+      "visible": true,
+      "delayMs": 170
+    },
+    {
+      "x": 0,
+      "y": 10,
+      "w": 117,
+      "h": 109,
+      "cx": 41.27248776815958,
+      "cy": 61.95652992096349,
+      "greenPixels": 5314,
+      "visible": true,
+      "delayMs": 170
+    }
+  ],
+  "motionPx": 31.8,
+  "areaRatio": 1.16,
+  "layerPixels": 22331,
+  "source": "greenscreen/raw/pepe-flag.gif",
+  "animationMode": "per-frame-slot-mask"
+}

@@ -1,0 +1,132 @@
+{
+  "id": "crab",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 133170
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.13791547601143,
+      "cy": 64.18829899232968,
+      "greenPixels": 13298,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.13791547601143,
+      "cy": 64.18829899232968,
+      "greenPixels": 13298,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.13791547601143,
+      "cy": 64.18829899232968,
+      "greenPixels": 13298,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.13791547601143,
+      "cy": 64.18829899232968,
+      "greenPixels": 13298,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.13791547601143,
+      "cy": 64.18829899232968,
+      "greenPixels": 13298,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.07715956808638,
+      "cy": 63.805263947210555,
+      "greenPixels": 13336,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.07715956808638,
+      "cy": 63.805263947210555,
+      "greenPixels": 13336,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.07715956808638,
+      "cy": 63.805263947210555,
+      "greenPixels": 13336,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.07715956808638,
+      "cy": 63.805263947210555,
+      "greenPixels": 13336,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.07715956808638,
+      "cy": 63.805263947210555,
+      "greenPixels": 13336,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0.4,
+  "areaRatio": 1,
+  "layerPixels": 30670,
+  "source": "greenscreen/raw/crab.gif",
+  "animationMode": "per-frame-slot-mask"
+}

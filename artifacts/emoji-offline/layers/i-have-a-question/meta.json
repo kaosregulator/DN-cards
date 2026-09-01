@@ -1,0 +1,33 @@
+{
+  "id": "i-have-a-question",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 15,
+    "w": 128,
+    "h": 91,
+    "greenPixels": 7569
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 15,
+      "w": 128,
+      "h": 91,
+      "cx": 67.24772096710265,
+      "cy": 61.34522393975426,
+      "greenPixels": 7569,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
+  "layerPixels": 2380,
+  "source": "greenscreen/raw/i-have-a-question.png",
+  "animationMode": "per-frame-slot-mask"
+}

@@ -1,0 +1,132 @@
+{
+  "id": "headbop",
+  "kind": "transform-slot",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 158674
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 1,
+      "w": 128,
+      "h": 127,
+      "cx": 62.97801642451042,
+      "cy": 65.64301958307011,
+      "greenPixels": 15830,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 2,
+      "w": 128,
+      "h": 126,
+      "cx": 62.76392641193876,
+      "cy": 66.73491573395086,
+      "greenPixels": 15546,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 2,
+      "w": 128,
+      "h": 126,
+      "cx": 62.76392641193876,
+      "cy": 66.73491573395086,
+      "greenPixels": 15546,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 1,
+      "w": 128,
+      "h": 127,
+      "cx": 62.97801642451042,
+      "cy": 65.64301958307011,
+      "greenPixels": 15830,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.42391236696334,
+      "cy": 62.74867741333168,
+      "greenPixels": 16067,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.259252095422305,
+      "cy": 61.61315280464217,
+      "greenPixels": 15510,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.259252095422305,
+      "cy": 61.61315280464217,
+      "greenPixels": 15510,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.42391236696334,
+      "cy": 62.74867741333168,
+      "greenPixels": 16067,
+      "visible": true,
+      "delayMs": 70
+    }
+  ],
+  "motionPx": 5.2,
+  "areaRatio": 1.02,
+  "layerPixels": 0,
+  "source": "greenscreen/raw/headbop.gif",
+  "animationMode": "per-frame-slot-mask"
+}

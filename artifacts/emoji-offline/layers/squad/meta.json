@@ -1,0 +1,132 @@
+{
+  "id": "squad",
+  "kind": "transform-slot",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 71849
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 126,
+      "cx": 63.67959949937422,
+      "cy": 69.10300375469336,
+      "greenPixels": 7990,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 127,
+      "h": 128,
+      "cx": 66.71285580231466,
+      "cy": 62.869096027525806,
+      "greenPixels": 6394,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 60.94849515174411,
+      "cy": 59.84082609243168,
+      "greenPixels": 7941,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 62.01529099703542,
+      "cy": 66.14370416601653,
+      "greenPixels": 6409,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 68.47202580325022,
+      "cy": 65.05024190547078,
+      "greenPixels": 8061,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 7,
+      "w": 128,
+      "h": 121,
+      "cx": 63.75584167858846,
+      "cy": 60.167381974248926,
+      "greenPixels": 6291,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 59.02320648783531,
+      "cy": 65.05102932002495,
+      "greenPixels": 8015,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 65.45951825951826,
+      "cy": 66.15120435120436,
+      "greenPixels": 6435,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 66.38936276969393,
+      "cy": 59.81961866532865,
+      "greenPixels": 7972,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 2,
+      "y": 0,
+      "w": 126,
+      "h": 128,
+      "cx": 60.729537927771645,
+      "cy": 62.91815171108658,
+      "greenPixels": 6341,
+      "visible": true,
+      "delayMs": 70
+    }
+  ],
+  "motionPx": 13.2,
+  "areaRatio": 1.06,
+  "layerPixels": 0,
+  "source": "greenscreen/raw/squad.gif",
+  "animationMode": "per-frame-slot-mask"
+}

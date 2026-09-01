@@ -1,0 +1,132 @@
+{
+  "id": "wide-happy",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 80,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 156014
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 3,
+      "w": 128,
+      "h": 124,
+      "cx": 63.50477817859629,
+      "cy": 64.48471615720524,
+      "greenPixels": 15801,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 7,
+      "w": 128,
+      "h": 119,
+      "cx": 63.51400883380579,
+      "cy": 65.96947722328433,
+      "greenPixels": 15169,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 9,
+      "w": 128,
+      "h": 114,
+      "cx": 63.49862315847446,
+      "cy": 65.50020652622884,
+      "greenPixels": 14526,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 9,
+      "w": 128,
+      "h": 114,
+      "cx": 63.482794218857535,
+      "cy": 65.50130763936683,
+      "greenPixels": 14530,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 7,
+      "w": 128,
+      "h": 119,
+      "cx": 63.5179419525066,
+      "cy": 66.01378627968337,
+      "greenPixels": 15160,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 3,
+      "w": 128,
+      "h": 124,
+      "cx": 63.52384868421053,
+      "cy": 64.53485576923077,
+      "greenPixels": 15808,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 1,
+      "w": 128,
+      "h": 127,
+      "cx": 63.50398369464517,
+      "cy": 63.98950033969489,
+      "greenPixels": 16191,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.519571209800915,
+      "cy": 63.46750382848392,
+      "greenPixels": 16325,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.48629759058304,
+      "cy": 63.49561645515296,
+      "greenPixels": 16311,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 1,
+      "w": 128,
+      "h": 127,
+      "cx": 63.460939912307786,
+      "cy": 63.9895016365096,
+      "greenPixels": 16193,
+      "visible": true,
+      "delayMs": 80
+    }
+  ],
+  "motionPx": 2.5,
+  "areaRatio": 1.12,
+  "layerPixels": 658,
+  "source": "greenscreen/raw/wide-happy.gif",
+  "animationMode": "per-frame-slot-mask"
+}

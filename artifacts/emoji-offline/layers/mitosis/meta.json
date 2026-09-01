@@ -1,0 +1,132 @@
+{
+  "id": "mitosis",
+  "kind": "transform-slot",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 80,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 142127
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 127,
+      "h": 128,
+      "cx": 61.79417747266717,
+      "cy": 63.82691329773709,
+      "greenPixels": 15732,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 6,
+      "y": 16,
+      "w": 122,
+      "h": 99,
+      "cx": 66.47486083677501,
+      "cy": 65.24636379960495,
+      "greenPixels": 11138,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 62.59689826302729,
+      "cy": 63.71575682382134,
+      "greenPixels": 16120,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 3,
+      "y": 8,
+      "w": 125,
+      "h": 115,
+      "cx": 65.66781174854002,
+      "cy": 65.2670903469598,
+      "greenPixels": 11644,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 62.59689826302729,
+      "cy": 63.71575682382134,
+      "greenPixels": 16120,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 2,
+      "y": 5,
+      "w": 126,
+      "h": 122,
+      "cx": 64.8553177898435,
+      "cy": 65.54359629511339,
+      "greenPixels": 12524,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 127,
+      "h": 128,
+      "cx": 62.690807799442894,
+      "cy": 63.52683379758589,
+      "greenPixels": 16155,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 2,
+      "y": 5,
+      "w": 126,
+      "h": 122,
+      "cx": 64.8553177898435,
+      "cy": 65.54359629511339,
+      "greenPixels": 12524,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.12573673870334,
+      "cy": 63.511787819253435,
+      "greenPixels": 16288,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 2,
+      "y": 2,
+      "w": 126,
+      "h": 126,
+      "cx": 64.9146376602795,
+      "cy": 64.78086731018585,
+      "greenPixels": 13882,
+      "visible": true,
+      "delayMs": 80
+    }
+  ],
+  "motionPx": 5.1,
+  "areaRatio": 1.36,
+  "layerPixels": 0,
+  "source": "greenscreen/raw/mitosis.gif",
+  "animationMode": "per-frame-slot-mask"
+}

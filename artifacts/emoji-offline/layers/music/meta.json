@@ -1,0 +1,132 @@
+{
+  "id": "music",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 153144
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 62.87554956743724,
+      "cy": 63.1026804708552,
+      "greenPixels": 14102,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.89865658014869,
+      "cy": 64.67555758445285,
+      "greenPixels": 15334,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 64.46439378656446,
+      "cy": 64.14383699818438,
+      "greenPixels": 14871,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 64.20210265116887,
+      "cy": 61.50319968656132,
+      "greenPixels": 15314,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 64.38611236826793,
+      "cy": 62.170815284153356,
+      "greenPixels": 15467,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 64.33144060227127,
+      "cy": 63.13321424014291,
+      "greenPixels": 15674,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 62.79088001003575,
+      "cy": 64.29862635639465,
+      "greenPixels": 15943,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 62.88374147942439,
+      "cy": 63.91327947488008,
+      "greenPixels": 15844,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 62.81927865485817,
+      "cy": 64.06937491977924,
+      "greenPixels": 15582,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 62.81655898221541,
+      "cy": 64.39539066142676,
+      "greenPixels": 15013,
+      "visible": true,
+      "delayMs": 70
+    }
+  ],
+  "motionPx": 3.6,
+  "areaRatio": 1,
+  "layerPixels": 10696,
+  "source": "greenscreen/raw/music.gif",
+  "animationMode": "per-frame-slot-mask"
+}

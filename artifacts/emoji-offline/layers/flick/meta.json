@@ -1,0 +1,132 @@
+{
+  "id": "flick",
+  "kind": "transform-slot",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 40,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 151040
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 25,
+      "y": 0,
+      "w": 103,
+      "h": 128,
+      "cx": 76,
+      "cy": 63.5,
+      "greenPixels": 13184,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 50,
+      "y": 0,
+      "w": 78,
+      "h": 128,
+      "cx": 88.5,
+      "cy": 63.5,
+      "greenPixels": 9984,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 25,
+      "y": 0,
+      "w": 103,
+      "h": 128,
+      "cx": 76,
+      "cy": 63.5,
+      "greenPixels": 13184,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 40
+    }
+  ],
+  "motionPx": 25,
+  "areaRatio": 1.64,
+  "layerPixels": 0,
+  "source": "greenscreen/raw/flick.gif",
+  "animationMode": "per-frame-slot-mask"
+}

@@ -1,0 +1,132 @@
+{
+  "id": "pyramid",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 100,
+  "size": 128,
+  "slot": {
+    "x": 15,
+    "y": 19,
+    "w": 99,
+    "h": 109,
+    "greenPixels": 52616
+  },
+  "perFrame": [
+    {
+      "x": 29,
+      "y": 19,
+      "w": 71,
+      "h": 102,
+      "cx": 64.02468644236512,
+      "cy": 82.65896874377862,
+      "greenPixels": 5023,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 24,
+      "y": 19,
+      "w": 80,
+      "h": 104,
+      "cx": 62.39903846153846,
+      "cy": 82.87840544871794,
+      "greenPixels": 4992,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 21,
+      "y": 19,
+      "w": 87,
+      "h": 107,
+      "cx": 62.029607843137256,
+      "cy": 82.68196078431373,
+      "greenPixels": 5100,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 17,
+      "y": 19,
+      "w": 95,
+      "h": 108,
+      "cx": 62.7724907063197,
+      "cy": 82.54776951672862,
+      "greenPixels": 5380,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 15,
+      "y": 19,
+      "w": 98,
+      "h": 109,
+      "cx": 63.375950742484605,
+      "cy": 82.42176747555233,
+      "greenPixels": 5522,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 15,
+      "y": 19,
+      "w": 99,
+      "h": 109,
+      "cx": 64,
+      "cy": 82.36030069804904,
+      "greenPixels": 5587,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 16,
+      "y": 19,
+      "w": 98,
+      "h": 109,
+      "cx": 64.61987353206865,
+      "cy": 82.38644986449864,
+      "greenPixels": 5535,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 17,
+      "y": 19,
+      "w": 95,
+      "h": 108,
+      "cx": 65.22722201561919,
+      "cy": 82.56322052807735,
+      "greenPixels": 5378,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 21,
+      "y": 19,
+      "w": 87,
+      "h": 107,
+      "cx": 65.97315304722711,
+      "cy": 82.65530080344895,
+      "greenPixels": 5103,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 25,
+      "y": 19,
+      "w": 80,
+      "h": 104,
+      "cx": 65.61909527622097,
+      "cy": 82.83226581265012,
+      "greenPixels": 4996,
+      "visible": true,
+      "delayMs": 100
+    }
+  ],
+  "motionPx": 4,
+  "areaRatio": 1.49,
+  "layerPixels": 52,
+  "source": "greenscreen/raw/pyramid.gif",
+  "animationMode": "per-frame-slot-mask"
+}

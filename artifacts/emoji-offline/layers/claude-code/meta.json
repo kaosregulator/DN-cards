@@ -1,0 +1,209 @@
+{
+  "id": "claude-code",
+  "kind": "layer",
+  "frames": 17,
+  "sourcePages": 17,
+  "delayMs": 40,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 49,
+    "w": 90,
+    "h": 79,
+    "greenPixels": 97834
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 49,
+      "w": 90,
+      "h": 79,
+      "cx": 38.88564823048195,
+      "cy": 86.95589542948603,
+      "greenPixels": 5623,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 49,
+      "w": 90,
+      "h": 79,
+      "cx": 40.002065049044916,
+      "cy": 87.83427981414559,
+      "greenPixels": 5811,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 49,
+      "w": 90,
+      "h": 79,
+      "cx": 40.21129419842087,
+      "cy": 87.01321661517336,
+      "greenPixels": 5826,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 49,
+      "w": 90,
+      "h": 79,
+      "cx": 38.88564823048195,
+      "cy": 86.95589542948603,
+      "greenPixels": 5623,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 49,
+      "w": 90,
+      "h": 79,
+      "cx": 40.002065049044916,
+      "cy": 87.83427981414559,
+      "greenPixels": 5811,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 49,
+      "w": 90,
+      "h": 79,
+      "cx": 40.21129419842087,
+      "cy": 87.01321661517336,
+      "greenPixels": 5826,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 49,
+      "w": 90,
+      "h": 79,
+      "cx": 38.88564823048195,
+      "cy": 86.95589542948603,
+      "greenPixels": 5623,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 49,
+      "w": 90,
+      "h": 79,
+      "cx": 40.002065049044916,
+      "cy": 87.83427981414559,
+      "greenPixels": 5811,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 49,
+      "w": 90,
+      "h": 79,
+      "cx": 40.21129419842087,
+      "cy": 87.01321661517336,
+      "greenPixels": 5826,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 49,
+      "w": 90,
+      "h": 79,
+      "cx": 38.88564823048195,
+      "cy": 86.95589542948603,
+      "greenPixels": 5623,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 49,
+      "w": 90,
+      "h": 79,
+      "cx": 40.002065049044916,
+      "cy": 87.83427981414559,
+      "greenPixels": 5811,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 49,
+      "w": 90,
+      "h": 79,
+      "cx": 40.21129419842087,
+      "cy": 87.01321661517336,
+      "greenPixels": 5826,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 49,
+      "w": 90,
+      "h": 79,
+      "cx": 38.88564823048195,
+      "cy": 86.95589542948603,
+      "greenPixels": 5623,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 49,
+      "w": 90,
+      "h": 79,
+      "cx": 40.002065049044916,
+      "cy": 87.83427981414559,
+      "greenPixels": 5811,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 49,
+      "w": 90,
+      "h": 79,
+      "cx": 40.21129419842087,
+      "cy": 87.01321661517336,
+      "greenPixels": 5826,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 49,
+      "w": 90,
+      "h": 79,
+      "cx": 38.88564823048195,
+      "cy": 86.95589542948603,
+      "greenPixels": 5623,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 49,
+      "w": 90,
+      "h": 79,
+      "cx": 40.62798172897987,
+      "cy": 88.4714938250719,
+      "greenPixels": 5911,
+      "visible": true,
+      "delayMs": 40
+    }
+  ],
+  "motionPx": 2.3,
+  "areaRatio": 1,
+  "layerPixels": 9578,
+  "source": "greenscreen/raw/claude-code.gif",
+  "animationMode": "per-frame-slot-mask"
+}

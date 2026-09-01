@@ -1,0 +1,132 @@
+{
+  "id": "peepo-poopoo",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 100,
+  "size": 128,
+  "slot": {
+    "x": 27,
+    "y": 27,
+    "w": 101,
+    "h": 101,
+    "greenPixels": 42898
+  },
+  "perFrame": [
+    {
+      "x": 27,
+      "y": 27,
+      "w": 85,
+      "h": 98,
+      "cx": 70.02107234839616,
+      "cy": 68.08686490283306,
+      "greenPixels": 4271,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 28,
+      "y": 27,
+      "w": 84,
+      "h": 98,
+      "cx": 70.01154299175501,
+      "cy": 68.06313309776208,
+      "greenPixels": 4245,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 27,
+      "y": 27,
+      "w": 85,
+      "h": 100,
+      "cx": 69.84606400373744,
+      "cy": 68.33403410418127,
+      "greenPixels": 4281,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 28,
+      "y": 27,
+      "w": 84,
+      "h": 101,
+      "cx": 69.90377358490566,
+      "cy": 68.23514150943396,
+      "greenPixels": 4240,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 27,
+      "y": 27,
+      "w": 93,
+      "h": 100,
+      "cx": 70.59711224965068,
+      "cy": 68.5780158360503,
+      "greenPixels": 4294,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 28,
+      "y": 28,
+      "w": 100,
+      "h": 99,
+      "cx": 71.27341772151898,
+      "cy": 69.26490218642117,
+      "greenPixels": 4345,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 28,
+      "y": 27,
+      "w": 92,
+      "h": 101,
+      "cx": 70.72059507205951,
+      "cy": 68.86308693630869,
+      "greenPixels": 4302,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 27,
+      "y": 27,
+      "w": 86,
+      "h": 101,
+      "cx": 70.24606845513414,
+      "cy": 68.8672525439408,
+      "greenPixels": 4324,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 27,
+      "y": 27,
+      "w": 85,
+      "h": 100,
+      "cx": 70.01426566884939,
+      "cy": 68.3856407857811,
+      "greenPixels": 4276,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 27,
+      "y": 27,
+      "w": 85,
+      "h": 100,
+      "cx": 70.09930555555556,
+      "cy": 68.37337962962962,
+      "greenPixels": 4320,
+      "visible": true,
+      "delayMs": 100
+    }
+  ],
+  "motionPx": 1.9,
+  "areaRatio": 1.2,
+  "layerPixels": 81024,
+  "source": "greenscreen/raw/peepo-poopoo.gif",
+  "animationMode": "per-frame-slot-mask"
+}

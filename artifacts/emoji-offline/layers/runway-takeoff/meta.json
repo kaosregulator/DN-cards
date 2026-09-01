@@ -1,0 +1,132 @@
+{
+  "id": "runway-takeoff",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 80,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 119818
+  },
+  "perFrame": [
+    {
+      "x": 48,
+      "y": 0,
+      "w": 80,
+      "h": 128,
+      "cx": 87.5,
+      "cy": 63.5,
+      "greenPixels": 10240,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 37,
+      "y": 0,
+      "w": 91,
+      "h": 127,
+      "cx": 82.03897116134061,
+      "cy": 62.94933749025721,
+      "greenPixels": 11547,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 22,
+      "y": 0,
+      "w": 106,
+      "h": 127,
+      "cx": 75.52753623188406,
+      "cy": 61.450528789659224,
+      "greenPixels": 12765,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 10,
+      "y": 7,
+      "w": 118,
+      "h": 121,
+      "cx": 69.62535024332695,
+      "cy": 68.98643267954579,
+      "greenPixels": 13562,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 3,
+      "w": 128,
+      "h": 125,
+      "cx": 64.43570158688352,
+      "cy": 67.33436491736353,
+      "greenPixels": 15187,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 126,
+      "h": 127,
+      "cx": 59.88751160015909,
+      "cy": 61.87093994431924,
+      "greenPixels": 15086,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 116,
+      "h": 121,
+      "cx": 52.85151490536918,
+      "cy": 57.11485663228007,
+      "greenPixels": 12311,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 102,
+      "h": 107,
+      "cx": 42.90610660077656,
+      "cy": 48.038475114719375,
+      "greenPixels": 8499,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 79,
+      "h": 79,
+      "cx": 30.84446542364881,
+      "cy": 31.569034694359217,
+      "greenPixels": 4237,
+      "visible": true,
+      "delayMs": 80
+    }
+  ],
+  "motionPx": 67.9,
+  "areaRatio": 2.63,
+  "layerPixels": 1469,
+  "source": "greenscreen/raw/runway-takeoff.gif",
+  "animationMode": "per-frame-slot-mask"
+}

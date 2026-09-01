@@ -1,0 +1,132 @@
+{
+  "id": "skibidi",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 150,
+  "size": 128,
+  "slot": {
+    "x": 15,
+    "y": 0,
+    "w": 99,
+    "h": 96,
+    "greenPixels": 54370
+  },
+  "perFrame": [
+    {
+      "x": 25,
+      "y": 16,
+      "w": 79,
+      "h": 80,
+      "cx": 64.03594080338266,
+      "cy": 48.807610993657505,
+      "greenPixels": 5203,
+      "visible": true,
+      "delayMs": 150
+    },
+    {
+      "x": 15,
+      "y": 5,
+      "w": 99,
+      "h": 83,
+      "cx": 63.627932351336604,
+      "cy": 47.72540461902164,
+      "greenPixels": 5499,
+      "visible": true,
+      "delayMs": 150
+    },
+    {
+      "x": 15,
+      "y": 5,
+      "w": 99,
+      "h": 83,
+      "cx": 64.44148067501361,
+      "cy": 47.773543821448015,
+      "greenPixels": 5511,
+      "visible": true,
+      "delayMs": 150
+    },
+    {
+      "x": 25,
+      "y": 16,
+      "w": 79,
+      "h": 80,
+      "cx": 64.03594080338266,
+      "cy": 48.807610993657505,
+      "greenPixels": 5203,
+      "visible": true,
+      "delayMs": 150
+    },
+    {
+      "x": 25,
+      "y": 16,
+      "w": 79,
+      "h": 80,
+      "cx": 64.03594080338266,
+      "cy": 48.807610993657505,
+      "greenPixels": 5203,
+      "visible": true,
+      "delayMs": 150
+    },
+    {
+      "x": 25,
+      "y": 0,
+      "w": 79,
+      "h": 87,
+      "cx": 63.988560696602356,
+      "cy": 37.0257811166126,
+      "greenPixels": 5857,
+      "visible": true,
+      "delayMs": 150
+    },
+    {
+      "x": 25,
+      "y": 16,
+      "w": 79,
+      "h": 80,
+      "cx": 64.03594080338266,
+      "cy": 48.807610993657505,
+      "greenPixels": 5203,
+      "visible": true,
+      "delayMs": 150
+    },
+    {
+      "x": 25,
+      "y": 0,
+      "w": 79,
+      "h": 87,
+      "cx": 63.97537688442211,
+      "cy": 37.64036850921273,
+      "greenPixels": 5970,
+      "visible": true,
+      "delayMs": 150
+    },
+    {
+      "x": 25,
+      "y": 0,
+      "w": 79,
+      "h": 88,
+      "cx": 63.991844871330194,
+      "cy": 35.36534976440739,
+      "greenPixels": 5518,
+      "visible": true,
+      "delayMs": 150
+    },
+    {
+      "x": 25,
+      "y": 16,
+      "w": 79,
+      "h": 80,
+      "cx": 64.03594080338266,
+      "cy": 48.807610993657505,
+      "greenPixels": 5203,
+      "visible": true,
+      "delayMs": 150
+    }
+  ],
+  "motionPx": 13.5,
+  "areaRatio": 1.3,
+  "layerPixels": 47443,
+  "source": "greenscreen/raw/skibidi.gif",
+  "animationMode": "per-frame-slot-mask"
+}

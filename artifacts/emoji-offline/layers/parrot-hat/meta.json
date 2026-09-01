@@ -1,0 +1,132 @@
+{
+  "id": "parrot-hat",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 123,
+    "h": 126,
+    "greenPixels": 67303
+  },
+  "perFrame": [
+    {
+      "x": 22,
+      "y": 0,
+      "w": 97,
+      "h": 89,
+      "cx": 68.86380424746076,
+      "cy": 38.59833795013851,
+      "greenPixels": 6498,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 14,
+      "y": 0,
+      "w": 93,
+      "h": 81,
+      "cx": 59.28540558510638,
+      "cy": 35.020113031914896,
+      "greenPixels": 6016,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 104,
+      "h": 126,
+      "cx": 49.903855085926615,
+      "cy": 54.47909893172318,
+      "greenPixels": 8612,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 90,
+      "h": 87,
+      "cx": 43.01561079114883,
+      "cy": 39.21885419824189,
+      "greenPixels": 6598,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 88,
+      "h": 90,
+      "cx": 39.02170418006431,
+      "cy": 40.55900321543408,
+      "greenPixels": 6220,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 91,
+      "h": 95,
+      "cx": 42.42716086890476,
+      "cy": 43.48640437490506,
+      "greenPixels": 6583,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 3,
+      "y": 0,
+      "w": 101,
+      "h": 99,
+      "cx": 52.80199345432907,
+      "cy": 45.69830407616781,
+      "greenPixels": 6722,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 10,
+      "y": 1,
+      "w": 103,
+      "h": 103,
+      "cx": 60.667163289630516,
+      "cy": 49.538140643623365,
+      "greenPixels": 6712,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 22,
+      "y": 0,
+      "w": 98,
+      "h": 96,
+      "cx": 69.94570405727923,
+      "cy": 44.46748210023866,
+      "greenPixels": 6704,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 23,
+      "y": 0,
+      "w": 100,
+      "h": 96,
+      "cx": 72.02726724917143,
+      "cy": 42.69704730340464,
+      "greenPixels": 6638,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 38.3,
+  "areaRatio": 1.74,
+  "layerPixels": 27031,
+  "source": "greenscreen/raw/parrot-hat.gif",
+  "animationMode": "per-frame-slot-mask"
+}

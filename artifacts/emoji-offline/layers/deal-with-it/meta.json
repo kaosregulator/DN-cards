@@ -1,0 +1,132 @@
+{
+  "id": "deal-with-it",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 100,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 152553
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.497703472349805,
+      "cy": 63.7138220344173,
+      "greenPixels": 16329,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.49705128205128,
+      "cy": 66.47166666666666,
+      "greenPixels": 15600,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.637872628726285,
+      "cy": 69.40704607046071,
+      "greenPixels": 14760,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.66641524958859,
+      "cy": 68.90379868348876,
+      "greenPixels": 14584,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.72748489840747,
+      "cy": 67.72171883580451,
+      "greenPixels": 14568,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.702796725784445,
+      "cy": 66.23983628922237,
+      "greenPixels": 14660,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.65960934298593,
+      "cy": 65.06310613304193,
+      "greenPixels": 14642,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.65960934298593,
+      "cy": 65.06310613304193,
+      "greenPixels": 14642,
+      "visible": true,
+      "delayMs": 100
+    }
+  ],
+  "motionPx": 5.9,
+  "areaRatio": 1,
+  "layerPixels": 11287,
+  "source": "greenscreen/raw/deal-with-it.gif",
+  "animationMode": "per-frame-slot-mask"
+}

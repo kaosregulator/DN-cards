@@ -1,0 +1,33 @@
+{
+  "id": "pumpkin",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 29,
+    "y": 20,
+    "w": 92,
+    "h": 92,
+    "greenPixels": 6907
+  },
+  "perFrame": [
+    {
+      "x": 29,
+      "y": 20,
+      "w": 92,
+      "h": 92,
+      "cx": 74.58245258433473,
+      "cy": 65.65672506153177,
+      "greenPixels": 6907,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
+  "layerPixels": 7828,
+  "source": "greenscreen/raw/pumpkin.png",
+  "animationMode": "per-frame-slot-mask"
+}

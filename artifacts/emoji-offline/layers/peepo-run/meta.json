@@ -1,0 +1,88 @@
+{
+  "id": "peepo-run",
+  "kind": "layer",
+  "frames": 6,
+  "sourcePages": 6,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 5,
+    "y": 0,
+    "w": 118,
+    "h": 128,
+    "greenPixels": 42292
+  },
+  "perFrame": [
+    {
+      "x": 5,
+      "y": 3,
+      "w": 118,
+      "h": 125,
+      "cx": 66.911491507431,
+      "cy": 58.36173036093418,
+      "greenPixels": 7536,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 18,
+      "y": 3,
+      "w": 99,
+      "h": 125,
+      "cx": 66.81725327812285,
+      "cy": 58.56093857832988,
+      "greenPixels": 7245,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 27,
+      "y": 0,
+      "w": 89,
+      "h": 128,
+      "cx": 68.3882618510158,
+      "cy": 53.29465763732129,
+      "greenPixels": 6645,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 12,
+      "y": 0,
+      "w": 104,
+      "h": 126,
+      "cx": 68.37078969714123,
+      "cy": 54.36555335409001,
+      "greenPixels": 7066,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 28,
+      "y": 5,
+      "w": 88,
+      "h": 123,
+      "cx": 68.17615549433731,
+      "cy": 57.539638812366086,
+      "greenPixels": 6534,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 18,
+      "y": 3,
+      "w": 99,
+      "h": 125,
+      "cx": 66.83608587943849,
+      "cy": 58.67685108725571,
+      "greenPixels": 7266,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 5.6,
+  "areaRatio": 1.36,
+  "layerPixels": 4087,
+  "source": "greenscreen/raw/peepo-run.gif",
+  "animationMode": "per-frame-slot-mask"
+}

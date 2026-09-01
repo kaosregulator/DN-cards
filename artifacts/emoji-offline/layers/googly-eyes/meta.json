@@ -1,0 +1,132 @@
+{
+  "id": "googly-eyes",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 104147
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 65.90470690153046,
+      "cy": 78.09615939936471,
+      "greenPixels": 10389,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 66.13568129330254,
+      "cy": 77.41166281755196,
+      "greenPixels": 10392,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 66.90684957789716,
+      "cy": 76.07262087490406,
+      "greenPixels": 10424,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 65.99759753988084,
+      "cy": 73.96059965404574,
+      "greenPixels": 10406,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.90692515432099,
+      "cy": 77.94685570987654,
+      "greenPixels": 10368,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 61.75758159237508,
+      "cy": 76.62164243766246,
+      "greenPixels": 10387,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 60.9097108827202,
+      "cy": 75.04043799827106,
+      "greenPixels": 10411,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.3778784083245,
+      "cy": 78.16543019558725,
+      "greenPixels": 10379,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 60.44502014968336,
+      "cy": 77.24995202456343,
+      "greenPixels": 10422,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 67.9475825527486,
+      "cy": 73.76752767527675,
+      "greenPixels": 10569,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 8.7,
+  "areaRatio": 1,
+  "layerPixels": 59693,
+  "source": "greenscreen/raw/googly-eyes.gif",
+  "animationMode": "per-frame-slot-mask"
+}

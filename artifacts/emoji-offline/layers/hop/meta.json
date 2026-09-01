@@ -1,0 +1,132 @@
+{
+  "id": "hop",
+  "kind": "transform-slot",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 60,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 136428
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 91,
+      "h": 128,
+      "cx": 45,
+      "cy": 63.5,
+      "greenPixels": 11648,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 104,
+      "h": 116,
+      "cx": 51.5,
+      "cy": 57.5,
+      "greenPixels": 12064,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 116,
+      "h": 111,
+      "cx": 57.5,
+      "cy": 55,
+      "greenPixels": 12876,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 116,
+      "cx": 63.5,
+      "cy": 57.5,
+      "greenPixels": 14848,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 13,
+      "y": 0,
+      "w": 115,
+      "h": 128,
+      "cx": 70,
+      "cy": 63.5,
+      "greenPixels": 14720,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 116,
+      "h": 128,
+      "cx": 57.5,
+      "cy": 63.5,
+      "greenPixels": 14848,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 104,
+      "h": 128,
+      "cx": 51.5,
+      "cy": 63.5,
+      "greenPixels": 13312,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 97,
+      "h": 128,
+      "cx": 48,
+      "cy": 63.5,
+      "greenPixels": 12416,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 104,
+      "h": 128,
+      "cx": 51.5,
+      "cy": 63.5,
+      "greenPixels": 13312,
+      "visible": true,
+      "delayMs": 60
+    }
+  ],
+  "motionPx": 26.4,
+  "areaRatio": 1.41,
+  "layerPixels": 0,
+  "source": "greenscreen/raw/hop.gif",
+  "animationMode": "per-frame-slot-mask"
+}

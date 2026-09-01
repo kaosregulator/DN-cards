@@ -1,0 +1,132 @@
+{
+  "id": "will-slap",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 108383
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.169233612617056,
+      "cy": 62.96174223755545,
+      "greenPixels": 16232,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 44.59672589339189,
+      "cy": 55.872329806348574,
+      "greenPixels": 10018,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 41.77816216216216,
+      "cy": 56.140972972972975,
+      "greenPixels": 9250,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 41.45631179581513,
+      "cy": 55.57691423315705,
+      "greenPixels": 8698,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 45.04968094804011,
+      "cy": 53.536349134001824,
+      "greenPixels": 8776,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 46.817178881008665,
+      "cy": 52.55611842845885,
+      "greenPixels": 8883,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 44.56011282171818,
+      "cy": 53.85626983194265,
+      "greenPixels": 8509,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 49.21724252124959,
+      "cy": 51.288332045479635,
+      "greenPixels": 9059,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.479445762841614,
+      "cy": 53.537472249866035,
+      "greenPixels": 13063,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.599559609940236,
+      "cy": 61.809562755583514,
+      "greenPixels": 15895,
+      "visible": true,
+      "delayMs": 70
+    }
+  ],
+  "motionPx": 25,
+  "areaRatio": 1,
+  "layerPixels": 55457,
+  "source": "greenscreen/raw/will-slap.gif",
+  "animationMode": "per-frame-slot-mask"
+}

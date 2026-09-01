@@ -1,0 +1,33 @@
+{
+  "id": "comfy",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 28,
+    "y": 8,
+    "w": 100,
+    "h": 106,
+    "greenPixels": 7589
+  },
+  "perFrame": [
+    {
+      "x": 28,
+      "y": 8,
+      "w": 100,
+      "h": 106,
+      "cx": 80.4536829621821,
+      "cy": 58.47885096850705,
+      "greenPixels": 7589,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
+  "layerPixels": 8603,
+  "source": "greenscreen/raw/comfy.png",
+  "animationMode": "per-frame-slot-mask"
+}

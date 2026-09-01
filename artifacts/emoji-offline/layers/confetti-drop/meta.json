@@ -1,0 +1,132 @@
+{
+  "id": "confetti-drop",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 80,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 157554
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 126,
+      "cx": 64.00089092528955,
+      "cy": 62.55377370497646,
+      "greenPixels": 15714,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 2,
+      "w": 128,
+      "h": 126,
+      "cx": 63.892870880882164,
+      "cy": 64.43633799205027,
+      "greenPixels": 15598,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 5,
+      "w": 128,
+      "h": 123,
+      "cx": 63.494304791830324,
+      "cy": 66.06520031421839,
+      "greenPixels": 15276,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 2,
+      "w": 128,
+      "h": 126,
+      "cx": 63.64068329079128,
+      "cy": 65.78382093068917,
+      "greenPixels": 15279,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 64.02240611075747,
+      "cy": 64.5124761298536,
+      "greenPixels": 15710,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 64.02157639806252,
+      "cy": 63.508586525759576,
+      "greenPixels": 15897,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.70779669535717,
+      "cy": 63.70063454168499,
+      "greenPixels": 15917,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.76240241752707,
+      "cy": 63.452027197179554,
+      "greenPixels": 15884,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 64.03485372758729,
+      "cy": 63.73538848694558,
+      "greenPixels": 15895,
+      "visible": true,
+      "delayMs": 80
+    }
+  ],
+  "motionPx": 3.6,
+  "areaRatio": 1.04,
+  "layerPixels": 4303,
+  "source": "greenscreen/raw/confetti-drop.gif",
+  "animationMode": "per-frame-slot-mask"
+}

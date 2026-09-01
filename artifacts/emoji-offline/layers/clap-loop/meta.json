@@ -1,0 +1,132 @@
+{
+  "id": "clap-loop",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 60,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 147428
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 65.08296769046669,
+      "cy": 60.136351548996146,
+      "greenPixels": 15042,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 65.25276493062537,
+      "cy": 59.875997050740665,
+      "greenPixels": 14919,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 1,
+      "w": 128,
+      "h": 127,
+      "cx": 65.72628369482365,
+      "cy": 59.60875892176564,
+      "greenPixels": 14431,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 1,
+      "w": 128,
+      "h": 127,
+      "cx": 65.73614775725594,
+      "cy": 59.57415636717123,
+      "greenPixels": 14402,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 65.25276493062537,
+      "cy": 59.875997050740665,
+      "greenPixels": 14919,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 65.08296769046669,
+      "cy": 60.136351548996146,
+      "greenPixels": 15042,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 65.25276493062537,
+      "cy": 59.875997050740665,
+      "greenPixels": 14919,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 1,
+      "w": 128,
+      "h": 127,
+      "cx": 65.72392765574111,
+      "cy": 59.61062989397824,
+      "greenPixels": 14431,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 1,
+      "w": 128,
+      "h": 127,
+      "cx": 65.73069980560955,
+      "cy": 59.61392668703138,
+      "greenPixels": 14404,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 65.25276493062537,
+      "cy": 59.875997050740665,
+      "greenPixels": 14919,
+      "visible": true,
+      "delayMs": 60
+    }
+  ],
+  "motionPx": 0.9,
+  "areaRatio": 1.01,
+  "layerPixels": 15900,
+  "source": "greenscreen/raw/clap-loop.gif",
+  "animationMode": "per-frame-slot-mask"
+}

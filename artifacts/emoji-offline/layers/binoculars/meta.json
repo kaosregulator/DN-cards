@@ -1,0 +1,33 @@
+{
+  "id": "binoculars",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 9873
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 59.01296465106857,
+      "cy": 70.4903271548668,
+      "greenPixels": 9873,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
+  "layerPixels": 6511,
+  "source": "greenscreen/raw/binoculars.png",
+  "animationMode": "per-frame-slot-mask"
+}

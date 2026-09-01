@@ -1,0 +1,132 @@
+{
+  "id": "recoil-pop",
+  "kind": "transform-slot",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 144000
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 5,
+      "y": 0,
+      "w": 119,
+      "h": 128,
+      "cx": 64,
+      "cy": 63.5,
+      "greenPixels": 15232,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 10,
+      "y": 0,
+      "w": 109,
+      "h": 128,
+      "cx": 64,
+      "cy": 63.5,
+      "greenPixels": 13952,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 2,
+      "w": 128,
+      "h": 124,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 15872,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 114,
+      "cx": 63.5,
+      "cy": 56.5,
+      "greenPixels": 14592,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 103,
+      "cx": 63.5,
+      "cy": 51,
+      "greenPixels": 13184,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 100,
+      "cx": 63.5,
+      "cy": 49.5,
+      "greenPixels": 12800,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 102,
+      "cx": 63.5,
+      "cy": 50.5,
+      "greenPixels": 13056,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 108,
+      "cx": 63.5,
+      "cy": 53.5,
+      "greenPixels": 13824,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 118,
+      "cx": 63.5,
+      "cy": 58.5,
+      "greenPixels": 15104,
+      "visible": true,
+      "delayMs": 70
+    }
+  ],
+  "motionPx": 14,
+  "areaRatio": 1.28,
+  "layerPixels": 0,
+  "source": "greenscreen/raw/recoil-pop.gif",
+  "animationMode": "per-frame-slot-mask"
+}

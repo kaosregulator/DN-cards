@@ -1,0 +1,33 @@
+{
+  "id": "hugg",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 12,
+    "y": 17,
+    "w": 113,
+    "h": 108,
+    "greenPixels": 6304
+  },
+  "perFrame": [
+    {
+      "x": 12,
+      "y": 17,
+      "w": 113,
+      "h": 108,
+      "cx": 68.5625,
+      "cy": 58.97271573604061,
+      "greenPixels": 6304,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
+  "layerPixels": 6440,
+  "source": "greenscreen/raw/hugg.png",
+  "animationMode": "per-frame-slot-mask"
+}

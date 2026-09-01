@@ -1,0 +1,33 @@
+{
+  "id": "sisyphus",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 29,
+    "y": 7,
+    "w": 73,
+    "h": 78,
+    "greenPixels": 4309
+  },
+  "perFrame": [
+    {
+      "x": 29,
+      "y": 7,
+      "w": 73,
+      "h": 78,
+      "cx": 64.4288698073799,
+      "cy": 43.55372476212578,
+      "greenPixels": 4309,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
+  "layerPixels": 6338,
+  "source": "greenscreen/raw/sisyphus.png",
+  "animationMode": "per-frame-slot-mask"
+}

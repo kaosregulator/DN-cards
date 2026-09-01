@@ -1,0 +1,132 @@
+{
+  "id": "naruto-run",
+  "kind": "transform-slot",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 60,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 139400
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 65.44561177815895,
+      "cy": 63.47877358490566,
+      "greenPixels": 13992,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 66.4940293171255,
+      "cy": 64.62095101894887,
+      "greenPixels": 13985,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 64.68100461893765,
+      "cy": 65.67133371824481,
+      "greenPixels": 13856,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 67.08035586167313,
+      "cy": 65.39668532070598,
+      "greenPixels": 13938,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 64.99964103668606,
+      "cy": 64.82999497451361,
+      "greenPixels": 13929,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 65.44561177815895,
+      "cy": 63.47877358490566,
+      "greenPixels": 13992,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 66.4940293171255,
+      "cy": 64.62095101894887,
+      "greenPixels": 13985,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 64.68100461893765,
+      "cy": 65.67133371824481,
+      "greenPixels": 13856,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 67.08035586167313,
+      "cy": 65.39668532070598,
+      "greenPixels": 13938,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 64.99964103668606,
+      "cy": 64.82999497451361,
+      "greenPixels": 13929,
+      "visible": true,
+      "delayMs": 60
+    }
+  ],
+  "motionPx": 3.3,
+  "areaRatio": 1,
+  "layerPixels": 0,
+  "source": "greenscreen/raw/naruto-run.gif",
+  "animationMode": "per-frame-slot-mask"
+}

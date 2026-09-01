@@ -1,0 +1,132 @@
+{
+  "id": "blankies",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 14,
+    "y": 23,
+    "w": 101,
+    "h": 75,
+    "greenPixels": 36162
+  },
+  "perFrame": [
+    {
+      "x": 36,
+      "y": 23,
+      "w": 68,
+      "h": 68,
+      "cx": 69.76199616122841,
+      "cy": 56.61173567315602,
+      "greenPixels": 3647,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 42,
+      "y": 29,
+      "w": 68,
+      "h": 69,
+      "cx": 75.52908891328211,
+      "cy": 62.823271130625685,
+      "greenPixels": 3644,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 46,
+      "y": 24,
+      "w": 69,
+      "h": 68,
+      "cx": 80.02247807017544,
+      "cy": 57.71875,
+      "greenPixels": 3648,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 38,
+      "y": 31,
+      "w": 68,
+      "h": 67,
+      "cx": 71.34840350381464,
+      "cy": 63.47386267307149,
+      "greenPixels": 3539,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 28,
+      "y": 23,
+      "w": 70,
+      "h": 69,
+      "cx": 62.25728669846317,
+      "cy": 57.15924748277689,
+      "greenPixels": 3774,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 25,
+      "y": 31,
+      "w": 67,
+      "h": 67,
+      "cx": 57.76437269895214,
+      "cy": 63.41376380628717,
+      "greenPixels": 3531,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 28,
+      "y": 24,
+      "w": 67,
+      "h": 67,
+      "cx": 61.113507377979566,
+      "cy": 57.21821793416572,
+      "greenPixels": 3524,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 19,
+      "y": 30,
+      "w": 68,
+      "h": 68,
+      "cx": 52.536859413537954,
+      "cy": 63.39079199780762,
+      "greenPixels": 3649,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 24,
+      "y": 24,
+      "w": 67,
+      "h": 67,
+      "cx": 56.62408140192199,
+      "cy": 56.72526851328434,
+      "greenPixels": 3538,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 14,
+      "y": 30,
+      "w": 69,
+      "h": 68,
+      "cx": 47.94383860414395,
+      "cy": 63.44520174482007,
+      "greenPixels": 3668,
+      "visible": true,
+      "delayMs": 70
+    }
+  ],
+  "motionPx": 32.8,
+  "areaRatio": 1.08,
+  "layerPixels": 47205,
+  "source": "greenscreen/raw/blankies.gif",
+  "animationMode": "per-frame-slot-mask"
+}

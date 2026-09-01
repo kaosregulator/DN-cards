@@ -1,0 +1,132 @@
+{
+  "id": "raincloud",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 80,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 131215
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 60.563930934814024,
+      "cy": 71.90134631474861,
+      "greenPixels": 13147,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 60.793426872045146,
+      "cy": 71.51197193838645,
+      "greenPixels": 13114,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 60.816418480336004,
+      "cy": 71.73478426880489,
+      "greenPixels": 13095,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 60.818840027436934,
+      "cy": 71.4900541117293,
+      "greenPixels": 13121,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 60.563930934814024,
+      "cy": 71.90134631474861,
+      "greenPixels": 13147,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 60.793426872045146,
+      "cy": 71.51197193838645,
+      "greenPixels": 13114,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 60.816418480336004,
+      "cy": 71.73478426880489,
+      "greenPixels": 13095,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 60.818840027436934,
+      "cy": 71.4900541117293,
+      "greenPixels": 13121,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 60.563930934814024,
+      "cy": 71.90134631474861,
+      "greenPixels": 13147,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 60.793426872045146,
+      "cy": 71.51197193838645,
+      "greenPixels": 13114,
+      "visible": true,
+      "delayMs": 80
+    }
+  ],
+  "motionPx": 0.5,
+  "areaRatio": 1,
+  "layerPixels": 32625,
+  "source": "greenscreen/raw/raincloud.gif",
+  "animationMode": "per-frame-slot-mask"
+}

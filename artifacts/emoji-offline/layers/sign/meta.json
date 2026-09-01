@@ -1,0 +1,132 @@
+{
+  "id": "sign",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 121,
+    "greenPixels": 124893
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 119,
+      "cx": 62.10515516799179,
+      "cy": 46.85628793707788,
+      "greenPixels": 11697,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 120,
+      "cx": 62.48602786642796,
+      "cy": 50.55981941309255,
+      "greenPixels": 12847,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 121,
+      "cx": 62.8565466875326,
+      "cy": 52.54251434533125,
+      "greenPixels": 13419,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 119,
+      "cx": 62.32657565601242,
+      "cy": 48.4917845172893,
+      "greenPixels": 12233,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 119,
+      "cx": 62.21444368832936,
+      "cy": 47.043126913916296,
+      "greenPixels": 11756,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 119,
+      "cx": 62.10515516799179,
+      "cy": 46.85628793707788,
+      "greenPixels": 11697,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 120,
+      "cx": 62.48602786642796,
+      "cy": 50.55981941309255,
+      "greenPixels": 12847,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 121,
+      "cx": 62.8565466875326,
+      "cy": 52.54251434533125,
+      "greenPixels": 13419,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 119,
+      "cx": 62.4890545311887,
+      "cy": 50.186347587289134,
+      "greenPixels": 12745,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 119,
+      "cx": 62.32657565601242,
+      "cy": 48.4917845172893,
+      "greenPixels": 12233,
+      "visible": true,
+      "delayMs": 70
+    }
+  ],
+  "motionPx": 5.7,
+  "areaRatio": 1.02,
+  "layerPixels": 25059,
+  "source": "greenscreen/raw/sign.gif",
+  "animationMode": "per-frame-slot-mask"
+}

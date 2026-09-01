@@ -1,0 +1,132 @@
+{
+  "id": "drums",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 122659
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.014630991835745,
+      "cy": 50.08657343787891,
+      "greenPixels": 12371,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.1240899795501,
+      "cy": 49.602290388548056,
+      "greenPixels": 12225,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.1240899795501,
+      "cy": 49.602290388548056,
+      "greenPixels": 12225,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.346764346764346,
+      "cy": 49.95425315425315,
+      "greenPixels": 12285,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.346764346764346,
+      "cy": 49.95425315425315,
+      "greenPixels": 12285,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.055614363651166,
+      "cy": 49.81068316912304,
+      "greenPixels": 12281,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.055614363651166,
+      "cy": 49.81068316912304,
+      "greenPixels": 12281,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.1240899795501,
+      "cy": 49.602290388548056,
+      "greenPixels": 12225,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.1240899795501,
+      "cy": 49.602290388548056,
+      "greenPixels": 12225,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.159676892950394,
+      "cy": 49.68807114882507,
+      "greenPixels": 12256,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0.6,
+  "areaRatio": 1,
+  "layerPixels": 41181,
+  "source": "greenscreen/raw/drums.gif",
+  "animationMode": "per-frame-slot-mask"
+}

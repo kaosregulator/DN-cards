@@ -1,0 +1,132 @@
+{
+  "id": "wildfire",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 7,
+    "y": 7,
+    "w": 115,
+    "h": 115,
+    "greenPixels": 132242
+  },
+  "perFrame": [
+    {
+      "x": 7,
+      "y": 7,
+      "w": 115,
+      "h": 115,
+      "cx": 63.99568965517241,
+      "cy": 63.99568965517241,
+      "greenPixels": 13224,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 7,
+      "y": 7,
+      "w": 115,
+      "h": 115,
+      "cx": 63.99568965517241,
+      "cy": 63.99568965517241,
+      "greenPixels": 13224,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 7,
+      "y": 7,
+      "w": 115,
+      "h": 115,
+      "cx": 63.99568965517241,
+      "cy": 63.99568965517241,
+      "greenPixels": 13224,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 7,
+      "y": 7,
+      "w": 115,
+      "h": 115,
+      "cx": 63.99568965517241,
+      "cy": 64.00431034482759,
+      "greenPixels": 13224,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 7,
+      "y": 7,
+      "w": 115,
+      "h": 115,
+      "cx": 63.99568965517241,
+      "cy": 64.00431034482759,
+      "greenPixels": 13224,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 7,
+      "y": 7,
+      "w": 115,
+      "h": 115,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 13225,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 7,
+      "y": 7,
+      "w": 115,
+      "h": 115,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 13225,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 7,
+      "y": 7,
+      "w": 115,
+      "h": 115,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 13225,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 7,
+      "y": 7,
+      "w": 115,
+      "h": 115,
+      "cx": 63.99568965517241,
+      "cy": 63.99568965517241,
+      "greenPixels": 13224,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 7,
+      "y": 7,
+      "w": 115,
+      "h": 115,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 13223,
+      "visible": true,
+      "delayMs": 70
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
+  "layerPixels": 22249,
+  "source": "greenscreen/raw/wildfire.gif",
+  "animationMode": "per-frame-slot-mask"
+}

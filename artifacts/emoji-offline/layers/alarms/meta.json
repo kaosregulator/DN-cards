@@ -1,0 +1,132 @@
+{
+  "id": "alarms",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 103084
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.2364285025552,
+      "cy": 62.89219940217915,
+      "greenPixels": 10371,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.32772296382279,
+      "cy": 62.877248984329654,
+      "greenPixels": 10338,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.336951254966564,
+      "cy": 62.878767322414966,
+      "greenPixels": 10319,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.3352393874782,
+      "cy": 62.874685016476064,
+      "greenPixels": 10318,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.38525703200776,
+      "cy": 62.877012609117365,
+      "greenPixels": 10310,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.36914573838844,
+      "cy": 62.87956947541937,
+      "greenPixels": 10313,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.369773983897566,
+      "cy": 62.863226307110295,
+      "greenPixels": 10309,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.274309607156745,
+      "cy": 62.83508362504862,
+      "greenPixels": 10284,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.23836813987373,
+      "cy": 62.8682855755221,
+      "greenPixels": 10295,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.25452234281803,
+      "cy": 62.82067077344285,
+      "greenPixels": 10227,
+      "visible": true,
+      "delayMs": 70
+    }
+  ],
+  "motionPx": 0.2,
+  "areaRatio": 1,
+  "layerPixels": 60756,
+  "source": "greenscreen/raw/alarms.gif",
+  "animationMode": "per-frame-slot-mask"
+}

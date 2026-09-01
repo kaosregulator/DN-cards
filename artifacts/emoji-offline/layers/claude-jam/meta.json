@@ -1,0 +1,121 @@
+{
+  "id": "claude-jam",
+  "kind": "layer",
+  "frames": 9,
+  "sourcePages": 9,
+  "delayMs": 189,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 35,
+    "w": 128,
+    "h": 93,
+    "greenPixels": 59171
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 43,
+      "w": 121,
+      "h": 81,
+      "cx": 59.357719788754274,
+      "cy": 80.7421559490525,
+      "greenPixels": 6438,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 5,
+      "y": 35,
+      "w": 117,
+      "h": 93,
+      "cx": 61.44033496161898,
+      "cy": 78.7271458478716,
+      "greenPixels": 7165,
+      "visible": true,
+      "delayMs": 200
+    },
+    {
+      "x": 4,
+      "y": 43,
+      "w": 122,
+      "h": 83,
+      "cx": 62.58832403077387,
+      "cy": 81.08236536430834,
+      "greenPixels": 6629,
+      "visible": true,
+      "delayMs": 200
+    },
+    {
+      "x": 0,
+      "y": 43,
+      "w": 121,
+      "h": 81,
+      "cx": 60.34564135495264,
+      "cy": 79.84716647937069,
+      "greenPixels": 6229,
+      "visible": true,
+      "delayMs": 200
+    },
+    {
+      "x": 0,
+      "y": 43,
+      "w": 121,
+      "h": 81,
+      "cx": 59.357719788754274,
+      "cy": 80.7421559490525,
+      "greenPixels": 6438,
+      "visible": true,
+      "delayMs": 200
+    },
+    {
+      "x": 5,
+      "y": 35,
+      "w": 119,
+      "h": 93,
+      "cx": 65.88363686917837,
+      "cy": 78.90629778951758,
+      "greenPixels": 7193,
+      "visible": true,
+      "delayMs": 200
+    },
+    {
+      "x": 1,
+      "y": 43,
+      "w": 125,
+      "h": 83,
+      "cx": 64.7452113104287,
+      "cy": 80.77622377622377,
+      "greenPixels": 6578,
+      "visible": true,
+      "delayMs": 200
+    },
+    {
+      "x": 8,
+      "y": 43,
+      "w": 120,
+      "h": 81,
+      "cx": 67.53516819571865,
+      "cy": 79.75808788025108,
+      "greenPixels": 6213,
+      "visible": true,
+      "delayMs": 200
+    },
+    {
+      "x": 8,
+      "y": 43,
+      "w": 120,
+      "h": 81,
+      "cx": 68.35273536895674,
+      "cy": 80.31345419847328,
+      "greenPixels": 6288,
+      "visible": true,
+      "delayMs": 200
+    }
+  ],
+  "motionPx": 9.3,
+  "areaRatio": 1.14,
+  "layerPixels": 15503,
+  "source": "greenscreen/raw/claude-jam.gif",
+  "animationMode": "per-frame-slot-mask"
+}

@@ -1,0 +1,132 @@
+{
+  "id": "tsunami",
+  "kind": "transform-slot",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 59327
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 121,
+      "cx": 64.18971394693938,
+      "cy": 57.19023269601304,
+      "greenPixels": 13494,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 113,
+      "cx": 65.7608549793923,
+      "cy": 48.934055401131026,
+      "greenPixels": 10433,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 102,
+      "cx": 69.84692835254633,
+      "cy": 39.85655917116591,
+      "greenPixels": 6853,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 13,
+      "y": 0,
+      "w": 115,
+      "h": 97,
+      "cx": 83.34865397242285,
+      "cy": 36.608448238126506,
+      "greenPixels": 4569,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 53,
+      "y": 0,
+      "w": 75,
+      "h": 91,
+      "cx": 97.22623723487824,
+      "cy": 35.67989002356638,
+      "greenPixels": 2546,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 77,
+      "y": 0,
+      "w": 51,
+      "h": 90,
+      "cx": 106.84551396316103,
+      "cy": 35.39453357100416,
+      "greenPixels": 1683,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 94,
+      "y": 0,
+      "w": 34,
+      "h": 94,
+      "cx": 114.08642972536349,
+      "cy": 36.39741518578352,
+      "greenPixels": 1238,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 107,
+      "y": 0,
+      "w": 21,
+      "h": 113,
+      "cx": 119.78461538461538,
+      "cy": 43.12615384615385,
+      "greenPixels": 975,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 118,
+      "y": 0,
+      "w": 9,
+      "h": 128,
+      "cx": 122,
+      "cy": 63.5,
+      "greenPixels": 1152,
+      "visible": true,
+      "delayMs": 70
+    }
+  ],
+  "motionPx": 64.9,
+  "areaRatio": 14.22,
+  "layerPixels": 0,
+  "source": "greenscreen/raw/tsunami.gif",
+  "animationMode": "per-frame-slot-mask"
+}

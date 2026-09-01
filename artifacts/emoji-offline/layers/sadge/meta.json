@@ -1,0 +1,33 @@
+{
+  "id": "sadge",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 2,
+    "y": 29,
+    "w": 126,
+    "h": 81,
+    "greenPixels": 7590
+  },
+  "perFrame": [
+    {
+      "x": 2,
+      "y": 29,
+      "w": 126,
+      "h": 81,
+      "cx": 68.60790513833992,
+      "cy": 71.6498023715415,
+      "greenPixels": 7590,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
+  "layerPixels": 2365,
+  "source": "greenscreen/raw/sadge.png",
+  "animationMode": "per-frame-slot-mask"
+}

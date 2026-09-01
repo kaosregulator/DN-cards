@@ -1,0 +1,132 @@
+{
+  "id": "airball",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 80,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 5,
+    "w": 119,
+    "h": 119,
+    "greenPixels": 120951
+  },
+  "perFrame": [
+    {
+      "x": 2,
+      "y": 9,
+      "w": 112,
+      "h": 111,
+      "cx": 57.62214901165738,
+      "cy": 63.21329616489272,
+      "greenPixels": 11838,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 6,
+      "w": 118,
+      "h": 117,
+      "cx": 56.93497907949791,
+      "cy": 64.95799163179916,
+      "greenPixels": 11950,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 5,
+      "w": 119,
+      "h": 119,
+      "cx": 56.58992866135124,
+      "cy": 65.53906840117499,
+      "greenPixels": 11915,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 5,
+      "w": 118,
+      "h": 119,
+      "cx": 56.1769578313253,
+      "cy": 65.23678045515395,
+      "greenPixels": 11952,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 6,
+      "w": 116,
+      "h": 117,
+      "cx": 55.84729145895646,
+      "cy": 64.55965437022266,
+      "greenPixels": 12036,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 7,
+      "w": 115,
+      "h": 115,
+      "cx": 55.49135638297872,
+      "cy": 64.16597406914893,
+      "greenPixels": 12032,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 1,
+      "y": 8,
+      "w": 114,
+      "h": 113,
+      "cx": 56.45941545225108,
+      "cy": 64.27012944720346,
+      "greenPixels": 12283,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 2,
+      "y": 8,
+      "w": 112,
+      "h": 113,
+      "cx": 56.72821762078766,
+      "cy": 64.32911084043849,
+      "greenPixels": 12315,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 2,
+      "y": 8,
+      "w": 112,
+      "h": 113,
+      "cx": 56.72821762078766,
+      "cy": 64.32911084043849,
+      "greenPixels": 12315,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 2,
+      "y": 8,
+      "w": 112,
+      "h": 113,
+      "cx": 56.72821762078766,
+      "cy": 64.32911084043849,
+      "greenPixels": 12315,
+      "visible": true,
+      "delayMs": 80
+    }
+  ],
+  "motionPx": 3.2,
+  "areaRatio": 1.14,
+  "layerPixels": 6187,
+  "source": "greenscreen/raw/airball.gif",
+  "animationMode": "per-frame-slot-mask"
+}

@@ -1,0 +1,132 @@
+{
+  "id": "clap-glove",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 138395
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 59.84384254243409,
+      "cy": 59.84001444564825,
+      "greenPixels": 13845,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 59.84384254243409,
+      "cy": 59.84001444564825,
+      "greenPixels": 13845,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 59.84384254243409,
+      "cy": 59.84001444564825,
+      "greenPixels": 13845,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 59.84384254243409,
+      "cy": 59.84001444564825,
+      "greenPixels": 13845,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 59.84384254243409,
+      "cy": 59.84001444564825,
+      "greenPixels": 13845,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 60.032167124475926,
+      "cy": 59.008312852392656,
+      "greenPixels": 13834,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 60.032167124475926,
+      "cy": 59.008312852392656,
+      "greenPixels": 13834,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 60.032167124475926,
+      "cy": 59.008312852392656,
+      "greenPixels": 13834,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 60.032167124475926,
+      "cy": 59.008312852392656,
+      "greenPixels": 13834,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 60.032167124475926,
+      "cy": 59.008312852392656,
+      "greenPixels": 13834,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0.9,
+  "areaRatio": 1,
+  "layerPixels": 25445,
+  "source": "greenscreen/raw/clap-glove.gif",
+  "animationMode": "per-frame-slot-mask"
+}

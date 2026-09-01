@@ -1,0 +1,132 @@
+{
+  "id": "slide-spin",
+  "kind": "transform-slot",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 118688
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 65,
+      "h": 128,
+      "cx": 32,
+      "cy": 63.5,
+      "greenPixels": 8320,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 104,
+      "h": 128,
+      "cx": 38.643363299841354,
+      "cy": 63.233104177683764,
+      "greenPixels": 9455,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 107,
+      "h": 128,
+      "cx": 44.79985818117355,
+      "cy": 64.68303492288601,
+      "greenPixels": 11282,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 121,
+      "h": 128,
+      "cx": 51.23390491036633,
+      "cy": 62.46913484021824,
+      "greenPixels": 12830,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 57.66033585099362,
+      "cy": 64.23956882012173,
+      "greenPixels": 13637,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 69.81744571218256,
+      "cy": 64.27213838792787,
+      "greenPixels": 13585,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 8,
+      "y": 0,
+      "w": 120,
+      "h": 128,
+      "cx": 76.27830671177905,
+      "cy": 62.492643008891335,
+      "greenPixels": 12709,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 22,
+      "y": 0,
+      "w": 106,
+      "h": 128,
+      "cx": 82.70633569316247,
+      "cy": 64.66851868446993,
+      "greenPixels": 11159,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 25,
+      "y": 0,
+      "w": 103,
+      "h": 128,
+      "cx": 88.8263107108395,
+      "cy": 63.22944140666881,
+      "greenPixels": 9327,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 56.9,
+  "areaRatio": 1.97,
+  "layerPixels": 0,
+  "source": "greenscreen/raw/slide-spin.gif",
+  "animationMode": "per-frame-slot-mask"
+}

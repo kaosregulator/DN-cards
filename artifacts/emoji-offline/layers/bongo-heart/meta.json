@@ -1,0 +1,132 @@
+{
+  "id": "bongo-heart",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 60,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 119992
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 61.884169564497434,
+      "cy": 55.69489981785064,
+      "greenPixels": 12078,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 127,
+      "cx": 60.20528903203933,
+      "cy": 56.17664010849297,
+      "greenPixels": 11798,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 60.933884988298225,
+      "cy": 56.212637913741226,
+      "greenPixels": 11964,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 61.884169564497434,
+      "cy": 55.69489981785064,
+      "greenPixels": 12078,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 61.884169564497434,
+      "cy": 55.69489981785064,
+      "greenPixels": 12078,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 61.884169564497434,
+      "cy": 55.69489981785064,
+      "greenPixels": 12078,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 127,
+      "cx": 60.20528903203933,
+      "cy": 56.17664010849297,
+      "greenPixels": 11798,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 60.933884988298225,
+      "cy": 56.212637913741226,
+      "greenPixels": 11964,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 61.884169564497434,
+      "cy": 55.69489981785064,
+      "greenPixels": 12078,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 61.884169564497434,
+      "cy": 55.69489981785064,
+      "greenPixels": 12078,
+      "visible": true,
+      "delayMs": 60
+    }
+  ],
+  "motionPx": 1.8,
+  "areaRatio": 1.01,
+  "layerPixels": 43592,
+  "source": "greenscreen/raw/bongo-heart.gif",
+  "animationMode": "per-frame-slot-mask"
+}

@@ -1,0 +1,132 @@
+{
+  "id": "wobble",
+  "kind": "transform-slot",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 60,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 160237
+  },
+  "perFrame": [
+    {
+      "x": 1,
+      "y": 0,
+      "w": 127,
+      "h": 128,
+      "cx": 64.3499938141779,
+      "cy": 63.336323147346285,
+      "greenPixels": 16166,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 64.63887484197218,
+      "cy": 63.86972187104931,
+      "greenPixels": 15820,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.76212715611184,
+      "cy": 64.5963634099259,
+      "greenPixels": 16059,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 1,
+      "w": 127,
+      "h": 127,
+      "cx": 63,
+      "cy": 64,
+      "greenPixels": 16129,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.42689013494362,
+      "cy": 63.192494916507485,
+      "greenPixels": 16229,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 64.66831119544592,
+      "cy": 63.027956989247315,
+      "greenPixels": 15810,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 64.97632946308295,
+      "cy": 63.745076656616845,
+      "greenPixels": 15589,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.86972187104931,
+      "cy": 64.63887484197218,
+      "greenPixels": 15820,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.21107756761752,
+      "cy": 63.54192594418089,
+      "greenPixels": 16231,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 60
+    }
+  ],
+  "motionPx": 2.5,
+  "areaRatio": 1.02,
+  "layerPixels": 0,
+  "source": "greenscreen/raw/wobble.gif",
+  "animationMode": "per-frame-slot-mask"
+}

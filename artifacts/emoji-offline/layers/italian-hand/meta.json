@@ -1,0 +1,132 @@
+{
+  "id": "italian-hand",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 140563
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 61.46037368896298,
+      "cy": 60.81225255261513,
+      "greenPixels": 14397,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 59.84411507009346,
+      "cy": 59.434068341121495,
+      "greenPixels": 13696,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 59.232806100833216,
+      "cy": 59.39351786470837,
+      "greenPixels": 14162,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 57.575538538610175,
+      "cy": 57.81993845273026,
+      "greenPixels": 13973,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 59.232806100833216,
+      "cy": 59.39351786470837,
+      "greenPixels": 14162,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 60.20677009873061,
+      "cy": 59.88328631875881,
+      "greenPixels": 14180,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 59.232806100833216,
+      "cy": 59.39351786470837,
+      "greenPixels": 14162,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 57.575538538610175,
+      "cy": 57.81993845273026,
+      "greenPixels": 13973,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 59.232806100833216,
+      "cy": 59.39351786470837,
+      "greenPixels": 14162,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 59.84411507009346,
+      "cy": 59.434068341121495,
+      "greenPixels": 13696,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 4.9,
+  "areaRatio": 1,
+  "layerPixels": 23277,
+  "source": "greenscreen/raw/italian-hand.gif",
+  "animationMode": "per-frame-slot-mask"
+}

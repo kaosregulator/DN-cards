@@ -1,0 +1,132 @@
+{
+  "id": "melt",
+  "kind": "transform-slot",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 80,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 67200
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 9,
+      "w": 128,
+      "h": 117,
+      "cx": 63.5,
+      "cy": 67,
+      "greenPixels": 14976,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 25,
+      "w": 128,
+      "h": 91,
+      "cx": 63.5,
+      "cy": 70,
+      "greenPixels": 11648,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 41,
+      "w": 128,
+      "h": 66,
+      "cx": 63.5,
+      "cy": 73.5,
+      "greenPixels": 8448,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 59,
+      "w": 128,
+      "h": 41,
+      "cx": 63.5,
+      "cy": 79,
+      "greenPixels": 5248,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 71,
+      "w": 128,
+      "h": 27,
+      "cx": 63.5,
+      "cy": 84,
+      "greenPixels": 3456,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 80,
+      "w": 128,
+      "h": 20,
+      "cx": 63.5,
+      "cy": 89.5,
+      "greenPixels": 2560,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 89,
+      "w": 128,
+      "h": 15,
+      "cx": 63.5,
+      "cy": 96,
+      "greenPixels": 1920,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 97,
+      "w": 128,
+      "h": 11,
+      "cx": 63.5,
+      "cy": 102,
+      "greenPixels": 1408,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 105,
+      "w": 128,
+      "h": 9,
+      "cx": 63.5,
+      "cy": 109,
+      "greenPixels": 1152,
+      "visible": true,
+      "delayMs": 80
+    }
+  ],
+  "motionPx": 45.5,
+  "areaRatio": 14.22,
+  "layerPixels": 0,
+  "source": "greenscreen/raw/melt.gif",
+  "animationMode": "per-frame-slot-mask"
+}

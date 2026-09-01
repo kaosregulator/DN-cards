@@ -1,0 +1,33 @@
+{
+  "id": "not-stonks",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 11,
+    "y": 4,
+    "w": 74,
+    "h": 108,
+    "greenPixels": 5961
+  },
+  "perFrame": [
+    {
+      "x": 11,
+      "y": 4,
+      "w": 74,
+      "h": 108,
+      "cx": 46.35228988424761,
+      "cy": 52.11944304646871,
+      "greenPixels": 5961,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
+  "layerPixels": 10423,
+  "source": "greenscreen/raw/not-stonks.png",
+  "animationMode": "per-frame-slot-mask"
+}

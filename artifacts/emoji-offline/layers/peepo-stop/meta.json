@@ -1,0 +1,33 @@
+{
+  "id": "peepo-stop",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 40,
+    "w": 127,
+    "h": 87,
+    "greenPixels": 8218
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 40,
+      "w": 127,
+      "h": 87,
+      "cx": 59.640666828912146,
+      "cy": 84.06595278656607,
+      "greenPixels": 8218,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
+  "layerPixels": 6496,
+  "source": "greenscreen/raw/peepo-stop.png",
+  "animationMode": "per-frame-slot-mask"
+}

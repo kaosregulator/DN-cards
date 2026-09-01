@@ -1,0 +1,132 @@
+{
+  "id": "bonk",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 46,
+    "y": 51,
+    "w": 82,
+    "h": 77,
+    "greenPixels": 53211
+  },
+  "perFrame": [
+    {
+      "x": 50,
+      "y": 51,
+      "w": 78,
+      "h": 77,
+      "cx": 88.50641132389676,
+      "cy": 89.00632805995004,
+      "greenPixels": 6005,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 50,
+      "y": 51,
+      "w": 78,
+      "h": 77,
+      "cx": 88.50641132389676,
+      "cy": 89.00632805995004,
+      "greenPixels": 6005,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 50,
+      "y": 51,
+      "w": 78,
+      "h": 77,
+      "cx": 88.50641132389676,
+      "cy": 89.00632805995004,
+      "greenPixels": 6005,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 50,
+      "y": 51,
+      "w": 78,
+      "h": 77,
+      "cx": 89.81586800070212,
+      "cy": 90.56292785676672,
+      "greenPixels": 5697,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 48,
+      "y": 69,
+      "w": 80,
+      "h": 59,
+      "cx": 87.56288572036604,
+      "cy": 98.12428176207703,
+      "greenPixels": 4699,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 46,
+      "y": 87,
+      "w": 82,
+      "h": 41,
+      "cx": 86.5,
+      "cy": 107,
+      "greenPixels": 3362,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 48,
+      "y": 69,
+      "w": 80,
+      "h": 59,
+      "cx": 87.57742279020235,
+      "cy": 98.14802981895633,
+      "greenPixels": 4695,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 49,
+      "y": 61,
+      "w": 79,
+      "h": 67,
+      "cx": 88.27269245499808,
+      "cy": 94.4094216775182,
+      "greenPixels": 5222,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 50,
+      "y": 55,
+      "w": 78,
+      "h": 73,
+      "cx": 89.22751994198694,
+      "cy": 91.99184191443075,
+      "greenPixels": 5516,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 50,
+      "y": 51,
+      "w": 78,
+      "h": 77,
+      "cx": 88.50641132389676,
+      "cy": 89.00632805995004,
+      "greenPixels": 6005,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 18.3,
+  "areaRatio": 1.79,
+  "layerPixels": 11990,
+  "source": "greenscreen/raw/bonk.gif",
+  "animationMode": "per-frame-slot-mask"
+}

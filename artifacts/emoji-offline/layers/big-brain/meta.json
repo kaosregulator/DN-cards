@@ -1,0 +1,132 @@
+{
+  "id": "big-brain",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 80,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 143206
+  },
+  "perFrame": [
+    {
+      "x": 1,
+      "y": 0,
+      "w": 127,
+      "h": 128,
+      "cx": 63.77450980392157,
+      "cy": 67.93137254901961,
+      "greenPixels": 14382,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 2,
+      "y": 0,
+      "w": 125,
+      "h": 128,
+      "cx": 63.740926336888826,
+      "cy": 68.52988760827547,
+      "greenPixels": 13969,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 2,
+      "y": 0,
+      "w": 125,
+      "h": 128,
+      "cx": 63.75499248443204,
+      "cy": 68.57970080881826,
+      "greenPixels": 13971,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 2,
+      "y": 0,
+      "w": 125,
+      "h": 128,
+      "cx": 63.75499248443204,
+      "cy": 68.57970080881826,
+      "greenPixels": 13971,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 2,
+      "y": 0,
+      "w": 125,
+      "h": 128,
+      "cx": 63.740926336888826,
+      "cy": 68.52988760827547,
+      "greenPixels": 13969,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 1,
+      "y": 0,
+      "w": 127,
+      "h": 128,
+      "cx": 63.77450980392157,
+      "cy": 67.93137254901961,
+      "greenPixels": 14382,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.22284026919379,
+      "cy": 67.6729158082681,
+      "greenPixels": 14562,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.263808682655075,
+      "cy": 67.23982607514097,
+      "greenPixels": 14719,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.263808682655075,
+      "cy": 67.23982607514097,
+      "greenPixels": 14719,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.22284026919379,
+      "cy": 67.6729158082681,
+      "greenPixels": 14562,
+      "visible": true,
+      "delayMs": 80
+    }
+  ],
+  "motionPx": 1.4,
+  "areaRatio": 1.02,
+  "layerPixels": 18842,
+  "source": "greenscreen/raw/big-brain.gif",
+  "animationMode": "per-frame-slot-mask"
+}

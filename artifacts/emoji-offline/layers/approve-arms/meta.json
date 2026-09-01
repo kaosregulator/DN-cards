@@ -1,0 +1,132 @@
+{
+  "id": "approve-arms",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 122810
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.88167146053052,
+      "cy": 49.03395653563439,
+      "greenPixels": 12516,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 64.09115770282588,
+      "cy": 47.21364050716831,
+      "greenPixels": 12067,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.40089613034623,
+      "cy": 49.46338085539715,
+      "greenPixels": 12275,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 62.89364161849711,
+      "cy": 49.08629232039637,
+      "greenPixels": 12110,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 62.918135716010624,
+      "cy": 49.813974080334866,
+      "greenPixels": 12423,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.60045550675126,
+      "cy": 49.08613958028307,
+      "greenPixels": 12294,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 65.21402448719988,
+      "cy": 50.09111146446176,
+      "greenPixels": 12578,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 65.70945273631841,
+      "cy": 48.46824212271974,
+      "greenPixels": 12060,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 65.46892563329804,
+      "cy": 48.68021503624664,
+      "greenPixels": 12277,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 65.45618345618345,
+      "cy": 48.45577395577396,
+      "greenPixels": 12210,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 4,
+  "areaRatio": 1,
+  "layerPixels": 41030,
+  "source": "greenscreen/raw/approve-arms.gif",
+  "animationMode": "per-frame-slot-mask"
+}

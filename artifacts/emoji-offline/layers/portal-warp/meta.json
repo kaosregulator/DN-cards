@@ -1,0 +1,132 @@
+{
+  "id": "portal-warp",
+  "kind": "transform-slot",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 60,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 102298
+  },
+  "perFrame": [
+    {
+      "x": 41,
+      "y": 41,
+      "w": 47,
+      "h": 47,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 1757,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 10,
+      "y": 10,
+      "w": 109,
+      "h": 109,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 9209,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 1,
+      "y": 1,
+      "w": 127,
+      "h": 127,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 11449,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.966646608785354,
+      "cy": 63.94532794635949,
+      "greenPixels": 11633,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.98025044121355,
+      "cy": 63.965963526346755,
+      "greenPixels": 11899,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.988746636222785,
+      "cy": 63.9799396558754,
+      "greenPixels": 12263,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 1,
+      "y": 1,
+      "w": 127,
+      "h": 127,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 12565,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 2,
+      "y": 2,
+      "w": 125,
+      "h": 125,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 12425,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 7,
+      "y": 7,
+      "w": 115,
+      "h": 115,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 10485,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 13,
+      "y": 13,
+      "w": 103,
+      "h": 103,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 8613,
+      "visible": true,
+      "delayMs": 60
+    }
+  ],
+  "motionPx": 0.1,
+  "areaRatio": 7.42,
+  "layerPixels": 0,
+  "source": "greenscreen/raw/portal-warp.gif",
+  "animationMode": "per-frame-slot-mask"
+}

@@ -1,0 +1,132 @@
+{
+  "id": "tilt-nod",
+  "kind": "transform-slot",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 158713
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 2,
+      "w": 128,
+      "h": 126,
+      "cx": 63.032218332685076,
+      "cy": 66.9243485025282,
+      "greenPixels": 15426,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 62.87931255611132,
+      "cy": 65.69206104912146,
+      "greenPixels": 15594,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.603135470004425,
+      "cy": 63.80618243883937,
+      "greenPixels": 15819,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.573182071787244,
+      "cy": 63.78408034219825,
+      "greenPixels": 16131,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 2,
+      "w": 128,
+      "h": 126,
+      "cx": 64.32460631196942,
+      "cy": 66.72704296545913,
+      "greenPixels": 15431,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 64.5214826215211,
+      "cy": 65.48140310375786,
+      "greenPixels": 15594,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.80618243883937,
+      "cy": 63.603135470004425,
+      "greenPixels": 15819,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.78408034219825,
+      "cy": 63.573182071787244,
+      "greenPixels": 16131,
+      "visible": true,
+      "delayMs": 70
+    }
+  ],
+  "motionPx": 3.8,
+  "areaRatio": 1.02,
+  "layerPixels": 0,
+  "source": "greenscreen/raw/tilt-nod.gif",
+  "animationMode": "per-frame-slot-mask"
+}

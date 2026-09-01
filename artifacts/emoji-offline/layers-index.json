@@ -1,0 +1,5137 @@
+{
+  "builtAt": "2026-09-01T18:27:01.044Z",
+  "size": 128,
+  "items": {
+    "2x-wide-1": {
+      "id": "2x-wide-1",
+      "kind": "transform-slot",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/2x-wide-1.png"
+    },
+    "2x-wide-2": {
+      "id": "2x-wide-2",
+      "kind": "transform-slot",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/2x-wide-2.png"
+    },
+    "3d-flip": {
+      "id": "3d-flip",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 4.4,
+      "areaRatio": 3.28,
+      "source": "greenscreen/raw/3d-flip.gif"
+    },
+    "3x-wide-1": {
+      "id": "3x-wide-1",
+      "kind": "transform-slot",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/3x-wide-1.png"
+    },
+    "3x-wide-2": {
+      "id": "3x-wide-2",
+      "kind": "transform-slot",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/3x-wide-2.png"
+    },
+    "3x-wide-3": {
+      "id": "3x-wide-3",
+      "kind": "transform-slot",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/3x-wide-3.png"
+    },
+    "4x-wide-1": {
+      "id": "4x-wide-1",
+      "kind": "transform-slot",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/4x-wide-1.png"
+    },
+    "4x-wide-2": {
+      "id": "4x-wide-2",
+      "kind": "transform-slot",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/4x-wide-2.png"
+    },
+    "4x-wide-3": {
+      "id": "4x-wide-3",
+      "kind": "transform-slot",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/4x-wide-3.png"
+    },
+    "4x-wide-4": {
+      "id": "4x-wide-4",
+      "kind": "transform-slot",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/4x-wide-4.png"
+    },
+    "abdul-pls": {
+      "id": "abdul-pls",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 44,
+      "motionPx": 33.8,
+      "areaRatio": 1.2,
+      "source": "greenscreen/raw/abdul-pls.gif"
+    },
+    "accordion": {
+      "id": "accordion",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 2.9,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/accordion.gif"
+    },
+    "aflame": {
+      "id": "aflame",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 19.3,
+      "areaRatio": 1.49,
+      "source": "greenscreen/raw/aflame.gif"
+    },
+    "aha": {
+      "id": "aha",
+      "kind": "layer",
+      "frames": 48,
+      "delayMs": 50,
+      "motionPx": 1.4,
+      "areaRatio": 1.01,
+      "source": "greenscreen/raw/aha.gif"
+    },
+    "airball": {
+      "id": "airball",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 3.2,
+      "areaRatio": 1.14,
+      "source": "greenscreen/raw/airball.gif"
+    },
+    "alarm": {
+      "id": "alarm",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 0.1,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/alarm.gif"
+    },
+    "alarms": {
+      "id": "alarms",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 0.2,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/alarms.gif"
+    },
+    "alert": {
+      "id": "alert",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 2,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/alert.gif"
+    },
+    "alien-pls-3": {
+      "id": "alien-pls-3",
+      "kind": "layer",
+      "frames": 37,
+      "delayMs": 80,
+      "motionPx": 13.5,
+      "areaRatio": 1.54,
+      "source": "greenscreen/raw/alien-pls-3.gif"
+    },
+    "alien-pls": {
+      "id": "alien-pls",
+      "kind": "layer",
+      "frames": 43,
+      "delayMs": 180,
+      "motionPx": 23.6,
+      "areaRatio": 2.71,
+      "source": "greenscreen/raw/alien-pls.gif"
+    },
+    "alowo": {
+      "id": "alowo",
+      "kind": "layer",
+      "frames": 19,
+      "delayMs": 90,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/alowo.gif"
+    },
+    "amaze": {
+      "id": "amaze",
+      "kind": "layer",
+      "frames": 7,
+      "delayMs": 100,
+      "motionPx": 9.5,
+      "areaRatio": 1.26,
+      "source": "greenscreen/raw/amaze.gif"
+    },
+    "angel": {
+      "id": "angel",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/angel.png"
+    },
+    "anime-scream": {
+      "id": "anime-scream",
+      "kind": "layer",
+      "frames": 25,
+      "delayMs": 68,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/anime-scream.gif"
+    },
+    "anime-speed": {
+      "id": "anime-speed",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 2.2,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/anime-speed.gif"
+    },
+    "anticipation": {
+      "id": "anticipation",
+      "kind": "layer",
+      "frames": 30,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/anticipation.gif"
+    },
+    "approve-arms": {
+      "id": "approve-arms",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 4,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/approve-arms.gif"
+    },
+    "attention-alert": {
+      "id": "attention-alert",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 60,
+      "motionPx": 0.8,
+      "areaRatio": 1.01,
+      "source": "greenscreen/raw/attention-alert.gif"
+    },
+    "banana-dance": {
+      "id": "banana-dance",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 60,
+      "motionPx": 36.8,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/banana-dance.gif"
+    },
+    "bat-signal-scene": {
+      "id": "bat-signal-scene",
+      "kind": "no-slot",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/bat-signal-scene.png"
+    },
+    "bat-signal": {
+      "id": "bat-signal",
+      "kind": "no-slot",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/bat-signal.png"
+    },
+    "bedge": {
+      "id": "bedge",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/bedge.png"
+    },
+    "beers": {
+      "id": "beers",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 100,
+      "motionPx": 20,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/beers.gif"
+    },
+    "big-brain": {
+      "id": "big-brain",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 1.4,
+      "areaRatio": 1.02,
+      "source": "greenscreen/raw/big-brain.gif"
+    },
+    "binoculars": {
+      "id": "binoculars",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/binoculars.png"
+    },
+    "blah-blah-blah": {
+      "id": "blah-blah-blah",
+      "kind": "layer",
+      "frames": 34,
+      "delayMs": 39,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/blah-blah-blah.gif"
+    },
+    "blame-animated": {
+      "id": "blame-animated",
+      "kind": "layer",
+      "frames": 40,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/blame-animated.gif"
+    },
+    "blame": {
+      "id": "blame",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/blame.png"
+    },
+    "blanket": {
+      "id": "blanket",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/blanket.png"
+    },
+    "blankies": {
+      "id": "blankies",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 32.8,
+      "areaRatio": 1.08,
+      "source": "greenscreen/raw/blankies.gif"
+    },
+    "blast": {
+      "id": "blast",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 12.6,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/blast.gif"
+    },
+    "blaze": {
+      "id": "blaze",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 20,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/blaze.gif"
+    },
+    "bless-up": {
+      "id": "bless-up",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 0.6,
+      "areaRatio": 1.01,
+      "source": "greenscreen/raw/bless-up.gif"
+    },
+    "blink": {
+      "id": "blink",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/blink.gif"
+    },
+    "blob-help": {
+      "id": "blob-help",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/blob-help.png"
+    },
+    "blob-no": {
+      "id": "blob-no",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/blob-no.png"
+    },
+    "blob-smiley": {
+      "id": "blob-smiley",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/blob-smiley.png"
+    },
+    "blob-yes": {
+      "id": "blob-yes",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/blob-yes.png"
+    },
+    "blush": {
+      "id": "blush",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/blush.png"
+    },
+    "bobble": {
+      "id": "bobble",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 7.8,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/bobble.gif"
+    },
+    "boing": {
+      "id": "boing",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 60,
+      "motionPx": 10.5,
+      "areaRatio": 1.24,
+      "source": "greenscreen/raw/boing.gif"
+    },
+    "bongo-cat": {
+      "id": "bongo-cat",
+      "kind": "layer",
+      "frames": 8,
+      "delayMs": 60,
+      "motionPx": 3.8,
+      "areaRatio": 1.11,
+      "source": "greenscreen/raw/bongo-cat.gif"
+    },
+    "bongo-heart": {
+      "id": "bongo-heart",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 60,
+      "motionPx": 1.8,
+      "areaRatio": 1.01,
+      "source": "greenscreen/raw/bongo-heart.gif"
+    },
+    "bonk-doge": {
+      "id": "bonk-doge",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 16.3,
+      "areaRatio": 1.86,
+      "source": "greenscreen/raw/bonk-doge.gif"
+    },
+    "bonk": {
+      "id": "bonk",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 18.3,
+      "areaRatio": 1.79,
+      "source": "greenscreen/raw/bonk.gif"
+    },
+    "booba": {
+      "id": "booba",
+      "kind": "layer",
+      "frames": 45,
+      "delayMs": 100,
+      "motionPx": 43.4,
+      "areaRatio": 1.64,
+      "source": "greenscreen/raw/booba.gif"
+    },
+    "boom": {
+      "id": "boom",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 4.6,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/boom.gif"
+    },
+    "boooo": {
+      "id": "boooo",
+      "kind": "layer",
+      "frames": 38,
+      "delayMs": 150,
+      "motionPx": 5.8,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/boooo.gif"
+    },
+    "bounce-and-spin": {
+      "id": "bounce-and-spin",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 25.8,
+      "areaRatio": 1.25,
+      "source": "greenscreen/raw/bounce-and-spin.gif"
+    },
+    "bounce": {
+      "id": "bounce",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 40,
+      "motionPx": 12.5,
+      "areaRatio": 1.16,
+      "source": "greenscreen/raw/bounce.gif"
+    },
+    "box": {
+      "id": "box",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 61.6,
+      "areaRatio": 3.95,
+      "source": "greenscreen/raw/box.gif"
+    },
+    "breaking-news": {
+      "id": "breaking-news",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 0.1,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/breaking-news.gif"
+    },
+    "breathe": {
+      "id": "breathe",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 0.7,
+      "areaRatio": 1.02,
+      "source": "greenscreen/raw/breathe.gif"
+    },
+    "bubble": {
+      "id": "bubble",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 3.2,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/bubble.gif"
+    },
+    "bubbles": {
+      "id": "bubbles",
+      "kind": "layer",
+      "frames": 40,
+      "delayMs": 50,
+      "motionPx": 0.9,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/bubbles.gif"
+    },
+    "bufo-offers": {
+      "id": "bufo-offers",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/bufo-offers.png"
+    },
+    "bufo-takes": {
+      "id": "bufo-takes",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/bufo-takes.png"
+    },
+    "bulge": {
+      "id": "bulge",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 0.6,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/bulge.gif"
+    },
+    "burger": {
+      "id": "burger",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/burger.png"
+    },
+    "burn": {
+      "id": "burn",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 100,
+      "motionPx": 11.7,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/burn.gif"
+    },
+    "bush-disappear": {
+      "id": "bush-disappear",
+      "kind": "layer",
+      "frames": 30,
+      "delayMs": 137,
+      "motionPx": 1.9,
+      "areaRatio": 1.07,
+      "source": "greenscreen/raw/bush-disappear.gif"
+    },
+    "bush-texture": {
+      "id": "bush-texture",
+      "kind": "layer",
+      "frames": 30,
+      "delayMs": 137,
+      "motionPx": 7.8,
+      "areaRatio": 1.11,
+      "source": "greenscreen/raw/bush-texture.gif"
+    },
+    "butterfly": {
+      "id": "butterfly",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 1.3,
+      "areaRatio": 1.02,
+      "source": "greenscreen/raw/butterfly.gif"
+    },
+    "cancel": {
+      "id": "cancel",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 0.1,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/cancel.gif"
+    },
+    "cat-ears": {
+      "id": "cat-ears",
+      "kind": "layer",
+      "frames": 14,
+      "delayMs": 48,
+      "motionPx": 0.6,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/cat-ears.gif"
+    },
+    "cat-jam-crying": {
+      "id": "cat-jam-crying",
+      "kind": "layer",
+      "frames": 42,
+      "delayMs": 163,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/cat-jam-crying.gif"
+    },
+    "cat-jam": {
+      "id": "cat-jam",
+      "kind": "layer",
+      "frames": 42,
+      "delayMs": 164,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/cat-jam.gif"
+    },
+    "cat-no": {
+      "id": "cat-no",
+      "kind": "layer",
+      "frames": 22,
+      "delayMs": 77,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/cat-no.gif"
+    },
+    "cat-slap": {
+      "id": "cat-slap",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 5.2,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/cat-slap.gif"
+    },
+    "cat-yes": {
+      "id": "cat-yes",
+      "kind": "layer",
+      "frames": 22,
+      "delayMs": 77,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/cat-yes.gif"
+    },
+    "catjam-bob": {
+      "id": "catjam-bob",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 5.7,
+      "areaRatio": 1.01,
+      "source": "greenscreen/raw/catjam-bob.gif"
+    },
+    "caught-in-4k": {
+      "id": "caught-in-4k",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 60,
+      "motionPx": 0.4,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/caught-in-4k.gif"
+    },
+    "clap-glove": {
+      "id": "clap-glove",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 0.9,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/clap-glove.gif"
+    },
+    "clap-loop": {
+      "id": "clap-loop",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 60,
+      "motionPx": 0.9,
+      "areaRatio": 1.01,
+      "source": "greenscreen/raw/clap-loop.gif"
+    },
+    "clap": {
+      "id": "clap",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 3.1,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/clap.gif"
+    },
+    "claude-code": {
+      "id": "claude-code",
+      "kind": "layer",
+      "frames": 17,
+      "delayMs": 40,
+      "motionPx": 2.3,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/claude-code.gif"
+    },
+    "claude-dancing": {
+      "id": "claude-dancing",
+      "kind": "transform-slot",
+      "frames": 18,
+      "delayMs": 148,
+      "motionPx": 8.2,
+      "areaRatio": 1.15,
+      "source": "greenscreen/raw/claude-dancing.gif"
+    },
+    "claude-football": {
+      "id": "claude-football",
+      "kind": "layer",
+      "frames": 29,
+      "delayMs": 120,
+      "motionPx": 13.1,
+      "areaRatio": 1.29,
+      "source": "greenscreen/raw/claude-football.gif"
+    },
+    "claude-fu": {
+      "id": "claude-fu",
+      "kind": "layer",
+      "frames": 26,
+      "delayMs": 131,
+      "motionPx": 17.9,
+      "areaRatio": 1.57,
+      "source": "greenscreen/raw/claude-fu.gif"
+    },
+    "claude-idea": {
+      "id": "claude-idea",
+      "kind": "layer",
+      "frames": 6,
+      "delayMs": 183,
+      "motionPx": 0.4,
+      "areaRatio": 1.18,
+      "source": "greenscreen/raw/claude-idea.gif"
+    },
+    "claude-jam": {
+      "id": "claude-jam",
+      "kind": "layer",
+      "frames": 9,
+      "delayMs": 189,
+      "motionPx": 9.3,
+      "areaRatio": 1.14,
+      "source": "greenscreen/raw/claude-jam.gif"
+    },
+    "cleaning": {
+      "id": "cleaning",
+      "kind": "layer",
+      "frames": 7,
+      "delayMs": 50,
+      "motionPx": 2.5,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/cleaning.gif"
+    },
+    "clone-army": {
+      "id": "clone-army",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 2.2,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/clone-army.gif"
+    },
+    "coggers": {
+      "id": "coggers",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/coggers.png"
+    },
+    "combust": {
+      "id": "combust",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 86.3,
+      "areaRatio": 248.24,
+      "source": "greenscreen/raw/combust.gif"
+    },
+    "comfy": {
+      "id": "comfy",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/comfy.png"
+    },
+    "concerned": {
+      "id": "concerned",
+      "kind": "layer",
+      "frames": 30,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/concerned.gif"
+    },
+    "confetti-drop": {
+      "id": "confetti-drop",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 3.6,
+      "areaRatio": 1.04,
+      "source": "greenscreen/raw/confetti-drop.gif"
+    },
+    "confused-cat": {
+      "id": "confused-cat",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/confused-cat.png"
+    },
+    "conga-line": {
+      "id": "conga-line",
+      "kind": "transform-slot",
+      "frames": 29,
+      "delayMs": 20,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/conga-line.gif"
+    },
+    "content-aware": {
+      "id": "content-aware",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/content-aware.gif"
+    },
+    "cool-glasses": {
+      "id": "cool-glasses",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 21.2,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/cool-glasses.gif"
+    },
+    "copium": {
+      "id": "copium",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/copium.png"
+    },
+    "courage-scream": {
+      "id": "courage-scream",
+      "kind": "layer",
+      "frames": 45,
+      "delayMs": 200,
+      "motionPx": 21.7,
+      "areaRatio": 2.85,
+      "source": "greenscreen/raw/courage-scream.gif"
+    },
+    "cowboy": {
+      "id": "cowboy",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/cowboy.png"
+    },
+    "crab": {
+      "id": "crab",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 0.4,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/crab.gif"
+    },
+    "credit-swipe": {
+      "id": "credit-swipe",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 6,
+      "areaRatio": 1.1,
+      "source": "greenscreen/raw/credit-swipe.gif"
+    },
+    "crown-drop": {
+      "id": "crown-drop",
+      "kind": "layer",
+      "frames": 24,
+      "delayMs": 70,
+      "motionPx": 7,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/crown-drop.gif"
+    },
+    "crying-laughing": {
+      "id": "crying-laughing",
+      "kind": "no-slot",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/crying-laughing.png"
+    },
+    "cube": {
+      "id": "cube",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 100,
+      "motionPx": 0.6,
+      "areaRatio": 1.5,
+      "source": "greenscreen/raw/cube.gif"
+    },
+    "cute-ghost": {
+      "id": "cute-ghost",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 188,
+      "motionPx": 19.9,
+      "areaRatio": 1.31,
+      "source": "greenscreen/raw/cute-ghost.gif"
+    },
+    "cute-hop": {
+      "id": "cute-hop",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 14.5,
+      "areaRatio": 1.29,
+      "source": "greenscreen/raw/cute-hop.gif"
+    },
+    "dancing-squares": {
+      "id": "dancing-squares",
+      "kind": "transform-slot",
+      "frames": 40,
+      "delayMs": 60,
+      "motionPx": 55.1,
+      "areaRatio": 9.38,
+      "source": "greenscreen/raw/dancing-squares.gif"
+    },
+    "dbz-aura": {
+      "id": "dbz-aura",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 8.4,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/dbz-aura.gif"
+    },
+    "ddr": {
+      "id": "ddr",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 1.7,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/ddr.gif"
+    },
+    "deal-with-it": {
+      "id": "deal-with-it",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 100,
+      "motionPx": 5.9,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/deal-with-it.gif"
+    },
+    "depth-tilt": {
+      "id": "depth-tilt",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 4.5,
+      "areaRatio": 1.07,
+      "source": "greenscreen/raw/depth-tilt.gif"
+    },
+    "diamond": {
+      "id": "diamond",
+      "kind": "transform-slot",
+      "frames": 24,
+      "delayMs": 140,
+      "motionPx": 0.1,
+      "areaRatio": 1.29,
+      "source": "greenscreen/raw/diamond.gif"
+    },
+    "ditto": {
+      "id": "ditto",
+      "kind": "layer",
+      "frames": 35,
+      "delayMs": 85,
+      "motionPx": 20.6,
+      "areaRatio": 1.18,
+      "source": "greenscreen/raw/ditto.gif"
+    },
+    "doesnt-know": {
+      "id": "doesnt-know",
+      "kind": "layer",
+      "frames": 2,
+      "delayMs": 60,
+      "motionPx": 1.3,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/doesnt-know.gif"
+    },
+    "donk": {
+      "id": "donk",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/donk.png"
+    },
+    "drained": {
+      "id": "drained",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 100,
+      "motionPx": 6.2,
+      "areaRatio": 1.11,
+      "source": "greenscreen/raw/drained.gif"
+    },
+    "drake-duh": {
+      "id": "drake-duh",
+      "kind": "layer",
+      "frames": 36,
+      "delayMs": 129,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/drake-duh.gif"
+    },
+    "drift": {
+      "id": "drift",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 3.2,
+      "areaRatio": 1.03,
+      "source": "greenscreen/raw/drift.gif"
+    },
+    "drop-bounce": {
+      "id": "drop-bounce",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 29.5,
+      "areaRatio": 2.21,
+      "source": "greenscreen/raw/drop-bounce.gif"
+    },
+    "drop": {
+      "id": "drop",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 18,
+      "areaRatio": 1.35,
+      "source": "greenscreen/raw/drop.gif"
+    },
+    "drums": {
+      "id": "drums",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 0.6,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/drums.gif"
+    },
+    "earthquake": {
+      "id": "earthquake",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 14.1,
+      "areaRatio": 1.03,
+      "source": "greenscreen/raw/earthquake.gif"
+    },
+    "elastic-corner-pinch": {
+      "id": "elastic-corner-pinch",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 4.6,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/elastic-corner-pinch.gif"
+    },
+    "elastic": {
+      "id": "elastic",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 0.7,
+      "areaRatio": 4.13,
+      "source": "greenscreen/raw/elastic.gif"
+    },
+    "electricity": {
+      "id": "electricity",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 3.9,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/electricity.gif"
+    },
+    "elevator-reveal": {
+      "id": "elevator-reveal",
+      "kind": "layer",
+      "frames": 24,
+      "delayMs": 70,
+      "motionPx": 0,
+      "areaRatio": 15.86,
+      "source": "greenscreen/raw/elevator-reveal.gif"
+    },
+    "elmo-fire": {
+      "id": "elmo-fire",
+      "kind": "layer",
+      "frames": 32,
+      "delayMs": 66,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/elmo-fire.gif"
+    },
+    "emoji-scream": {
+      "id": "emoji-scream",
+      "kind": "layer",
+      "frames": 26,
+      "delayMs": 68,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/emoji-scream.gif"
+    },
+    "enter": {
+      "id": "enter",
+      "kind": "layer",
+      "frames": 14,
+      "delayMs": 114,
+      "motionPx": 54.3,
+      "areaRatio": 6.14,
+      "source": "greenscreen/raw/enter.gif"
+    },
+    "excited": {
+      "id": "excited",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 6.5,
+      "areaRatio": 1.06,
+      "source": "greenscreen/raw/excited.gif"
+    },
+    "excuse-me": {
+      "id": "excuse-me",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 100,
+      "motionPx": 62.7,
+      "areaRatio": 11.64,
+      "source": "greenscreen/raw/excuse-me.gif"
+    },
+    "exit": {
+      "id": "exit",
+      "kind": "layer",
+      "frames": 14,
+      "delayMs": 114,
+      "motionPx": 47.4,
+      "areaRatio": 7.13,
+      "source": "greenscreen/raw/exit.gif"
+    },
+    "explain": {
+      "id": "explain",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 3.1,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/explain.gif"
+    },
+    "explode": {
+      "id": "explode",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 90,
+      "motionPx": 2.7,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/explode.gif"
+    },
+    "eyebrows": {
+      "id": "eyebrows",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 0.4,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/eyebrows.gif"
+    },
+    "face-cover": {
+      "id": "face-cover",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/face-cover.png"
+    },
+    "facepalm": {
+      "id": "facepalm",
+      "kind": "layer",
+      "frames": 30,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/facepalm.gif"
+    },
+    "fall-leaves": {
+      "id": "fall-leaves",
+      "kind": "layer",
+      "frames": 24,
+      "delayMs": 50,
+      "motionPx": 5.2,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/fall-leaves.gif"
+    },
+    "feels-rain-man": {
+      "id": "feels-rain-man",
+      "kind": "layer",
+      "frames": 15,
+      "delayMs": 30,
+      "motionPx": 2.4,
+      "areaRatio": 1.07,
+      "source": "greenscreen/raw/feels-rain-man.gif"
+    },
+    "feels-weak-man": {
+      "id": "feels-weak-man",
+      "kind": "layer",
+      "frames": 42,
+      "delayMs": 112,
+      "motionPx": 34.9,
+      "areaRatio": 1.16,
+      "source": "greenscreen/raw/feels-weak-man.gif"
+    },
+    "figure-8": {
+      "id": "figure-8",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 14.3,
+      "areaRatio": 1.09,
+      "source": "greenscreen/raw/figure-8.gif"
+    },
+    "fire-drill": {
+      "id": "fire-drill",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 60,
+      "motionPx": 5.8,
+      "areaRatio": 1.05,
+      "source": "greenscreen/raw/fire-drill.gif"
+    },
+    "fire-frame": {
+      "id": "fire-frame",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 1.4,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/fire-frame.gif"
+    },
+    "fire-pixel": {
+      "id": "fire-pixel",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 100,
+      "motionPx": 9.3,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/fire-pixel.gif"
+    },
+    "fireplace": {
+      "id": "fireplace",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 100,
+      "motionPx": 0.1,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/fireplace.gif"
+    },
+    "fireworks": {
+      "id": "fireworks",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 5.7,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/fireworks.gif"
+    },
+    "fisheye-pass": {
+      "id": "fisheye-pass",
+      "kind": "layer",
+      "frames": 24,
+      "delayMs": 70,
+      "motionPx": 1.3,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/fisheye-pass.gif"
+    },
+    "fivehead-pulse": {
+      "id": "fivehead-pulse",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/fivehead-pulse.gif"
+    },
+    "fivehead": {
+      "id": "fivehead",
+      "kind": "transform-slot",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/fivehead.png"
+    },
+    "flag-wave": {
+      "id": "flag-wave",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 0.5,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/flag-wave.gif"
+    },
+    "flag": {
+      "id": "flag",
+      "kind": "layer",
+      "frames": 9,
+      "delayMs": 100,
+      "motionPx": 20,
+      "areaRatio": 1.02,
+      "source": "greenscreen/raw/flag.gif"
+    },
+    "flame": {
+      "id": "flame",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 3.9,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/flame.gif"
+    },
+    "flare-eyes": {
+      "id": "flare-eyes",
+      "kind": "layer",
+      "frames": 16,
+      "delayMs": 70,
+      "motionPx": 0.1,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/flare-eyes.gif"
+    },
+    "flick": {
+      "id": "flick",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 40,
+      "motionPx": 25,
+      "areaRatio": 1.64,
+      "source": "greenscreen/raw/flick.gif"
+    },
+    "fling": {
+      "id": "fling",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 78.3,
+      "areaRatio": 17.99,
+      "source": "greenscreen/raw/fling.gif"
+    },
+    "flip": {
+      "id": "flip",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/flip.gif"
+    },
+    "flipp": {
+      "id": "flipp",
+      "kind": "layer",
+      "frames": 43,
+      "delayMs": 60,
+      "motionPx": 66.9,
+      "areaRatio": 1.77,
+      "source": "greenscreen/raw/flipp.gif"
+    },
+    "float-loop": {
+      "id": "float-loop",
+      "kind": "transform-slot",
+      "frames": 12,
+      "delayMs": 110,
+      "motionPx": 6.3,
+      "areaRatio": 1.04,
+      "source": "greenscreen/raw/float-loop.gif"
+    },
+    "floating-pumpkins": {
+      "id": "floating-pumpkins",
+      "kind": "layer",
+      "frames": 27,
+      "delayMs": 100,
+      "motionPx": 6.3,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/floating-pumpkins.gif"
+    },
+    "flutter": {
+      "id": "flutter",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 40,
+      "motionPx": 3.6,
+      "areaRatio": 1.06,
+      "source": "greenscreen/raw/flutter.gif"
+    },
+    "fps": {
+      "id": "fps",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 4.3,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/fps.gif"
+    },
+    "frog-flag": {
+      "id": "frog-flag",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/frog-flag.png"
+    },
+    "fry": {
+      "id": "fry",
+      "kind": "layer",
+      "frames": 30,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/fry.gif"
+    },
+    "gengar": {
+      "id": "gengar",
+      "kind": "layer",
+      "frames": 31,
+      "delayMs": 148,
+      "motionPx": 25.6,
+      "areaRatio": 1.08,
+      "source": "greenscreen/raw/gengar.gif"
+    },
+    "gigachad": {
+      "id": "gigachad",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 150,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/gigachad.gif"
+    },
+    "glasses-shine": {
+      "id": "glasses-shine",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/glasses-shine.gif"
+    },
+    "glitch-out": {
+      "id": "glitch-out",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 2.4,
+      "areaRatio": 1.02,
+      "source": "greenscreen/raw/glitch-out.gif"
+    },
+    "glitch": {
+      "id": "glitch",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 30,
+      "motionPx": 0.1,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/glitch.gif"
+    },
+    "glitchwave": {
+      "id": "glitchwave",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 2,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/glitchwave.gif"
+    },
+    "glitchy": {
+      "id": "glitchy",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 0.4,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/glitchy.gif"
+    },
+    "glorming": {
+      "id": "glorming",
+      "kind": "layer",
+      "frames": 44,
+      "delayMs": 100,
+      "motionPx": 74.9,
+      "areaRatio": 2.59,
+      "source": "greenscreen/raw/glorming.gif"
+    },
+    "glorp": {
+      "id": "glorp",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/glorp.png"
+    },
+    "glorpa": {
+      "id": "glorpa",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/glorpa.png"
+    },
+    "googly-eyes": {
+      "id": "googly-eyes",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 8.7,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/googly-eyes.gif"
+    },
+    "gravity-flip": {
+      "id": "gravity-flip",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 19.8,
+      "areaRatio": 1.24,
+      "source": "greenscreen/raw/gravity-flip.gif"
+    },
+    "grayscale": {
+      "id": "grayscale",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/grayscale.gif"
+    },
+    "green-fire": {
+      "id": "green-fire",
+      "kind": "layer",
+      "frames": 4,
+      "delayMs": 100,
+      "motionPx": 0.7,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/green-fire.gif"
+    },
+    "guitar": {
+      "id": "guitar",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 1.3,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/guitar.gif"
+    },
+    "gulp": {
+      "id": "gulp",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 5,
+      "areaRatio": 1.16,
+      "source": "greenscreen/raw/gulp.gif"
+    },
+    "gun": {
+      "id": "gun",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/gun.gif"
+    },
+    "guns": {
+      "id": "guns",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 10,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/guns.gif"
+    },
+    "hadoken": {
+      "id": "hadoken",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 7.7,
+      "areaRatio": 1.11,
+      "source": "greenscreen/raw/hadoken.gif"
+    },
+    "hat-tip": {
+      "id": "hat-tip",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 16.8,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/hat-tip.gif"
+    },
+    "hazmat-2": {
+      "id": "hazmat-2",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/hazmat-2.png"
+    },
+    "hazmat": {
+      "id": "hazmat",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/hazmat.png"
+    },
+    "headbop": {
+      "id": "headbop",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 5.2,
+      "areaRatio": 1.02,
+      "source": "greenscreen/raw/headbop.gif"
+    },
+    "heart-hypno": {
+      "id": "heart-hypno",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/heart-hypno.gif"
+    },
+    "heart-locket": {
+      "id": "heart-locket",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 50.3,
+      "areaRatio": 2.12,
+      "source": "greenscreen/raw/heart-locket.gif"
+    },
+    "heart-merge": {
+      "id": "heart-merge",
+      "kind": "transform-slot",
+      "frames": 24,
+      "delayMs": 70,
+      "motionPx": 0.9,
+      "areaRatio": 12.86,
+      "source": "greenscreen/raw/heart-merge.gif"
+    },
+    "heartbeat-flash": {
+      "id": "heartbeat-flash",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/heartbeat-flash.gif"
+    },
+    "heartbeat": {
+      "id": "heartbeat",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 3.5,
+      "areaRatio": 1.22,
+      "source": "greenscreen/raw/heartbeat.gif"
+    },
+    "heat-haze": {
+      "id": "heat-haze",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 0.3,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/heat-haze.gif"
+    },
+    "helicopter": {
+      "id": "helicopter",
+      "kind": "transform-slot",
+      "frames": 30,
+      "delayMs": 50,
+      "motionPx": 49.9,
+      "areaRatio": 25.72,
+      "source": "greenscreen/raw/helicopter.gif"
+    },
+    "hellowo": {
+      "id": "hellowo",
+      "kind": "layer",
+      "frames": 8,
+      "delayMs": 50,
+      "motionPx": 4.8,
+      "areaRatio": 1.17,
+      "source": "greenscreen/raw/hellowo.gif"
+    },
+    "heyy": {
+      "id": "heyy",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/heyy.png"
+    },
+    "heyyeyaa": {
+      "id": "heyyeyaa",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/heyyeyaa.png"
+    },
+    "hologram": {
+      "id": "hologram",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/hologram.gif"
+    },
+    "hoodie": {
+      "id": "hoodie",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/hoodie.png"
+    },
+    "hop": {
+      "id": "hop",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 60,
+      "motionPx": 26.4,
+      "areaRatio": 1.41,
+      "source": "greenscreen/raw/hop.gif"
+    },
+    "hot-air-balloon": {
+      "id": "hot-air-balloon",
+      "kind": "layer",
+      "frames": 24,
+      "delayMs": 70,
+      "motionPx": 21.5,
+      "areaRatio": 1.02,
+      "source": "greenscreen/raw/hot-air-balloon.gif"
+    },
+    "hovering": {
+      "id": "hovering",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 60,
+      "motionPx": 5.5,
+      "areaRatio": 1.05,
+      "source": "greenscreen/raw/hovering.gif"
+    },
+    "hugg": {
+      "id": "hugg",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/hugg.png"
+    },
+    "huh": {
+      "id": "huh",
+      "kind": "layer",
+      "frames": 25,
+      "delayMs": 70,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/huh.gif"
+    },
+    "hydraulic-press": {
+      "id": "hydraulic-press",
+      "kind": "layer",
+      "frames": 24,
+      "delayMs": 70,
+      "motionPx": 32.6,
+      "areaRatio": 3.78,
+      "source": "greenscreen/raw/hydraulic-press.gif"
+    },
+    "hype-jam": {
+      "id": "hype-jam",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 60,
+      "motionPx": 17.4,
+      "areaRatio": 1.56,
+      "source": "greenscreen/raw/hype-jam.gif"
+    },
+    "hype-shake": {
+      "id": "hype-shake",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 60,
+      "motionPx": 21.2,
+      "areaRatio": 1.46,
+      "source": "greenscreen/raw/hype-shake.gif"
+    },
+    "hype": {
+      "id": "hype",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 5.9,
+      "areaRatio": 1.44,
+      "source": "greenscreen/raw/hype.gif"
+    },
+    "hyperspace": {
+      "id": "hyperspace",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 59.1,
+      "areaRatio": 1.55,
+      "source": "greenscreen/raw/hyperspace.gif"
+    },
+    "hypnotize": {
+      "id": "hypnotize",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 0.9,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/hypnotize.gif"
+    },
+    "i-have-a-question": {
+      "id": "i-have-a-question",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/i-have-a-question.png"
+    },
+    "i-love": {
+      "id": "i-love",
+      "kind": "layer",
+      "frames": 38,
+      "delayMs": 200,
+      "motionPx": 11.8,
+      "areaRatio": 4.71,
+      "source": "greenscreen/raw/i-love.gif"
+    },
+    "ice-cube": {
+      "id": "ice-cube",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/ice-cube.png"
+    },
+    "intensifies": {
+      "id": "intensifies",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 30,
+      "motionPx": 6.5,
+      "areaRatio": 1.06,
+      "source": "greenscreen/raw/intensifies.gif"
+    },
+    "italian-hand": {
+      "id": "italian-hand",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 4.9,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/italian-hand.gif"
+    },
+    "jack-in-the-box": {
+      "id": "jack-in-the-box",
+      "kind": "layer",
+      "frames": 24,
+      "delayMs": 70,
+      "motionPx": 55.8,
+      "areaRatio": 1.51,
+      "source": "greenscreen/raw/jack-in-the-box.gif"
+    },
+    "jail-time": {
+      "id": "jail-time",
+      "kind": "layer",
+      "frames": 11,
+      "delayMs": 64,
+      "motionPx": 5.5,
+      "areaRatio": 1.07,
+      "source": "greenscreen/raw/jail-time.gif"
+    },
+    "jail": {
+      "id": "jail",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 10.8,
+      "areaRatio": 1.05,
+      "source": "greenscreen/raw/jail.gif"
+    },
+    "jam": {
+      "id": "jam",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 60,
+      "motionPx": 10,
+      "areaRatio": 1.1,
+      "source": "greenscreen/raw/jam.gif"
+    },
+    "jammies": {
+      "id": "jammies",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 60,
+      "motionPx": 11.3,
+      "areaRatio": 1.43,
+      "source": "greenscreen/raw/jammies.gif"
+    },
+    "jiggle": {
+      "id": "jiggle",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 1.1,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/jiggle.gif"
+    },
+    "jitter": {
+      "id": "jitter",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 40,
+      "motionPx": 2.2,
+      "areaRatio": 1.01,
+      "source": "greenscreen/raw/jitter.gif"
+    },
+    "jolt": {
+      "id": "jolt",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 60,
+      "motionPx": 11.6,
+      "areaRatio": 1.11,
+      "source": "greenscreen/raw/jolt.gif"
+    },
+    "jumping-on-the-bed": {
+      "id": "jumping-on-the-bed",
+      "kind": "layer",
+      "frames": 11,
+      "delayMs": 50,
+      "motionPx": 40.4,
+      "areaRatio": 1.89,
+      "source": "greenscreen/raw/jumping-on-the-bed.gif"
+    },
+    "kablooey": {
+      "id": "kablooey",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 9,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/kablooey.gif"
+    },
+    "kaiju-city": {
+      "id": "kaiju-city",
+      "kind": "layer",
+      "frames": 24,
+      "delayMs": 70,
+      "motionPx": 4.8,
+      "areaRatio": 1.05,
+      "source": "greenscreen/raw/kaiju-city.gif"
+    },
+    "keanu-thanks": {
+      "id": "keanu-thanks",
+      "kind": "layer",
+      "frames": 46,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/keanu-thanks.gif"
+    },
+    "kek-jam": {
+      "id": "kek-jam",
+      "kind": "layer",
+      "frames": 40,
+      "delayMs": 83,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/kek-jam.gif"
+    },
+    "kek-laugh": {
+      "id": "kek-laugh",
+      "kind": "layer",
+      "frames": 30,
+      "delayMs": 57,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/kek-laugh.gif"
+    },
+    "kekw-laugh": {
+      "id": "kekw-laugh",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 60,
+      "motionPx": 3.1,
+      "areaRatio": 1.01,
+      "source": "greenscreen/raw/kekw-laugh.gif"
+    },
+    "ken-burns": {
+      "id": "ken-burns",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 100,
+      "motionPx": 6.6,
+      "areaRatio": 1.08,
+      "source": "greenscreen/raw/ken-burns.gif"
+    },
+    "labubu": {
+      "id": "labubu",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/labubu.png"
+    },
+    "laser-eyes": {
+      "id": "laser-eyes",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 2.2,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/laser-eyes.gif"
+    },
+    "lean": {
+      "id": "lean",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 0.3,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/lean.gif"
+    },
+    "leap": {
+      "id": "leap",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 24.2,
+      "areaRatio": 1.05,
+      "source": "greenscreen/raw/leap.gif"
+    },
+    "leave-fast": {
+      "id": "leave-fast",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 60,
+      "motionPx": 57.6,
+      "areaRatio": 5.84,
+      "source": "greenscreen/raw/leave-fast.gif"
+    },
+    "leave-me-alone": {
+      "id": "leave-me-alone",
+      "kind": "layer",
+      "frames": 47,
+      "delayMs": 112,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/leave-me-alone.gif"
+    },
+    "leave": {
+      "id": "leave",
+      "kind": "layer",
+      "frames": 39,
+      "delayMs": 90,
+      "motionPx": 89.5,
+      "areaRatio": 2730.67,
+      "source": "greenscreen/raw/leave.gif"
+    },
+    "lebron-jam": {
+      "id": "lebron-jam",
+      "kind": "layer",
+      "frames": 41,
+      "delayMs": 200,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/lebron-jam.gif"
+    },
+    "let-me-in": {
+      "id": "let-me-in",
+      "kind": "layer",
+      "frames": 37,
+      "delayMs": 78,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/let-me-in.gif"
+    },
+    "lets-gooo": {
+      "id": "lets-gooo",
+      "kind": "layer",
+      "frames": 27,
+      "delayMs": 67,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/lets-gooo.gif"
+    },
+    "lick": {
+      "id": "lick",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 1.1,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/lick.gif"
+    },
+    "lightning-flash": {
+      "id": "lightning-flash",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/lightning-flash.gif"
+    },
+    "lightning": {
+      "id": "lightning",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 7.9,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/lightning.gif"
+    },
+    "lightsaber": {
+      "id": "lightsaber",
+      "kind": "layer",
+      "frames": 40,
+      "delayMs": 50,
+      "motionPx": 1.6,
+      "areaRatio": 1.19,
+      "source": "greenscreen/raw/lightsaber.gif"
+    },
+    "lightspeed-jump": {
+      "id": "lightspeed-jump",
+      "kind": "layer",
+      "frames": 18,
+      "delayMs": 80,
+      "motionPx": 35.9,
+      "areaRatio": 43.79,
+      "source": "greenscreen/raw/lightspeed-jump.gif"
+    },
+    "loading-eight": {
+      "id": "loading-eight",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 48.7,
+      "areaRatio": 1.09,
+      "source": "greenscreen/raw/loading-eight.gif"
+    },
+    "loading-five": {
+      "id": "loading-five",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 43.1,
+      "areaRatio": 1.11,
+      "source": "greenscreen/raw/loading-five.gif"
+    },
+    "loading-four": {
+      "id": "loading-four",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 34.6,
+      "areaRatio": 1.31,
+      "source": "greenscreen/raw/loading-four.gif"
+    },
+    "loading-nine": {
+      "id": "loading-nine",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 49.3,
+      "areaRatio": 1.09,
+      "source": "greenscreen/raw/loading-nine.gif"
+    },
+    "loading-seven": {
+      "id": "loading-seven",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 48.6,
+      "areaRatio": 1.1,
+      "source": "greenscreen/raw/loading-seven.gif"
+    },
+    "loading-six": {
+      "id": "loading-six",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 41.9,
+      "areaRatio": 1.16,
+      "source": "greenscreen/raw/loading-six.gif"
+    },
+    "loading-think": {
+      "id": "loading-think",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 0.4,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/loading-think.gif"
+    },
+    "loading-three": {
+      "id": "loading-three",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 27.2,
+      "areaRatio": 1.11,
+      "source": "greenscreen/raw/loading-three.gif"
+    },
+    "loading-two": {
+      "id": "loading-two",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 31,
+      "areaRatio": 1.35,
+      "source": "greenscreen/raw/loading-two.gif"
+    },
+    "loading": {
+      "id": "loading",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 0.7,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/loading.gif"
+    },
+    "lolface": {
+      "id": "lolface",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/lolface.png"
+    },
+    "long": {
+      "id": "long",
+      "kind": "transform-slot",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/long.png"
+    },
+    "lurk": {
+      "id": "lurk",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 100,
+      "motionPx": 24.2,
+      "areaRatio": 3.94,
+      "source": "greenscreen/raw/lurk.gif"
+    },
+    "luvv": {
+      "id": "luvv",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/luvv.png"
+    },
+    "madge-clap": {
+      "id": "madge-clap",
+      "kind": "layer",
+      "frames": 48,
+      "delayMs": 59,
+      "motionPx": 43.1,
+      "areaRatio": 1.87,
+      "source": "greenscreen/raw/madge-clap.gif"
+    },
+    "magnet": {
+      "id": "magnet",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 94.5,
+      "areaRatio": 12.73,
+      "source": "greenscreen/raw/magnet.gif"
+    },
+    "math": {
+      "id": "math",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 3.4,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/math.gif"
+    },
+    "matrix-rain": {
+      "id": "matrix-rain",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/matrix-rain.gif"
+    },
+    "mc-fire": {
+      "id": "mc-fire",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 14.4,
+      "areaRatio": 1.06,
+      "source": "greenscreen/raw/mc-fire.gif"
+    },
+    "medal-drop": {
+      "id": "medal-drop",
+      "kind": "layer",
+      "frames": 24,
+      "delayMs": 70,
+      "motionPx": 71.7,
+      "areaRatio": 2.2,
+      "source": "greenscreen/raw/medal-drop.gif"
+    },
+    "mega-bounce": {
+      "id": "mega-bounce",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 40,
+      "motionPx": 66.5,
+      "areaRatio": 4,
+      "source": "greenscreen/raw/mega-bounce.gif"
+    },
+    "melt": {
+      "id": "melt",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 45.5,
+      "areaRatio": 14.22,
+      "source": "greenscreen/raw/melt.gif"
+    },
+    "meow-coffee-spit": {
+      "id": "meow-coffee-spit",
+      "kind": "layer",
+      "frames": 39,
+      "delayMs": 89,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/meow-coffee-spit.gif"
+    },
+    "mercator-pulse": {
+      "id": "mercator-pulse",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/mercator-pulse.gif"
+    },
+    "mercator": {
+      "id": "mercator",
+      "kind": "transform-slot",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/mercator.png"
+    },
+    "mhm": {
+      "id": "mhm",
+      "kind": "layer",
+      "frames": 43,
+      "delayMs": 81,
+      "motionPx": 62.5,
+      "areaRatio": 42.67,
+      "source": "greenscreen/raw/mhm.gif"
+    },
+    "mic-drop": {
+      "id": "mic-drop",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 3.6,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/mic-drop.gif"
+    },
+    "microwave-ding": {
+      "id": "microwave-ding",
+      "kind": "layer",
+      "frames": 24,
+      "delayMs": 70,
+      "motionPx": 1.3,
+      "areaRatio": 1.33,
+      "source": "greenscreen/raw/microwave-ding.gif"
+    },
+    "middle-fingers": {
+      "id": "middle-fingers",
+      "kind": "layer",
+      "frames": 26,
+      "delayMs": 65,
+      "motionPx": 10.9,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/middle-fingers.gif"
+    },
+    "mine-block": {
+      "id": "mine-block",
+      "kind": "layer",
+      "frames": 48,
+      "delayMs": 132,
+      "motionPx": 18.4,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/mine-block.gif"
+    },
+    "mirror-flip": {
+      "id": "mirror-flip",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/mirror-flip.gif"
+    },
+    "misalign": {
+      "id": "misalign",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/misalign.gif"
+    },
+    "mitosis": {
+      "id": "mitosis",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 5.1,
+      "areaRatio": 1.36,
+      "source": "greenscreen/raw/mitosis.gif"
+    },
+    "money-rain": {
+      "id": "money-rain",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 1.2,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/money-rain.gif"
+    },
+    "monka-christ": {
+      "id": "monka-christ",
+      "kind": "layer",
+      "frames": 40,
+      "delayMs": 159,
+      "motionPx": 46.8,
+      "areaRatio": 1.36,
+      "source": "greenscreen/raw/monka-christ.gif"
+    },
+    "monka-hmm": {
+      "id": "monka-hmm",
+      "kind": "layer",
+      "frames": 35,
+      "delayMs": 54,
+      "motionPx": 13.4,
+      "areaRatio": 1.06,
+      "source": "greenscreen/raw/monka-hmm.gif"
+    },
+    "music": {
+      "id": "music",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 3.6,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/music.gif"
+    },
+    "mustache-glasses": {
+      "id": "mustache-glasses",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/mustache-glasses.png"
+    },
+    "naruto-run": {
+      "id": "naruto-run",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 60,
+      "motionPx": 3.3,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/naruto-run.gif"
+    },
+    "negative-blink": {
+      "id": "negative-blink",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/negative-blink.gif"
+    },
+    "nesting-doll": {
+      "id": "nesting-doll",
+      "kind": "transform-slot",
+      "frames": 47,
+      "delayMs": 30,
+      "motionPx": 8.8,
+      "areaRatio": 1.09,
+      "source": "greenscreen/raw/nesting-doll.gif"
+    },
+    "nise": {
+      "id": "nise",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/nise.png"
+    },
+    "no-no": {
+      "id": "no-no",
+      "kind": "transform-slot",
+      "frames": 2,
+      "delayMs": 100,
+      "motionPx": 7.5,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/no-no.gif"
+    },
+    "nod": {
+      "id": "nod",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 18.1,
+      "areaRatio": 1.08,
+      "source": "greenscreen/raw/nod.gif"
+    },
+    "nodders": {
+      "id": "nodders",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 18.3,
+      "areaRatio": 1.08,
+      "source": "greenscreen/raw/nodders.gif"
+    },
+    "none": {
+      "id": "none",
+      "kind": "transform-slot",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/none.png"
+    },
+    "nopers": {
+      "id": "nopers",
+      "kind": "layer",
+      "frames": 33,
+      "delayMs": 93,
+      "motionPx": 50,
+      "areaRatio": 2.63,
+      "source": "greenscreen/raw/nopers.gif"
+    },
+    "not-stonks": {
+      "id": "not-stonks",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/not-stonks.png"
+    },
+    "nowoted": {
+      "id": "nowoted",
+      "kind": "layer",
+      "frames": 42,
+      "delayMs": 41,
+      "motionPx": 11.5,
+      "areaRatio": 1.1,
+      "source": "greenscreen/raw/nowoted.gif"
+    },
+    "nyan-cat": {
+      "id": "nyan-cat",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 60,
+      "motionPx": 3.9,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/nyan-cat.gif"
+    },
+    "nyan": {
+      "id": "nyan",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 8.1,
+      "areaRatio": 1.02,
+      "source": "greenscreen/raw/nyan.gif"
+    },
+    "old-man-yells": {
+      "id": "old-man-yells",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/old-man-yells.gif"
+    },
+    "omega-lul-pulse": {
+      "id": "omega-lul-pulse",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/omega-lul-pulse.gif"
+    },
+    "omega-lul": {
+      "id": "omega-lul",
+      "kind": "transform-slot",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/omega-lul.png"
+    },
+    "on-fire": {
+      "id": "on-fire",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 100,
+      "motionPx": 5.4,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/on-fire.gif"
+    },
+    "ono": {
+      "id": "ono",
+      "kind": "layer",
+      "frames": 41,
+      "delayMs": 80,
+      "motionPx": 64.6,
+      "areaRatio": 5461.33,
+      "source": "greenscreen/raw/ono.gif"
+    },
+    "orbit-drift": {
+      "id": "orbit-drift",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 10.3,
+      "areaRatio": 1.08,
+      "source": "greenscreen/raw/orbit-drift.gif"
+    },
+    "orbit-eight": {
+      "id": "orbit-eight",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 0,
+      "areaRatio": 1.12,
+      "source": "greenscreen/raw/orbit-eight.gif"
+    },
+    "orbit-five": {
+      "id": "orbit-five",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 0.8,
+      "areaRatio": 1.03,
+      "source": "greenscreen/raw/orbit-five.gif"
+    },
+    "orbit-four": {
+      "id": "orbit-four",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 0,
+      "areaRatio": 1.45,
+      "source": "greenscreen/raw/orbit-four.gif"
+    },
+    "orbit-nine": {
+      "id": "orbit-nine",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 0.5,
+      "areaRatio": 1.02,
+      "source": "greenscreen/raw/orbit-nine.gif"
+    },
+    "orbit-seven": {
+      "id": "orbit-seven",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 1.9,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/orbit-seven.gif"
+    },
+    "orbit-six": {
+      "id": "orbit-six",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 0,
+      "areaRatio": 1.07,
+      "source": "greenscreen/raw/orbit-six.gif"
+    },
+    "orbit-three": {
+      "id": "orbit-three",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 1.3,
+      "areaRatio": 1.04,
+      "source": "greenscreen/raw/orbit-three.gif"
+    },
+    "orbit-two": {
+      "id": "orbit-two",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 0,
+      "areaRatio": 1.61,
+      "source": "greenscreen/raw/orbit-two.gif"
+    },
+    "orbit": {
+      "id": "orbit",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 24.1,
+      "areaRatio": 1.07,
+      "source": "greenscreen/raw/orbit.gif"
+    },
+    "oui-oui": {
+      "id": "oui-oui",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/oui-oui.png"
+    },
+    "owl-jam": {
+      "id": "owl-jam",
+      "kind": "layer",
+      "frames": 30,
+      "delayMs": 30,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/owl-jam.gif"
+    },
+    "pace": {
+      "id": "pace",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 11.5,
+      "areaRatio": 1.14,
+      "source": "greenscreen/raw/pace.gif"
+    },
+    "pag-bounce": {
+      "id": "pag-bounce",
+      "kind": "transform-slot",
+      "frames": 24,
+      "delayMs": 20,
+      "motionPx": 74.3,
+      "areaRatio": 1.07,
+      "source": "greenscreen/raw/pag-bounce.gif"
+    },
+    "pagman": {
+      "id": "pagman",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/pagman.gif"
+    },
+    "panic": {
+      "id": "panic",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 40,
+      "motionPx": 1.8,
+      "areaRatio": 1.04,
+      "source": "greenscreen/raw/panic.gif"
+    },
+    "paparazzi": {
+      "id": "paparazzi",
+      "kind": "layer",
+      "frames": 24,
+      "delayMs": 70,
+      "motionPx": 57.7,
+      "areaRatio": 1.04,
+      "source": "greenscreen/raw/paparazzi.gif"
+    },
+    "parrot-hat": {
+      "id": "parrot-hat",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 38.3,
+      "areaRatio": 1.74,
+      "source": "greenscreen/raw/parrot-hat.gif"
+    },
+    "parrot-hold": {
+      "id": "parrot-hold",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 46.1,
+      "areaRatio": 2,
+      "source": "greenscreen/raw/parrot-hold.gif"
+    },
+    "parrot": {
+      "id": "parrot",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 39.2,
+      "areaRatio": 1.71,
+      "source": "greenscreen/raw/parrot.gif"
+    },
+    "party-blob": {
+      "id": "party-blob",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 40,
+      "motionPx": 47.9,
+      "areaRatio": 1.9,
+      "source": "greenscreen/raw/party-blob.gif"
+    },
+    "party-parrot": {
+      "id": "party-parrot",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 40,
+      "motionPx": 58.8,
+      "areaRatio": 1.87,
+      "source": "greenscreen/raw/party-parrot.gif"
+    },
+    "party": {
+      "id": "party",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 21.5,
+      "areaRatio": 1.1,
+      "source": "greenscreen/raw/party.gif"
+    },
+    "pastel-bloom": {
+      "id": "pastel-bloom",
+      "kind": "layer",
+      "frames": 12,
+      "delayMs": 60,
+      "motionPx": 17.2,
+      "areaRatio": 1.04,
+      "source": "greenscreen/raw/pastel-bloom.gif"
+    },
+    "pat": {
+      "id": "pat",
+      "kind": "layer",
+      "frames": 11,
+      "delayMs": 100,
+      "motionPx": 5,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/pat.gif"
+    },
+    "patrick-bateman": {
+      "id": "patrick-bateman",
+      "kind": "layer",
+      "frames": 26,
+      "delayMs": 84,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/patrick-bateman.gif"
+    },
+    "pause-champ": {
+      "id": "pause-champ",
+      "kind": "layer",
+      "frames": 35,
+      "delayMs": 54,
+      "motionPx": 40.1,
+      "areaRatio": 1.06,
+      "source": "greenscreen/raw/pause-champ.gif"
+    },
+    "peace-out": {
+      "id": "peace-out",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 6.8,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/peace-out.gif"
+    },
+    "peek-corner": {
+      "id": "peek-corner",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 57.7,
+      "areaRatio": 15.26,
+      "source": "greenscreen/raw/peek-corner.gif"
+    },
+    "peeking": {
+      "id": "peeking",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/peeking.png"
+    },
+    "peepo-bye": {
+      "id": "peepo-bye",
+      "kind": "layer",
+      "frames": 46,
+      "delayMs": 63,
+      "motionPx": 41.3,
+      "areaRatio": 1.74,
+      "source": "greenscreen/raw/peepo-bye.gif"
+    },
+    "peepo-cheer": {
+      "id": "peepo-cheer",
+      "kind": "layer",
+      "frames": 30,
+      "delayMs": 100,
+      "motionPx": 55,
+      "areaRatio": 2.69,
+      "source": "greenscreen/raw/peepo-cheer.gif"
+    },
+    "peepo-clap": {
+      "id": "peepo-clap",
+      "kind": "layer",
+      "frames": 44,
+      "delayMs": 61,
+      "motionPx": 44.2,
+      "areaRatio": 1.87,
+      "source": "greenscreen/raw/peepo-clap.gif"
+    },
+    "peepo-dj": {
+      "id": "peepo-dj",
+      "kind": "layer",
+      "frames": 36,
+      "delayMs": 40,
+      "motionPx": 107.2,
+      "areaRatio": 13312,
+      "source": "greenscreen/raw/peepo-dj.gif"
+    },
+    "peepo-giggles": {
+      "id": "peepo-giggles",
+      "kind": "layer",
+      "frames": 35,
+      "delayMs": 79,
+      "motionPx": 18,
+      "areaRatio": 1.44,
+      "source": "greenscreen/raw/peepo-giggles.gif"
+    },
+    "peepo-love-heart": {
+      "id": "peepo-love-heart",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/peepo-love-heart.png"
+    },
+    "peepo-love": {
+      "id": "peepo-love",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/peepo-love.png"
+    },
+    "peepo-poopoo": {
+      "id": "peepo-poopoo",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 100,
+      "motionPx": 1.9,
+      "areaRatio": 1.2,
+      "source": "greenscreen/raw/peepo-poopoo.gif"
+    },
+    "peepo-riot": {
+      "id": "peepo-riot",
+      "kind": "layer",
+      "frames": 8,
+      "delayMs": 100,
+      "motionPx": 21.4,
+      "areaRatio": 1.08,
+      "source": "greenscreen/raw/peepo-riot.gif"
+    },
+    "peepo-run": {
+      "id": "peepo-run",
+      "kind": "layer",
+      "frames": 6,
+      "delayMs": 50,
+      "motionPx": 5.6,
+      "areaRatio": 1.36,
+      "source": "greenscreen/raw/peepo-run.gif"
+    },
+    "peepo-shy": {
+      "id": "peepo-shy",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/peepo-shy.png"
+    },
+    "peepo-sit-hey": {
+      "id": "peepo-sit-hey",
+      "kind": "layer",
+      "frames": 42,
+      "delayMs": 67,
+      "motionPx": 50.9,
+      "areaRatio": 1.59,
+      "source": "greenscreen/raw/peepo-sit-hey.gif"
+    },
+    "peepo-sit": {
+      "id": "peepo-sit",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/peepo-sit.png"
+    },
+    "peepo-stop": {
+      "id": "peepo-stop",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/peepo-stop.png"
+    },
+    "peepo-want": {
+      "id": "peepo-want",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/peepo-want.png"
+    },
+    "peepo": {
+      "id": "peepo",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/peepo.png"
+    },
+    "pepe-binoculars": {
+      "id": "pepe-binoculars",
+      "kind": "layer",
+      "frames": 35,
+      "delayMs": 54,
+      "motionPx": 51.3,
+      "areaRatio": 2.01,
+      "source": "greenscreen/raw/pepe-binoculars.gif"
+    },
+    "pepe-cheer": {
+      "id": "pepe-cheer",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/pepe-cheer.png"
+    },
+    "pepe-clown": {
+      "id": "pepe-clown",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/pepe-clown.png"
+    },
+    "pepe-dab": {
+      "id": "pepe-dab",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/pepe-dab.png"
+    },
+    "pepe-flag": {
+      "id": "pepe-flag",
+      "kind": "layer",
+      "frames": 4,
+      "delayMs": 170,
+      "motionPx": 31.8,
+      "areaRatio": 1.16,
+      "source": "greenscreen/raw/pepe-flag.gif"
+    },
+    "pepe-meltdown": {
+      "id": "pepe-meltdown",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 30,
+      "motionPx": 17.5,
+      "areaRatio": 1.25,
+      "source": "greenscreen/raw/pepe-meltdown.gif"
+    },
+    "pepe-nodders": {
+      "id": "pepe-nodders",
+      "kind": "layer",
+      "frames": 33,
+      "delayMs": 93,
+      "motionPx": 52.2,
+      "areaRatio": 2.59,
+      "source": "greenscreen/raw/pepe-nodders.gif"
+    },
+    "pepe-point": {
+      "id": "pepe-point",
+      "kind": "layer",
+      "frames": 35,
+      "delayMs": 79,
+      "motionPx": 43.9,
+      "areaRatio": 1.14,
+      "source": "greenscreen/raw/pepe-point.gif"
+    },
+    "pepe-s": {
+      "id": "pepe-s",
+      "kind": "layer",
+      "frames": 37,
+      "delayMs": 78,
+      "motionPx": 37.5,
+      "areaRatio": 1.8,
+      "source": "greenscreen/raw/pepe-s.gif"
+    },
+    "pepe-sweat": {
+      "id": "pepe-sweat",
+      "kind": "layer",
+      "frames": 29,
+      "delayMs": 150,
+      "motionPx": 19.4,
+      "areaRatio": 1.17,
+      "source": "greenscreen/raw/pepe-sweat.gif"
+    },
+    "pepe": {
+      "id": "pepe",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/pepe.png"
+    },
+    "pepega": {
+      "id": "pepega",
+      "kind": "transform-slot",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/pepega.png"
+    },
+    "pepo-popcorn": {
+      "id": "pepo-popcorn",
+      "kind": "layer",
+      "frames": 25,
+      "delayMs": 113,
+      "motionPx": 41.6,
+      "areaRatio": 1.54,
+      "source": "greenscreen/raw/pepo-popcorn.gif"
+    },
+    "perspective-conveyor": {
+      "id": "perspective-conveyor",
+      "kind": "transform-slot",
+      "frames": 24,
+      "delayMs": 70,
+      "motionPx": 9.6,
+      "areaRatio": 1.5,
+      "source": "greenscreen/raw/perspective-conveyor.gif"
+    },
+    "pet": {
+      "id": "pet",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 10.9,
+      "areaRatio": 1.07,
+      "source": "greenscreen/raw/pet.gif"
+    },
+    "phone-time": {
+      "id": "phone-time",
+      "kind": "layer",
+      "frames": 43,
+      "delayMs": 127,
+      "motionPx": 2.9,
+      "areaRatio": 1.03,
+      "source": "greenscreen/raw/phone-time.gif"
+    },
+    "photocopier": {
+      "id": "photocopier",
+      "kind": "layer",
+      "frames": 24,
+      "delayMs": 70,
+      "motionPx": 14.5,
+      "areaRatio": 2.06,
+      "source": "greenscreen/raw/photocopier.gif"
+    },
+    "pika-stand": {
+      "id": "pika-stand",
+      "kind": "layer",
+      "frames": 8,
+      "delayMs": 188,
+      "motionPx": 6.4,
+      "areaRatio": 1.14,
+      "source": "greenscreen/raw/pika-stand.gif"
+    },
+    "pikachu": {
+      "id": "pikachu",
+      "kind": "layer",
+      "frames": 28,
+      "delayMs": 104,
+      "motionPx": 9.3,
+      "areaRatio": 1.1,
+      "source": "greenscreen/raw/pikachu.gif"
+    },
+    "pixar-think": {
+      "id": "pixar-think",
+      "kind": "layer",
+      "frames": 43,
+      "delayMs": 200,
+      "motionPx": 25.6,
+      "areaRatio": 10.34,
+      "source": "greenscreen/raw/pixar-think.gif"
+    },
+    "pixelate": {
+      "id": "pixelate",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/pixelate.gif"
+    },
+    "plotge": {
+      "id": "plotge",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 0.6,
+      "areaRatio": 1.14,
+      "source": "greenscreen/raw/plotge.gif"
+    },
+    "pog-zoom": {
+      "id": "pog-zoom",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 60,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/pog-zoom.gif"
+    },
+    "pokeball-almost": {
+      "id": "pokeball-almost",
+      "kind": "layer",
+      "frames": 31,
+      "delayMs": 125,
+      "motionPx": 12.1,
+      "areaRatio": 8064,
+      "source": "greenscreen/raw/pokeball-almost.gif"
+    },
+    "pokeball-capture": {
+      "id": "pokeball-capture",
+      "kind": "layer",
+      "frames": 27,
+      "delayMs": 123,
+      "motionPx": 11.4,
+      "areaRatio": 16128,
+      "source": "greenscreen/raw/pokeball-capture.gif"
+    },
+    "pokeball-emerge": {
+      "id": "pokeball-emerge",
+      "kind": "layer",
+      "frames": 44,
+      "delayMs": 135,
+      "motionPx": 46.4,
+      "areaRatio": 33.61,
+      "source": "greenscreen/raw/pokeball-emerge.gif"
+    },
+    "pokeball-go": {
+      "id": "pokeball-go",
+      "kind": "layer",
+      "frames": 22,
+      "delayMs": 66,
+      "motionPx": 25,
+      "areaRatio": 16128,
+      "source": "greenscreen/raw/pokeball-go.gif"
+    },
+    "polar-bear": {
+      "id": "polar-bear",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 40,
+      "motionPx": 6,
+      "areaRatio": 1.04,
+      "source": "greenscreen/raw/polar-bear.gif"
+    },
+    "polaroid-develop": {
+      "id": "polaroid-develop",
+      "kind": "layer",
+      "frames": 24,
+      "delayMs": 70,
+      "motionPx": 0.6,
+      "areaRatio": 1.04,
+      "source": "greenscreen/raw/polaroid-develop.gif"
+    },
+    "polish": {
+      "id": "polish",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 11.2,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/polish.gif"
+    },
+    "ponder": {
+      "id": "ponder",
+      "kind": "layer",
+      "frames": 32,
+      "delayMs": 78,
+      "motionPx": 29.8,
+      "areaRatio": 1.39,
+      "source": "greenscreen/raw/ponder.gif"
+    },
+    "pop-through": {
+      "id": "pop-through",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 3,
+      "areaRatio": 1.06,
+      "source": "greenscreen/raw/pop-through.gif"
+    },
+    "pop": {
+      "id": "pop",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 0.7,
+      "areaRatio": 1.2,
+      "source": "greenscreen/raw/pop.gif"
+    },
+    "popcorn-watch": {
+      "id": "popcorn-watch",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 90,
+      "motionPx": 2,
+      "areaRatio": 1.01,
+      "source": "greenscreen/raw/popcorn-watch.gif"
+    },
+    "portal-peek": {
+      "id": "portal-peek",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 0,
+      "areaRatio": 20.75,
+      "source": "greenscreen/raw/portal-peek.gif"
+    },
+    "portal-warp": {
+      "id": "portal-warp",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 60,
+      "motionPx": 0.1,
+      "areaRatio": 7.42,
+      "source": "greenscreen/raw/portal-warp.gif"
+    },
+    "posterize-breath": {
+      "id": "posterize-breath",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/posterize-breath.gif"
+    },
+    "pounce": {
+      "id": "pounce",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 6,
+      "areaRatio": 2.59,
+      "source": "greenscreen/raw/pounce.gif"
+    },
+    "pp-hopper": {
+      "id": "pp-hopper",
+      "kind": "transform-slot",
+      "frames": 39,
+      "delayMs": 20,
+      "motionPx": 89.8,
+      "areaRatio": 1.09,
+      "source": "greenscreen/raw/pp-hopper.gif"
+    },
+    "prance": {
+      "id": "prance",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 60,
+      "motionPx": 11.8,
+      "areaRatio": 1.08,
+      "source": "greenscreen/raw/prance.gif"
+    },
+    "prayge": {
+      "id": "prayge",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/prayge.png"
+    },
+    "prime-sub": {
+      "id": "prime-sub",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 2.2,
+      "areaRatio": 1.02,
+      "source": "greenscreen/raw/prime-sub.gif"
+    },
+    "pulse": {
+      "id": "pulse",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 0.7,
+      "areaRatio": 1.2,
+      "source": "greenscreen/raw/pulse.gif"
+    },
+    "pumpkin-cat": {
+      "id": "pumpkin-cat",
+      "kind": "layer",
+      "frames": 8,
+      "delayMs": 50,
+      "motionPx": 9.2,
+      "areaRatio": 1.47,
+      "source": "greenscreen/raw/pumpkin-cat.gif"
+    },
+    "pumpkin-give": {
+      "id": "pumpkin-give",
+      "kind": "layer",
+      "frames": 30,
+      "delayMs": 100,
+      "motionPx": 23.6,
+      "areaRatio": 1.24,
+      "source": "greenscreen/raw/pumpkin-give.gif"
+    },
+    "pumpkin-surprise": {
+      "id": "pumpkin-surprise",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/pumpkin-surprise.png"
+    },
+    "pumpkin-take": {
+      "id": "pumpkin-take",
+      "kind": "layer",
+      "frames": 30,
+      "delayMs": 100,
+      "motionPx": 23.6,
+      "areaRatio": 1.25,
+      "source": "greenscreen/raw/pumpkin-take.gif"
+    },
+    "pumpkin": {
+      "id": "pumpkin",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/pumpkin.png"
+    },
+    "pumpkin2": {
+      "id": "pumpkin2",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/pumpkin2.png"
+    },
+    "purple-stars": {
+      "id": "purple-stars",
+      "kind": "layer",
+      "frames": 6,
+      "delayMs": 102,
+      "motionPx": 1.1,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/purple-stars.gif"
+    },
+    "pyramid": {
+      "id": "pyramid",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 100,
+      "motionPx": 4,
+      "areaRatio": 1.49,
+      "source": "greenscreen/raw/pyramid.gif"
+    },
+    "quiver": {
+      "id": "quiver",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 30,
+      "motionPx": 0.7,
+      "areaRatio": 1.01,
+      "source": "greenscreen/raw/quiver.gif"
+    },
+    "radar-ping": {
+      "id": "radar-ping",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 60,
+      "motionPx": 0.2,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/radar-ping.gif"
+    },
+    "rain": {
+      "id": "rain",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 2.1,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/rain.gif"
+    },
+    "rainbow-bloom": {
+      "id": "rainbow-bloom",
+      "kind": "layer",
+      "frames": 12,
+      "delayMs": 40,
+      "motionPx": 0.8,
+      "areaRatio": 1.64,
+      "source": "greenscreen/raw/rainbow-bloom.gif"
+    },
+    "raincloud": {
+      "id": "raincloud",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 0.5,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/raincloud.gif"
+    },
+    "raising-hand": {
+      "id": "raising-hand",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/raising-hand.png"
+    },
+    "rare-ghost": {
+      "id": "rare-ghost",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 40,
+      "motionPx": 54.4,
+      "areaRatio": 1.15,
+      "source": "greenscreen/raw/rare-ghost.gif"
+    },
+    "rave-lights": {
+      "id": "rave-lights",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 51.5,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/rave-lights.gif"
+    },
+    "rave": {
+      "id": "rave",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 6.4,
+      "areaRatio": 1.2,
+      "source": "greenscreen/raw/rave.gif"
+    },
+    "reading": {
+      "id": "reading",
+      "kind": "layer",
+      "frames": 3,
+      "delayMs": 60,
+      "motionPx": 0.9,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/reading.gif"
+    },
+    "recoil-pop": {
+      "id": "recoil-pop",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 14,
+      "areaRatio": 1.28,
+      "source": "greenscreen/raw/recoil-pop.gif"
+    },
+    "red-alert": {
+      "id": "red-alert",
+      "kind": "layer",
+      "frames": 31,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/red-alert.gif"
+    },
+    "reveal": {
+      "id": "reveal",
+      "kind": "layer",
+      "frames": 30,
+      "delayMs": 40,
+      "motionPx": 33.2,
+      "areaRatio": 1.31,
+      "source": "greenscreen/raw/reveal.gif"
+    },
+    "rgb-split": {
+      "id": "rgb-split",
+      "kind": "no-slot",
+      "frames": 10,
+      "delayMs": 60,
+      "motionPx": 178.9,
+      "areaRatio": 3,
+      "source": "greenscreen/raw/rgb-split.gif"
+    },
+    "riott": {
+      "id": "riott",
+      "kind": "layer",
+      "frames": 4,
+      "delayMs": 200,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/riott.gif"
+    },
+    "ripple": {
+      "id": "ripple",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 0.5,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/ripple.gif"
+    },
+    "roast": {
+      "id": "roast",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 1.4,
+      "areaRatio": 1.03,
+      "source": "greenscreen/raw/roast.gif"
+    },
+    "roll-safe": {
+      "id": "roll-safe",
+      "kind": "layer",
+      "frames": 37,
+      "delayMs": 44,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/roll-safe.gif"
+    },
+    "roll": {
+      "id": "roll",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 5.4,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/roll.gif"
+    },
+    "rotate-180": {
+      "id": "rotate-180",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 0.4,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/rotate-180.gif"
+    },
+    "rotate-45": {
+      "id": "rotate-45",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 0.4,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/rotate-45.gif"
+    },
+    "rotate-90": {
+      "id": "rotate-90",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 0.4,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/rotate-90.gif"
+    },
+    "rubber-stamp": {
+      "id": "rubber-stamp",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 16,
+      "areaRatio": 1.33,
+      "source": "greenscreen/raw/rubber-stamp.gif"
+    },
+    "rubber": {
+      "id": "rubber",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 60,
+      "motionPx": 0.7,
+      "areaRatio": 1.8,
+      "source": "greenscreen/raw/rubber.gif"
+    },
+    "runn": {
+      "id": "runn",
+      "kind": "layer",
+      "frames": 41,
+      "delayMs": 122,
+      "motionPx": 3.2,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/runn.gif"
+    },
+    "runway-landing": {
+      "id": "runway-landing",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 67.9,
+      "areaRatio": 2.63,
+      "source": "greenscreen/raw/runway-landing.gif"
+    },
+    "runway-takeoff": {
+      "id": "runway-takeoff",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 67.9,
+      "areaRatio": 2.63,
+      "source": "greenscreen/raw/runway-takeoff.gif"
+    },
+    "sad-blob": {
+      "id": "sad-blob",
+      "kind": "transform-slot",
+      "frames": 32,
+      "delayMs": 80,
+      "motionPx": 33.2,
+      "areaRatio": 1.02,
+      "source": "greenscreen/raw/sad-blob.gif"
+    },
+    "sadge": {
+      "id": "sadge",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/sadge.png"
+    },
+    "saved": {
+      "id": "saved",
+      "kind": "layer",
+      "frames": 41,
+      "delayMs": 135,
+      "motionPx": 33.9,
+      "areaRatio": 1.17,
+      "source": "greenscreen/raw/saved.gif"
+    },
+    "scanline": {
+      "id": "scanline",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 60,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/scanline.gif"
+    },
+    "scanning": {
+      "id": "scanning",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/scanning.gif"
+    },
+    "scared": {
+      "id": "scared",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 60,
+      "motionPx": 3.5,
+      "areaRatio": 1.07,
+      "source": "greenscreen/raw/scared.gif"
+    },
+    "scroll": {
+      "id": "scroll",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 40,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/scroll.gif"
+    },
+    "seesaw": {
+      "id": "seesaw",
+      "kind": "layer",
+      "frames": 24,
+      "delayMs": 70,
+      "motionPx": 8.3,
+      "areaRatio": 1.36,
+      "source": "greenscreen/raw/seesaw.gif"
+    },
+    "shake-grab": {
+      "id": "shake-grab",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 60,
+      "motionPx": 8.7,
+      "areaRatio": 1.1,
+      "source": "greenscreen/raw/shake-grab.gif"
+    },
+    "shake": {
+      "id": "shake",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 40,
+      "motionPx": 11,
+      "areaRatio": 1.1,
+      "source": "greenscreen/raw/shake.gif"
+    },
+    "shimmer": {
+      "id": "shimmer",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/shimmer.gif"
+    },
+    "shimmy": {
+      "id": "shimmy",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 3.6,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/shimmy.gif"
+    },
+    "shocked-man": {
+      "id": "shocked-man",
+      "kind": "layer",
+      "frames": 48,
+      "delayMs": 82,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/shocked-man.gif"
+    },
+    "shoot": {
+      "id": "shoot",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 3.7,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/shoot.gif"
+    },
+    "shruge": {
+      "id": "shruge",
+      "kind": "layer",
+      "frames": 35,
+      "delayMs": 54,
+      "motionPx": 33.8,
+      "areaRatio": 1.78,
+      "source": "greenscreen/raw/shruge.gif"
+    },
+    "shudder": {
+      "id": "shudder",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 0.4,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/shudder.gif"
+    },
+    "shy-peek": {
+      "id": "shy-peek",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 90,
+      "motionPx": 37.3,
+      "areaRatio": 2.42,
+      "source": "greenscreen/raw/shy-peek.gif"
+    },
+    "shy": {
+      "id": "shy",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 3.1,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/shy.gif"
+    },
+    "side-eye-chloe": {
+      "id": "side-eye-chloe",
+      "kind": "layer",
+      "frames": 40,
+      "delayMs": 88,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/side-eye-chloe.gif"
+    },
+    "side-eye-dog": {
+      "id": "side-eye-dog",
+      "kind": "layer",
+      "frames": 44,
+      "delayMs": 118,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/side-eye-dog.gif"
+    },
+    "side-eye-drama": {
+      "id": "side-eye-drama",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 8.8,
+      "areaRatio": 1.04,
+      "source": "greenscreen/raw/side-eye-drama.gif"
+    },
+    "sideeye-slide": {
+      "id": "sideeye-slide",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 60,
+      "motionPx": 14.7,
+      "areaRatio": 1.09,
+      "source": "greenscreen/raw/sideeye-slide.gif"
+    },
+    "sign-mad": {
+      "id": "sign-mad",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 4,
+      "areaRatio": 1.03,
+      "source": "greenscreen/raw/sign-mad.gif"
+    },
+    "sign": {
+      "id": "sign",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 5.7,
+      "areaRatio": 1.02,
+      "source": "greenscreen/raw/sign.gif"
+    },
+    "sip-judgement": {
+      "id": "sip-judgement",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 90,
+      "motionPx": 1.4,
+      "areaRatio": 1.02,
+      "source": "greenscreen/raw/sip-judgement.gif"
+    },
+    "sir": {
+      "id": "sir",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/sir.png"
+    },
+    "sisyphus": {
+      "id": "sisyphus",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/sisyphus.png"
+    },
+    "skeleton-dance": {
+      "id": "skeleton-dance",
+      "kind": "layer",
+      "frames": 6,
+      "delayMs": 100,
+      "motionPx": 12.4,
+      "areaRatio": 1.15,
+      "source": "greenscreen/raw/skeleton-dance.gif"
+    },
+    "skibidi": {
+      "id": "skibidi",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 150,
+      "motionPx": 13.5,
+      "areaRatio": 1.3,
+      "source": "greenscreen/raw/skibidi.gif"
+    },
+    "skid-stop": {
+      "id": "skid-stop",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 60,
+      "motionPx": 31.7,
+      "areaRatio": 1.45,
+      "source": "greenscreen/raw/skid-stop.gif"
+    },
+    "skipping-stone": {
+      "id": "skipping-stone",
+      "kind": "transform-slot",
+      "frames": 24,
+      "delayMs": 70,
+      "motionPx": 119.5,
+      "areaRatio": 10.45,
+      "source": "greenscreen/raw/skipping-stone.gif"
+    },
+    "slap": {
+      "id": "slap",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 15.3,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/slap.gif"
+    },
+    "slice": {
+      "id": "slice",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 60,
+      "motionPx": 1.8,
+      "areaRatio": 1.07,
+      "source": "greenscreen/raw/slice.gif"
+    },
+    "slide-bounce": {
+      "id": "slide-bounce",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 32.1,
+      "areaRatio": 1.97,
+      "source": "greenscreen/raw/slide-bounce.gif"
+    },
+    "slide-spin": {
+      "id": "slide-spin",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 56.9,
+      "areaRatio": 1.97,
+      "source": "greenscreen/raw/slide-spin.gif"
+    },
+    "slide": {
+      "id": "slide",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 42.5,
+      "areaRatio": 2.98,
+      "source": "greenscreen/raw/slide.gif"
+    },
+    "slow-jam": {
+      "id": "slow-jam",
+      "kind": "layer",
+      "frames": 8,
+      "delayMs": 70,
+      "motionPx": 15.4,
+      "areaRatio": 1.1,
+      "source": "greenscreen/raw/slow-jam.gif"
+    },
+    "smadge": {
+      "id": "smadge",
+      "kind": "layer",
+      "frames": 35,
+      "delayMs": 54,
+      "motionPx": 37.5,
+      "areaRatio": 1.75,
+      "source": "greenscreen/raw/smadge.gif"
+    },
+    "smart": {
+      "id": "smart",
+      "kind": "layer",
+      "frames": 23,
+      "delayMs": 67,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/smart.gif"
+    },
+    "smoge": {
+      "id": "smoge",
+      "kind": "layer",
+      "frames": 39,
+      "delayMs": 100,
+      "motionPx": 43.4,
+      "areaRatio": 2.12,
+      "source": "greenscreen/raw/smoge.gif"
+    },
+    "snap": {
+      "id": "snap",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 60,
+      "motionPx": 15,
+      "areaRatio": 1.16,
+      "source": "greenscreen/raw/snap.gif"
+    },
+    "snorlax": {
+      "id": "snorlax",
+      "kind": "layer",
+      "frames": 44,
+      "delayMs": 200,
+      "motionPx": 8.4,
+      "areaRatio": 1.25,
+      "source": "greenscreen/raw/snorlax.gif"
+    },
+    "so-cute": {
+      "id": "so-cute",
+      "kind": "layer",
+      "frames": 12,
+      "delayMs": 20,
+      "motionPx": 10.5,
+      "areaRatio": 1.32,
+      "source": "greenscreen/raw/so-cute.gif"
+    },
+    "solarize-wave": {
+      "id": "solarize-wave",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 60,
+      "motionPx": 17.2,
+      "areaRatio": 1.12,
+      "source": "greenscreen/raw/solarize-wave.gif"
+    },
+    "sparkle-color": {
+      "id": "sparkle-color",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 0.9,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/sparkle-color.gif"
+    },
+    "sparkle-party": {
+      "id": "sparkle-party",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 1.8,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/sparkle-party.gif"
+    },
+    "sparkle-rainbow": {
+      "id": "sparkle-rainbow",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 1,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/sparkle-rainbow.gif"
+    },
+    "sparkle": {
+      "id": "sparkle",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 0.7,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/sparkle.gif"
+    },
+    "speechless": {
+      "id": "speechless",
+      "kind": "layer",
+      "frames": 29,
+      "delayMs": 166,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/speechless.gif"
+    },
+    "sphere": {
+      "id": "sphere",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/sphere.gif"
+    },
+    "spin": {
+      "id": "spin",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 0.4,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/spin.gif"
+    },
+    "spiral-in": {
+      "id": "spiral-in",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 54.7,
+      "areaRatio": 9.16,
+      "source": "greenscreen/raw/spiral-in.gif"
+    },
+    "spiral-zoom": {
+      "id": "spiral-zoom",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 0.3,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/spiral-zoom.gif"
+    },
+    "split": {
+      "id": "split",
+      "kind": "transform-slot",
+      "frames": 45,
+      "delayMs": 51,
+      "motionPx": 7.5,
+      "areaRatio": 1.54,
+      "source": "greenscreen/raw/split.gif"
+    },
+    "spongebob-watching-tv": {
+      "id": "spongebob-watching-tv",
+      "kind": "layer",
+      "frames": 40,
+      "delayMs": 200,
+      "motionPx": 66.3,
+      "areaRatio": 1173,
+      "source": "greenscreen/raw/spongebob-watching-tv.gif"
+    },
+    "spongebob-worship": {
+      "id": "spongebob-worship",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 79,
+      "motionPx": 1.2,
+      "areaRatio": 1.02,
+      "source": "greenscreen/raw/spongebob-worship.gif"
+    },
+    "spotlight": {
+      "id": "spotlight",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 2.2,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/spotlight.gif"
+    },
+    "squad": {
+      "id": "squad",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 13.2,
+      "areaRatio": 1.06,
+      "source": "greenscreen/raw/squad.gif"
+    },
+    "squish-pulse": {
+      "id": "squish-pulse",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 0.7,
+      "areaRatio": 1.02,
+      "source": "greenscreen/raw/squish-pulse.gif"
+    },
+    "squish": {
+      "id": "squish",
+      "kind": "transform-slot",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/squish.png"
+    },
+    "stare": {
+      "id": "stare",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/stare.png"
+    },
+    "startled-rat": {
+      "id": "startled-rat",
+      "kind": "layer",
+      "frames": 38,
+      "delayMs": 41,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/startled-rat.gif"
+    },
+    "steer": {
+      "id": "steer",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 7.9,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/steer.gif"
+    },
+    "stomp": {
+      "id": "stomp",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 17,
+      "areaRatio": 1.36,
+      "source": "greenscreen/raw/stomp.gif"
+    },
+    "stonks": {
+      "id": "stonks",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/stonks.png"
+    },
+    "stretch": {
+      "id": "stretch",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/stretch.gif"
+    },
+    "stripp": {
+      "id": "stripp",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 100,
+      "motionPx": 10.9,
+      "areaRatio": 1.19,
+      "source": "greenscreen/raw/stripp.gif"
+    },
+    "strobe-soft": {
+      "id": "strobe-soft",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/strobe-soft.gif"
+    },
+    "sure": {
+      "id": "sure",
+      "kind": "layer",
+      "frames": 44,
+      "delayMs": 63,
+      "motionPx": 32.6,
+      "areaRatio": 1.29,
+      "source": "greenscreen/raw/sure.gif"
+    },
+    "surprised-clapping": {
+      "id": "surprised-clapping",
+      "kind": "layer",
+      "frames": 41,
+      "delayMs": 82,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/surprised-clapping.gif"
+    },
+    "surprised-pikachu": {
+      "id": "surprised-pikachu",
+      "kind": "layer",
+      "frames": 30,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/surprised-pikachu.gif"
+    },
+    "suspicion": {
+      "id": "suspicion",
+      "kind": "layer",
+      "frames": 40,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/suspicion.gif"
+    },
+    "sway": {
+      "id": "sway",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 8.6,
+      "areaRatio": 1.02,
+      "source": "greenscreen/raw/sway.gif"
+    },
+    "sweep": {
+      "id": "sweep",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 14.2,
+      "areaRatio": 1.08,
+      "source": "greenscreen/raw/sweep.gif"
+    },
+    "swirl": {
+      "id": "swirl",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 0.4,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/swirl.gif"
+    },
+    "swirling": {
+      "id": "swirling",
+      "kind": "transform-slot",
+      "frames": 39,
+      "delayMs": 50,
+      "motionPx": 22.2,
+      "areaRatio": 1.09,
+      "source": "greenscreen/raw/swirling.gif"
+    },
+    "taking-notes": {
+      "id": "taking-notes",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 0.8,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/taking-notes.gif"
+    },
+    "technical-difficulties": {
+      "id": "technical-difficulties",
+      "kind": "layer",
+      "frames": 24,
+      "delayMs": 70,
+      "motionPx": 23.6,
+      "areaRatio": 11.41,
+      "source": "greenscreen/raw/technical-difficulties.gif"
+    },
+    "teleport": {
+      "id": "teleport",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 6,
+      "areaRatio": 1.51,
+      "source": "greenscreen/raw/teleport.gif"
+    },
+    "thanos-snap": {
+      "id": "thanos-snap",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 59.8,
+      "areaRatio": 13.37,
+      "source": "greenscreen/raw/thanos-snap.gif"
+    },
+    "thick-3d-flip": {
+      "id": "thick-3d-flip",
+      "kind": "transform-slot",
+      "frames": 12,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 3.55,
+      "source": "greenscreen/raw/thick-3d-flip.gif"
+    },
+    "thing-cat": {
+      "id": "thing-cat",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 60,
+      "motionPx": 5.3,
+      "areaRatio": 1.2,
+      "source": "greenscreen/raw/thing-cat.gif"
+    },
+    "think": {
+      "id": "think",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 4.7,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/think.gif"
+    },
+    "this-is-fine": {
+      "id": "this-is-fine",
+      "kind": "layer",
+      "frames": 22,
+      "delayMs": 77,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/this-is-fine.gif"
+    },
+    "tidal-wave": {
+      "id": "tidal-wave",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 17.4,
+      "areaRatio": 1.07,
+      "source": "greenscreen/raw/tidal-wave.gif"
+    },
+    "tilt-nod": {
+      "id": "tilt-nod",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 3.8,
+      "areaRatio": 1.02,
+      "source": "greenscreen/raw/tilt-nod.gif"
+    },
+    "tilt-zoom": {
+      "id": "tilt-zoom",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 60,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/tilt-zoom.gif"
+    },
+    "tilt": {
+      "id": "tilt",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 33,
+      "areaRatio": 1.47,
+      "source": "greenscreen/raw/tilt.gif"
+    },
+    "tinfoil-hat": {
+      "id": "tinfoil-hat",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 60,
+      "motionPx": 0.5,
+      "areaRatio": 1.01,
+      "source": "greenscreen/raw/tinfoil-hat.gif"
+    },
+    "toaster-pop": {
+      "id": "toaster-pop",
+      "kind": "layer",
+      "frames": 24,
+      "delayMs": 70,
+      "motionPx": 37.1,
+      "areaRatio": 8.13,
+      "source": "greenscreen/raw/toaster-pop.gif"
+    },
+    "toilet-bounce": {
+      "id": "toilet-bounce",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 14.3,
+      "areaRatio": 1.27,
+      "source": "greenscreen/raw/toilet-bounce.gif"
+    },
+    "toilet-spin": {
+      "id": "toilet-spin",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 3.3,
+      "areaRatio": 3.02,
+      "source": "greenscreen/raw/toilet-spin.gif"
+    },
+    "tornado": {
+      "id": "tornado",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 14.9,
+      "areaRatio": 6.1,
+      "source": "greenscreen/raw/tornado.gif"
+    },
+    "touch-grass": {
+      "id": "touch-grass",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 4,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/touch-grass.gif"
+    },
+    "train-window": {
+      "id": "train-window",
+      "kind": "layer",
+      "frames": 24,
+      "delayMs": 70,
+      "motionPx": 4.7,
+      "areaRatio": 1.38,
+      "source": "greenscreen/raw/train-window.gif"
+    },
+    "transmute-reality": {
+      "id": "transmute-reality",
+      "kind": "layer",
+      "frames": 17,
+      "delayMs": 70,
+      "motionPx": 61.9,
+      "areaRatio": 67.42,
+      "source": "greenscreen/raw/transmute-reality.gif"
+    },
+    "trash-pop": {
+      "id": "trash-pop",
+      "kind": "layer",
+      "frames": 32,
+      "delayMs": 50,
+      "motionPx": 32.6,
+      "areaRatio": 14.75,
+      "source": "greenscreen/raw/trash-pop.gif"
+    },
+    "trash": {
+      "id": "trash",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/trash.png"
+    },
+    "treasure-chest": {
+      "id": "treasure-chest",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 17.3,
+      "areaRatio": 4.31,
+      "source": "greenscreen/raw/treasure-chest.gif"
+    },
+    "triggered": {
+      "id": "triggered",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 2.1,
+      "areaRatio": 1.04,
+      "source": "greenscreen/raw/triggered.gif"
+    },
+    "tsk": {
+      "id": "tsk",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 2.4,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/tsk.gif"
+    },
+    "tsunami": {
+      "id": "tsunami",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 64.9,
+      "areaRatio": 14.22,
+      "source": "greenscreen/raw/tsunami.gif"
+    },
+    "tumble": {
+      "id": "tumble",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 19.1,
+      "areaRatio": 1.15,
+      "source": "greenscreen/raw/tumble.gif"
+    },
+    "twirl": {
+      "id": "twirl",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 80.2,
+      "areaRatio": 1.51,
+      "source": "greenscreen/raw/twirl.gif"
+    },
+    "typing": {
+      "id": "typing",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 4.7,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/typing.gif"
+    },
+    "typing2": {
+      "id": "typing2",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 1.1,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/typing2.gif"
+    },
+    "ufo-abduction": {
+      "id": "ufo-abduction",
+      "kind": "layer",
+      "frames": 24,
+      "delayMs": 70,
+      "motionPx": 43.4,
+      "areaRatio": 7.54,
+      "source": "greenscreen/raw/ufo-abduction.gif"
+    },
+    "underwater": {
+      "id": "underwater",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 0.3,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/underwater.gif"
+    },
+    "unimpressed-cat": {
+      "id": "unimpressed-cat",
+      "kind": "layer",
+      "frames": 29,
+      "delayMs": 83,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/unimpressed-cat.gif"
+    },
+    "vampire-offers": {
+      "id": "vampire-offers",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/vampire-offers.png"
+    },
+    "vampire-takes": {
+      "id": "vampire-takes",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/vampire-takes.png"
+    },
+    "venom": {
+      "id": "venom",
+      "kind": "layer",
+      "frames": 42,
+      "delayMs": 151,
+      "motionPx": 68,
+      "areaRatio": 90.02,
+      "source": "greenscreen/raw/venom.gif"
+    },
+    "vibee": {
+      "id": "vibee",
+      "kind": "layer",
+      "frames": 45,
+      "delayMs": 60,
+      "motionPx": 30.1,
+      "areaRatio": 1.15,
+      "source": "greenscreen/raw/vibee.gif"
+    },
+    "walk-in": {
+      "id": "walk-in",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 41.8,
+      "areaRatio": 2.78,
+      "source": "greenscreen/raw/walk-in.gif"
+    },
+    "washing-machine": {
+      "id": "washing-machine",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 5.1,
+      "areaRatio": 1.05,
+      "source": "greenscreen/raw/washing-machine.gif"
+    },
+    "wave-ocean": {
+      "id": "wave-ocean",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 16.7,
+      "areaRatio": 1.16,
+      "source": "greenscreen/raw/wave-ocean.gif"
+    },
+    "wave": {
+      "id": "wave",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 60,
+      "motionPx": 4.7,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/wave.gif"
+    },
+    "waving": {
+      "id": "waving",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 90,
+      "motionPx": 5.8,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/waving.gif"
+    },
+    "wawa": {
+      "id": "wawa",
+      "kind": "transform-slot",
+      "frames": 22,
+      "delayMs": 20,
+      "motionPx": 26.8,
+      "areaRatio": 1.27,
+      "source": "greenscreen/raw/wawa.gif"
+    },
+    "weird": {
+      "id": "weird",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 0.8,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/weird.gif"
+    },
+    "wide-happy": {
+      "id": "wide-happy",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 2.5,
+      "areaRatio": 1.12,
+      "source": "greenscreen/raw/wide-happy.gif"
+    },
+    "wiggle-shear": {
+      "id": "wiggle-shear",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 60,
+      "motionPx": 1.9,
+      "areaRatio": 1.01,
+      "source": "greenscreen/raw/wiggle-shear.gif"
+    },
+    "wildfire": {
+      "id": "wildfire",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/wildfire.gif"
+    },
+    "will-presents": {
+      "id": "will-presents",
+      "kind": "layer",
+      "frames": 32,
+      "delayMs": 78,
+      "motionPx": 36.9,
+      "areaRatio": 2.68,
+      "source": "greenscreen/raw/will-presents.gif"
+    },
+    "will-slap": {
+      "id": "will-slap",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 25,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/will-slap.gif"
+    },
+    "willem-dafoe": {
+      "id": "willem-dafoe",
+      "kind": "layer",
+      "frames": 47,
+      "delayMs": 70,
+      "motionPx": 62,
+      "areaRatio": 32,
+      "source": "greenscreen/raw/willem-dafoe.gif"
+    },
+    "wine": {
+      "id": "wine",
+      "kind": "layer",
+      "frames": 10,
+      "delayMs": 50,
+      "motionPx": 2.7,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/wine.gif"
+    },
+    "wipe": {
+      "id": "wipe",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 57,
+      "areaRatio": 9.14,
+      "source": "greenscreen/raw/wipe.gif"
+    },
+    "wobble-scale": {
+      "id": "wobble-scale",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 0.7,
+      "areaRatio": 1.28,
+      "source": "greenscreen/raw/wobble-scale.gif"
+    },
+    "wobble": {
+      "id": "wobble",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 60,
+      "motionPx": 2.5,
+      "areaRatio": 1.02,
+      "source": "greenscreen/raw/wobble.gif"
+    },
+    "wokege": {
+      "id": "wokege",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/wokege.png"
+    },
+    "wolverine": {
+      "id": "wolverine",
+      "kind": "layer",
+      "frames": 37,
+      "delayMs": 120,
+      "motionPx": 17.5,
+      "areaRatio": 1.15,
+      "source": "greenscreen/raw/wolverine.gif"
+    },
+    "woodcut-portrait": {
+      "id": "woodcut-portrait",
+      "kind": "layer",
+      "frames": 1,
+      "delayMs": 50,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/woodcut-portrait.png"
+    },
+    "wormhole": {
+      "id": "wormhole",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 80,
+      "motionPx": 32.4,
+      "areaRatio": 37.15,
+      "source": "greenscreen/raw/wormhole.gif"
+    },
+    "xray-scan": {
+      "id": "xray-scan",
+      "kind": "layer",
+      "frames": 24,
+      "delayMs": 70,
+      "motionPx": 54.5,
+      "areaRatio": 59.5,
+      "source": "greenscreen/raw/xray-scan.gif"
+    },
+    "yes-yes": {
+      "id": "yes-yes",
+      "kind": "transform-slot",
+      "frames": 2,
+      "delayMs": 100,
+      "motionPx": 7.5,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/yes-yes.gif"
+    },
+    "zoom-close": {
+      "id": "zoom-close",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 70,
+      "motionPx": 0,
+      "areaRatio": 1,
+      "source": "greenscreen/raw/zoom-close.gif"
+    },
+    "zoom-in": {
+      "id": "zoom-in",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 60,
+      "motionPx": 0.7,
+      "areaRatio": 2.63,
+      "source": "greenscreen/raw/zoom-in.gif"
+    },
+    "zoom": {
+      "id": "zoom",
+      "kind": "transform-slot",
+      "frames": 10,
+      "delayMs": 60,
+      "motionPx": 0.7,
+      "areaRatio": 1.74,
+      "source": "greenscreen/raw/zoom.gif"
+    }
+  },
+  "animationMode": "per-frame-slot-mask"
+}

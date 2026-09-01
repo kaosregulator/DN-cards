@@ -1,0 +1,132 @@
+{
+  "id": "lick",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 141040
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.74600809027039,
+      "cy": 64.07976722730821,
+      "greenPixels": 14091,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.7250123964015,
+      "cy": 62.93660126089112,
+      "greenPixels": 14117,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.74600809027039,
+      "cy": 64.07976722730821,
+      "greenPixels": 14091,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.7250123964015,
+      "cy": 62.93660126089112,
+      "greenPixels": 14117,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.74600809027039,
+      "cy": 64.07976722730821,
+      "greenPixels": 14091,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.7250123964015,
+      "cy": 62.93660126089112,
+      "greenPixels": 14117,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.74600809027039,
+      "cy": 64.07976722730821,
+      "greenPixels": 14091,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.7250123964015,
+      "cy": 62.93660126089112,
+      "greenPixels": 14117,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.74600809027039,
+      "cy": 64.07976722730821,
+      "greenPixels": 14091,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.7250123964015,
+      "cy": 62.93660126089112,
+      "greenPixels": 14117,
+      "visible": true,
+      "delayMs": 70
+    }
+  ],
+  "motionPx": 1.1,
+  "areaRatio": 1,
+  "layerPixels": 22800,
+  "source": "greenscreen/raw/lick.gif",
+  "animationMode": "per-frame-slot-mask"
+}

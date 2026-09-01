@@ -1,0 +1,132 @@
+{
+  "id": "jammies",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 60,
+  "size": 128,
+  "slot": {
+    "x": 8,
+    "y": 0,
+    "w": 117,
+    "h": 128,
+    "greenPixels": 45890
+  },
+  "perFrame": [
+    {
+      "x": 29,
+      "y": 0,
+      "w": 83,
+      "h": 128,
+      "cx": 63.833787465940055,
+      "cy": 31.455267938237967,
+      "greenPixels": 4404,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 25,
+      "y": 0,
+      "w": 81,
+      "h": 128,
+      "cx": 60.70066518847007,
+      "cy": 31.11130820399113,
+      "greenPixels": 4510,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 23,
+      "y": 0,
+      "w": 82,
+      "h": 128,
+      "cx": 58.55042290175667,
+      "cy": 31.840164823248752,
+      "greenPixels": 4611,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 25,
+      "y": 0,
+      "w": 90,
+      "h": 128,
+      "cx": 60.72642310960068,
+      "cy": 32.4838572642311,
+      "greenPixels": 4708,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 20,
+      "y": 0,
+      "w": 104,
+      "h": 128,
+      "cx": 63.831013064896126,
+      "cy": 33.184836153351895,
+      "greenPixels": 4669,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 30,
+      "y": 0,
+      "w": 94,
+      "h": 128,
+      "cx": 65.57331655129012,
+      "cy": 33.028529473463394,
+      "greenPixels": 4767,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 17,
+      "y": 0,
+      "w": 98,
+      "h": 128,
+      "cx": 68.13678333691217,
+      "cy": 32.66330255529311,
+      "greenPixels": 4657,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 9,
+      "y": 0,
+      "w": 116,
+      "h": 128,
+      "cx": 69.66386010362694,
+      "cy": 31.9669689119171,
+      "greenPixels": 4632,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 8,
+      "y": 0,
+      "w": 115,
+      "h": 128,
+      "cx": 68.23987398739874,
+      "cy": 31.085958595859587,
+      "greenPixels": 4444,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 8,
+      "y": 0,
+      "w": 115,
+      "h": 128,
+      "cx": 65.62544563279857,
+      "cy": 31.03475935828877,
+      "greenPixels": 4488,
+      "visible": true,
+      "delayMs": 60
+    }
+  ],
+  "motionPx": 11.3,
+  "areaRatio": 1.43,
+  "layerPixels": 39485,
+  "source": "greenscreen/raw/jammies.gif",
+  "animationMode": "per-frame-slot-mask"
+}

@@ -1,0 +1,33 @@
+{
+  "id": "blob-yes",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 11,
+    "y": 11,
+    "w": 117,
+    "h": 107,
+    "greenPixels": 7022
+  },
+  "perFrame": [
+    {
+      "x": 11,
+      "y": 11,
+      "w": 117,
+      "h": 107,
+      "cx": 78.11848476217602,
+      "cy": 61.01495300484193,
+      "greenPixels": 7022,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
+  "layerPixels": 3804,
+  "source": "greenscreen/raw/blob-yes.png",
+  "animationMode": "per-frame-slot-mask"
+}

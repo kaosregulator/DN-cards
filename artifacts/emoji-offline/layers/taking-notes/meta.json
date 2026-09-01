@@ -1,0 +1,132 @@
+{
+  "id": "taking-notes",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 121646
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 54.49205184641722,
+      "cy": 51.05070514388196,
+      "greenPixels": 12267,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 54.49205184641722,
+      "cy": 51.05070514388196,
+      "greenPixels": 12267,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 54.88956801850169,
+      "cy": 50.45725613281573,
+      "greenPixels": 12107,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 54.83956424857638,
+      "cy": 50.39283651068747,
+      "greenPixels": 12117,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 54.83956424857638,
+      "cy": 50.39283651068747,
+      "greenPixels": 12117,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 54.83956424857638,
+      "cy": 50.39283651068747,
+      "greenPixels": 12117,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 54.82303370786517,
+      "cy": 50.619134170522145,
+      "greenPixels": 12104,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 54.490950595141044,
+      "cy": 51.04712212620251,
+      "greenPixels": 12266,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 54.534935033096346,
+      "cy": 50.96273596469723,
+      "greenPixels": 12237,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 54.96248028554827,
+      "cy": 50.41338092471155,
+      "greenPixels": 12047,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0.8,
+  "areaRatio": 1,
+  "layerPixels": 42194,
+  "source": "greenscreen/raw/taking-notes.gif",
+  "animationMode": "per-frame-slot-mask"
+}

@@ -1,0 +1,132 @@
+{
+  "id": "boing",
+  "kind": "transform-slot",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 60,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 146447
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 13,
+      "w": 128,
+      "h": 103,
+      "cx": 63.5,
+      "cy": 64,
+      "greenPixels": 13184,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 121,
+      "cx": 63.5,
+      "cy": 60,
+      "greenPixels": 15488,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 8,
+      "y": 0,
+      "w": 113,
+      "h": 127,
+      "cx": 64,
+      "cy": 63,
+      "greenPixels": 14351,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 13,
+      "y": 0,
+      "w": 103,
+      "h": 128,
+      "cx": 64,
+      "cy": 63.5,
+      "greenPixels": 13184,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 8,
+      "y": 0,
+      "w": 113,
+      "h": 128,
+      "cx": 64,
+      "cy": 63.5,
+      "greenPixels": 14464,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 6,
+      "w": 128,
+      "h": 122,
+      "cx": 63.5,
+      "cy": 66.5,
+      "greenPixels": 15616,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 10,
+      "w": 128,
+      "h": 118,
+      "cx": 63.5,
+      "cy": 68.5,
+      "greenPixels": 15104,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 14,
+      "w": 128,
+      "h": 114,
+      "cx": 63.5,
+      "cy": 70.5,
+      "greenPixels": 14592,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 16,
+      "w": 128,
+      "h": 110,
+      "cx": 63.5,
+      "cy": 70.5,
+      "greenPixels": 14080,
+      "visible": true,
+      "delayMs": 60
+    }
+  ],
+  "motionPx": 10.5,
+  "areaRatio": 1.24,
+  "layerPixels": 0,
+  "source": "greenscreen/raw/boing.gif",
+  "animationMode": "per-frame-slot-mask"
+}

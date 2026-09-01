@@ -1,0 +1,33 @@
+{
+  "id": "oui-oui",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 50,
+    "w": 105,
+    "h": 69,
+    "greenPixels": 6164
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 50,
+      "w": 105,
+      "h": 69,
+      "cx": 49.46025308241402,
+      "cy": 84.19078520441272,
+      "greenPixels": 6164,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
+  "layerPixels": 7157,
+  "source": "greenscreen/raw/oui-oui.png",
+  "animationMode": "per-frame-slot-mask"
+}

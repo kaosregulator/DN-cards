@@ -1,0 +1,132 @@
+{
+  "id": "abdul-pls",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 44,
+  "size": 128,
+  "slot": {
+    "x": 17,
+    "y": 29,
+    "w": 102,
+    "h": 80,
+    "greenPixels": 39466
+  },
+  "perFrame": [
+    {
+      "x": 17,
+      "y": 30,
+      "w": 69,
+      "h": 75,
+      "cx": 50.92044911610129,
+      "cy": 63.41591017677974,
+      "greenPixels": 4186,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 17,
+      "y": 30,
+      "w": 70,
+      "h": 75,
+      "cx": 51.417352457089116,
+      "cy": 63.41946861039266,
+      "greenPixels": 4253,
+      "visible": true,
+      "delayMs": 30
+    },
+    {
+      "x": 25,
+      "y": 29,
+      "w": 73,
+      "h": 74,
+      "cx": 59.86441462285979,
+      "cy": 62.220499768625636,
+      "greenPixels": 4322,
+      "visible": true,
+      "delayMs": 30
+    },
+    {
+      "x": 36,
+      "y": 30,
+      "w": 70,
+      "h": 75,
+      "cx": 68.95830337886413,
+      "cy": 63.521207764198415,
+      "greenPixels": 4173,
+      "visible": true,
+      "delayMs": 30
+    },
+    {
+      "x": 51,
+      "y": 29,
+      "w": 67,
+      "h": 76,
+      "cx": 81.67710174198434,
+      "cy": 62.45266346882101,
+      "greenPixels": 3961,
+      "visible": true,
+      "delayMs": 30
+    },
+    {
+      "x": 53,
+      "y": 30,
+      "w": 66,
+      "h": 78,
+      "cx": 83.93876530867283,
+      "cy": 65.0734816295926,
+      "greenPixels": 4001,
+      "visible": true,
+      "delayMs": 30
+    },
+    {
+      "x": 55,
+      "y": 30,
+      "w": 64,
+      "h": 77,
+      "cx": 84.20988654781199,
+      "cy": 64.72312263641275,
+      "greenPixels": 3702,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 45,
+      "y": 32,
+      "w": 61,
+      "h": 75,
+      "cx": 73.1932584269663,
+      "cy": 65.86573033707865,
+      "greenPixels": 3560,
+      "visible": true,
+      "delayMs": 30
+    },
+    {
+      "x": 37,
+      "y": 31,
+      "w": 61,
+      "h": 76,
+      "cx": 66.34601793965751,
+      "cy": 65.27507474857298,
+      "greenPixels": 3679,
+      "visible": true,
+      "delayMs": 30
+    },
+    {
+      "x": 22,
+      "y": 35,
+      "w": 61,
+      "h": 74,
+      "cx": 51.886194543951504,
+      "cy": 68.17663268117938,
+      "greenPixels": 3629,
+      "visible": true,
+      "delayMs": 30
+    }
+  ],
+  "motionPx": 33.8,
+  "areaRatio": 1.2,
+  "layerPixels": 70647,
+  "source": "greenscreen/raw/abdul-pls.gif",
+  "animationMode": "per-frame-slot-mask"
+}

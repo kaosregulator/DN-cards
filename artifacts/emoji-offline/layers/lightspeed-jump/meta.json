@@ -1,0 +1,220 @@
+{
+  "id": "lightspeed-jump",
+  "kind": "layer",
+  "frames": 18,
+  "sourcePages": 18,
+  "delayMs": 80,
+  "size": 128,
+  "slot": {
+    "x": 11,
+    "y": 0,
+    "w": 117,
+    "h": 128,
+    "greenPixels": 64803
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 80
+    },
+    {
+      "x": 38,
+      "y": 60,
+      "w": 18,
+      "h": 19,
+      "cx": 45.44,
+      "cy": 63.46666666666667,
+      "greenPixels": 75,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 34,
+      "y": 55,
+      "w": 28,
+      "h": 29,
+      "cx": 47.5,
+      "cy": 69,
+      "greenPixels": 812,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 30,
+      "y": 50,
+      "w": 42,
+      "h": 41,
+      "cx": 50.11028037383178,
+      "cy": 69.80560747663552,
+      "greenPixels": 1605,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 29,
+      "y": 44,
+      "w": 55,
+      "h": 54,
+      "cx": 56.37011651816312,
+      "cy": 70.48629198080877,
+      "greenPixels": 2918,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 32,
+      "y": 38,
+      "w": 68,
+      "h": 68,
+      "cx": 65.5,
+      "cy": 71.5,
+      "greenPixels": 4624,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 35,
+      "y": 31,
+      "w": 82,
+      "h": 83,
+      "cx": 75.59780318988865,
+      "cy": 71.99127294613301,
+      "greenPixels": 6646,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 31,
+      "y": 23,
+      "w": 97,
+      "h": 100,
+      "cx": 80.09596887495947,
+      "cy": 72.94282935264239,
+      "greenPixels": 9253,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 27,
+      "y": 14,
+      "w": 101,
+      "h": 114,
+      "cx": 77.40526931031383,
+      "cy": 71.96610017084795,
+      "greenPixels": 11121,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 17,
+      "y": 5,
+      "w": 111,
+      "h": 123,
+      "cx": 73.47513642302667,
+      "cy": 67.34770578741065,
+      "greenPixels": 13011,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 11,
+      "y": 0,
+      "w": 117,
+      "h": 128,
+      "cx": 69.87650970280906,
+      "cy": 63.9380512959696,
+      "greenPixels": 14738,
+      "visible": true,
+      "delayMs": 80
+    }
+  ],
+  "motionPx": 35.9,
+  "areaRatio": 43.79,
+  "layerPixels": 230109,
+  "source": "greenscreen/raw/lightspeed-jump.gif",
+  "animationMode": "per-frame-slot-mask"
+}

@@ -1,0 +1,132 @@
+{
+  "id": "rubber-stamp",
+  "kind": "transform-slot",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 155648
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 2,
+      "w": 128,
+      "h": 126,
+      "cx": 63.5,
+      "cy": 64.5,
+      "greenPixels": 16128,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 17,
+      "w": 128,
+      "h": 111,
+      "cx": 63.5,
+      "cy": 72,
+      "greenPixels": 14208,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 32,
+      "w": 128,
+      "h": 96,
+      "cx": 63.5,
+      "cy": 79.5,
+      "greenPixels": 12288,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 7,
+      "w": 128,
+      "h": 121,
+      "cx": 63.5,
+      "cy": 67,
+      "greenPixels": 15488,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 2,
+      "y": 0,
+      "w": 125,
+      "h": 128,
+      "cx": 64,
+      "cy": 63.5,
+      "greenPixels": 16000,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 2,
+      "y": 0,
+      "w": 125,
+      "h": 128,
+      "cx": 64,
+      "cy": 63.5,
+      "greenPixels": 16000,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 70
+    }
+  ],
+  "motionPx": 16,
+  "areaRatio": 1.33,
+  "layerPixels": 0,
+  "source": "greenscreen/raw/rubber-stamp.gif",
+  "animationMode": "per-frame-slot-mask"
+}

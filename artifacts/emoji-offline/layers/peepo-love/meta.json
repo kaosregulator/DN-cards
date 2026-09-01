@@ -1,0 +1,33 @@
+{
+  "id": "peepo-love",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 9,
+    "y": 33,
+    "w": 112,
+    "h": 95,
+    "greenPixels": 6261
+  },
+  "perFrame": [
+    {
+      "x": 9,
+      "y": 33,
+      "w": 112,
+      "h": 95,
+      "cx": 60.4758025874461,
+      "cy": 83.411915029548,
+      "greenPixels": 6261,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
+  "layerPixels": 5551,
+  "source": "greenscreen/raw/peepo-love.png",
+  "animationMode": "per-frame-slot-mask"
+}

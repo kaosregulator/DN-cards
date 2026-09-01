@@ -1,0 +1,132 @@
+{
+  "id": "stripp",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 100,
+  "size": 128,
+  "slot": {
+    "x": 13,
+    "y": 25,
+    "w": 94,
+    "h": 102,
+    "greenPixels": 45733
+  },
+  "perFrame": [
+    {
+      "x": 16,
+      "y": 29,
+      "w": 83,
+      "h": 98,
+      "cx": 55.37578378378378,
+      "cy": 70.51394594594595,
+      "greenPixels": 4625,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 13,
+      "y": 28,
+      "w": 94,
+      "h": 97,
+      "cx": 52.82171450888498,
+      "cy": 66.37336457723102,
+      "greenPixels": 5121,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 19,
+      "y": 25,
+      "w": 82,
+      "h": 100,
+      "cx": 58.13519965277778,
+      "cy": 66.65950520833333,
+      "greenPixels": 4608,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 15,
+      "y": 32,
+      "w": 86,
+      "h": 95,
+      "cx": 61.18146805618487,
+      "cy": 71.65881286814681,
+      "greenPixels": 4414,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 13,
+      "y": 34,
+      "w": 84,
+      "h": 91,
+      "cx": 58.358880778588805,
+      "cy": 73.21873479318735,
+      "greenPixels": 4110,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 16,
+      "y": 29,
+      "w": 83,
+      "h": 98,
+      "cx": 55.44582245430809,
+      "cy": 70.65274151436032,
+      "greenPixels": 4596,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 13,
+      "y": 28,
+      "w": 94,
+      "h": 97,
+      "cx": 52.80682926829268,
+      "cy": 66.33970731707318,
+      "greenPixels": 5125,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 19,
+      "y": 25,
+      "w": 82,
+      "h": 100,
+      "cx": 58.109493808385835,
+      "cy": 66.66891157940474,
+      "greenPixels": 4603,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 15,
+      "y": 32,
+      "w": 86,
+      "h": 95,
+      "cx": 61.19918607280127,
+      "cy": 71.65317657698395,
+      "greenPixels": 4423,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 13,
+      "y": 34,
+      "w": 84,
+      "h": 91,
+      "cx": 58.251703992210324,
+      "cy": 73.22882181110029,
+      "greenPixels": 4108,
+      "visible": true,
+      "delayMs": 100
+    }
+  ],
+  "motionPx": 10.9,
+  "areaRatio": 1.19,
+  "layerPixels": 28435,
+  "source": "greenscreen/raw/stripp.gif",
+  "animationMode": "per-frame-slot-mask"
+}

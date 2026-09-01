@@ -1,0 +1,132 @@
+{
+  "id": "lurk",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 100,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 67,
+    "h": 128,
+    "greenPixels": 53166
+  },
+  "perFrame": [
+    {
+      "x": 50,
+      "y": 0,
+      "w": 17,
+      "h": 128,
+      "cx": 58,
+      "cy": 63.5,
+      "greenPixels": 2176,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 50,
+      "y": 0,
+      "w": 17,
+      "h": 128,
+      "cx": 58,
+      "cy": 63.5,
+      "greenPixels": 2176,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 50,
+      "y": 0,
+      "w": 17,
+      "h": 128,
+      "cx": 58,
+      "cy": 63.5,
+      "greenPixels": 2176,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 50,
+      "y": 0,
+      "w": 17,
+      "h": 128,
+      "cx": 58,
+      "cy": 63.5,
+      "greenPixels": 2176,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 23,
+      "y": 2,
+      "w": 44,
+      "h": 126,
+      "cx": 47.796654355854876,
+      "cy": 61.92787312622203,
+      "greenPixels": 4603,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 67,
+      "h": 128,
+      "cx": 37.78637462665339,
+      "cy": 62.60233252737875,
+      "greenPixels": 7031,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 67,
+      "h": 128,
+      "cx": 34.003168027293775,
+      "cy": 65.09223833313025,
+      "greenPixels": 8207,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 67,
+      "h": 128,
+      "cx": 34.003168027293775,
+      "cy": 65.09223833313025,
+      "greenPixels": 8207,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 67,
+      "h": 128,
+      "cx": 34.003168027293775,
+      "cy": 65.09223833313025,
+      "greenPixels": 8207,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 67,
+      "h": 128,
+      "cx": 34.003168027293775,
+      "cy": 65.09223833313025,
+      "greenPixels": 8207,
+      "visible": true,
+      "delayMs": 100
+    }
+  ],
+  "motionPx": 24.2,
+  "areaRatio": 3.94,
+  "layerPixels": 78082,
+  "source": "greenscreen/raw/lurk.gif",
+  "animationMode": "per-frame-slot-mask"
+}

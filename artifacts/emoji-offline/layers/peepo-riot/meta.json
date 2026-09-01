@@ -1,0 +1,110 @@
+{
+  "id": "peepo-riot",
+  "kind": "layer",
+  "frames": 8,
+  "sourcePages": 8,
+  "delayMs": 100,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 51,
+    "w": 128,
+    "h": 77,
+    "greenPixels": 43914
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 51,
+      "w": 119,
+      "h": 67,
+      "cx": 53.72032640949555,
+      "cy": 84.549146884273,
+      "greenPixels": 5392,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 0,
+      "y": 61,
+      "w": 128,
+      "h": 67,
+      "cx": 72.92868217054263,
+      "cy": 93.71369509043927,
+      "greenPixels": 5805,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 0,
+      "y": 51,
+      "w": 128,
+      "h": 64,
+      "cx": 67.84755530767801,
+      "cy": 84.2597137014315,
+      "greenPixels": 5379,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 0,
+      "y": 61,
+      "w": 128,
+      "h": 67,
+      "cx": 54.69763984389519,
+      "cy": 93.49897788515146,
+      "greenPixels": 5381,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 0,
+      "y": 51,
+      "w": 119,
+      "h": 67,
+      "cx": 53.72032640949555,
+      "cy": 84.549146884273,
+      "greenPixels": 5392,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 0,
+      "y": 61,
+      "w": 128,
+      "h": 67,
+      "cx": 72.92868217054263,
+      "cy": 93.71369509043927,
+      "greenPixels": 5805,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 0,
+      "y": 51,
+      "w": 128,
+      "h": 64,
+      "cx": 67.84755530767801,
+      "cy": 84.2597137014315,
+      "greenPixels": 5379,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 0,
+      "y": 61,
+      "w": 128,
+      "h": 67,
+      "cx": 54.69763984389519,
+      "cy": 93.49897788515146,
+      "greenPixels": 5381,
+      "visible": true,
+      "delayMs": 100
+    }
+  ],
+  "motionPx": 21.4,
+  "areaRatio": 1.08,
+  "layerPixels": 19934,
+  "source": "greenscreen/raw/peepo-riot.gif",
+  "animationMode": "per-frame-slot-mask"
+}

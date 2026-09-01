@@ -1,0 +1,154 @@
+{
+  "id": "rainbow-bloom",
+  "kind": "layer",
+  "frames": 12,
+  "sourcePages": 12,
+  "delayMs": 40,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 137897
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.49617021276596,
+      "cy": 63.49617021276596,
+      "greenPixels": 12925,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.50061871616396,
+      "cy": 63.50061871616396,
+      "greenPixels": 12930,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 2,
+      "y": 2,
+      "w": 124,
+      "h": 124,
+      "cx": 64.03950617283951,
+      "cy": 64.02938271604938,
+      "greenPixels": 12150,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 6,
+      "y": 6,
+      "w": 116,
+      "h": 116,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 13456,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 6,
+      "y": 6,
+      "w": 116,
+      "h": 116,
+      "cx": 63.495725860402885,
+      "cy": 63.495725860402885,
+      "greenPixels": 13453,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 7,
+      "y": 7,
+      "w": 114,
+      "h": 114,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 12996,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 14,
+      "y": 14,
+      "w": 100,
+      "h": 100,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 10000,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 14,
+      "y": 14,
+      "w": 100,
+      "h": 100,
+      "cx": 63.495049504950494,
+      "cy": 63.495049504950494,
+      "greenPixels": 9999,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 14,
+      "y": 14,
+      "w": 100,
+      "h": 100,
+      "cx": 63.49504851455437,
+      "cy": 63.49504851455437,
+      "greenPixels": 9997,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 14,
+      "y": 14,
+      "w": 100,
+      "h": 100,
+      "cx": 63.49504851455437,
+      "cy": 63.49504851455437,
+      "greenPixels": 9997,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 14,
+      "y": 14,
+      "w": 100,
+      "h": 100,
+      "cx": 63.49504851455437,
+      "cy": 63.49504851455437,
+      "greenPixels": 9997,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 14,
+      "y": 14,
+      "w": 100,
+      "h": 100,
+      "cx": 63.49504851455437,
+      "cy": 63.49504851455437,
+      "greenPixels": 9997,
+      "visible": true,
+      "delayMs": 40
+    }
+  ],
+  "motionPx": 0.8,
+  "areaRatio": 1.64,
+  "layerPixels": 58711,
+  "source": "greenscreen/raw/rainbow-bloom.gif",
+  "animationMode": "per-frame-slot-mask"
+}

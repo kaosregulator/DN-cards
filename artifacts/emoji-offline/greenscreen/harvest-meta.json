@@ -1,0 +1,3966 @@
+{
+  "items": {
+    "none": {
+      "ok": false,
+      "error": "not-gif",
+      "bytes": 634
+    },
+    "pet": {
+      "ok": true,
+      "bytes": 28451,
+      "sha256_16": "10555f616c46936f",
+      "file": "greenscreen/raw/pet.gif",
+      "suggestedFilename": "pet.gif"
+    },
+    "party-parrot": {
+      "ok": true,
+      "bytes": 7727,
+      "sha256_16": "c25101767a650b2b",
+      "file": "greenscreen/raw/party-parrot.gif",
+      "suggestedFilename": "party-parrot.gif"
+    },
+    "parrot": {
+      "ok": true,
+      "bytes": 13523,
+      "sha256_16": "73a0a556a37cef3a",
+      "file": "greenscreen/raw/parrot.gif",
+      "suggestedFilename": "parrot.gif"
+    },
+    "parrot-hat": {
+      "ok": true,
+      "bytes": 14041,
+      "sha256_16": "64cd5411809f580e",
+      "file": "greenscreen/raw/parrot-hat.gif",
+      "suggestedFilename": "parrot-hat.gif"
+    },
+    "parrot-hold": {
+      "ok": true,
+      "bytes": 10686,
+      "sha256_16": "1daef0b79741d909",
+      "file": "greenscreen/raw/parrot-hold.gif",
+      "suggestedFilename": "parrot-hold.gif"
+    },
+    "party-blob": {
+      "ok": true,
+      "bytes": 4807,
+      "sha256_16": "9381deb524d325f3",
+      "file": "greenscreen/raw/party-blob.gif",
+      "suggestedFilename": "party-blob.gif"
+    },
+    "sad-blob": {
+      "ok": true,
+      "bytes": 12144,
+      "sha256_16": "3eaf5e1cdea11495",
+      "file": "greenscreen/raw/sad-blob.gif",
+      "suggestedFilename": "sad-blob.gif"
+    },
+    "jammies": {
+      "ok": true,
+      "bytes": 21742,
+      "sha256_16": "bba5dc964e67f6c0",
+      "file": "greenscreen/raw/jammies.gif",
+      "suggestedFilename": "jammies.gif"
+    },
+    "nyan-cat": {
+      "ok": true,
+      "bytes": 26495,
+      "sha256_16": "23ef9e6e68a7e427",
+      "file": "greenscreen/raw/nyan-cat.gif",
+      "suggestedFilename": "nyan-cat.gif"
+    },
+    "thing-cat": {
+      "ok": true,
+      "bytes": 32343,
+      "sha256_16": "6121a44da00902d9",
+      "file": "greenscreen/raw/thing-cat.gif",
+      "suggestedFilename": "thing-cat.gif"
+    },
+    "nyan": {
+      "ok": true,
+      "bytes": 4924,
+      "sha256_16": "b3ada5c883950bf3",
+      "file": "greenscreen/raw/nyan.gif",
+      "suggestedFilename": "nyan.gif"
+    },
+    "lightspeed-jump": {
+      "ok": true,
+      "bytes": 131785,
+      "sha256_16": "05078c336eec36ab",
+      "file": "greenscreen/raw/lightspeed-jump.gif",
+      "suggestedFilename": "lightspeed-jump.gif"
+    },
+    "lightsaber": {
+      "ok": true,
+      "bytes": 73845,
+      "sha256_16": "04ed2687ad3a489b",
+      "file": "greenscreen/raw/lightsaber.gif",
+      "suggestedFilename": "lightsaber.gif"
+    },
+    "shake": {
+      "ok": true,
+      "bytes": 3241,
+      "sha256_16": "244a968fc2bec0bf",
+      "file": "greenscreen/raw/shake.gif",
+      "suggestedFilename": "shake.gif"
+    },
+    "party": {
+      "ok": true,
+      "bytes": 3183,
+      "sha256_16": "f138633e62fb7faa",
+      "file": "greenscreen/raw/party.gif",
+      "suggestedFilename": "party.gif"
+    },
+    "peepo": {
+      "ok": false,
+      "error": "not-gif",
+      "bytes": 4923
+    },
+    "peepo-sit": {
+      "ok": false,
+      "error": "not-gif",
+      "bytes": 10015
+    },
+    "peepo-stop": {
+      "ok": false,
+      "error": "not-gif",
+      "bytes": 15198
+    },
+    "peepo-shy": {
+      "ok": false,
+      "error": "not-gif",
+      "bytes": 5673
+    },
+    "peepo-want": {
+      "ok": false,
+      "error": "not-gif",
+      "bytes": 6296
+    },
+    "peepo-love": {
+      "ok": false,
+      "error": "not-gif",
+      "bytes": 9511
+    },
+    "enter": {
+      "ok": true,
+      "bytes": 24446,
+      "sha256_16": "087c5dcc72d8d931",
+      "file": "greenscreen/raw/enter.gif",
+      "suggestedFilename": "enter.gif"
+    },
+    "exit": {
+      "ok": true,
+      "bytes": 24135,
+      "sha256_16": "36781109bfada99b",
+      "file": "greenscreen/raw/exit.gif",
+      "suggestedFilename": "exit.gif"
+    },
+    "pokeball-go": {
+      "ok": true,
+      "bytes": 52848,
+      "sha256_16": "e4d5c0989df81241",
+      "file": "greenscreen/raw/pokeball-go.gif",
+      "suggestedFilename": "pokeball-go.gif"
+    },
+    "pokeball-capture": {
+      "ok": true,
+      "bytes": 201574,
+      "sha256_16": "1bdba703f12042a2",
+      "file": "greenscreen/raw/pokeball-capture.gif",
+      "suggestedFilename": "pokeball-capture.gif"
+    },
+    "pokeball-almost": {
+      "ok": true,
+      "bytes": 154868,
+      "sha256_16": "0c23e65e10adc3ba",
+      "file": "greenscreen/raw/pokeball-almost.gif",
+      "suggestedFilename": "pokeball-almost.gif"
+    },
+    "pokeball-emerge": {
+      "ok": true,
+      "bytes": 237169,
+      "sha256_16": "a27bad212d6eac97",
+      "file": "greenscreen/raw/pokeball-emerge.gif",
+      "suggestedFilename": "pokeball-emerge.gif"
+    },
+    "deal-with-it": {
+      "ok": true,
+      "bytes": 6677,
+      "ext": "gif",
+      "sha256_16": "7134a64b32522bfc",
+      "file": "greenscreen/raw/deal-with-it.gif"
+    },
+    "bounce": {
+      "ok": true,
+      "bytes": 1848,
+      "ext": "gif",
+      "sha256_16": "d9ecf70d5d663a4a",
+      "file": "greenscreen/raw/bounce.gif"
+    },
+    "spin": {
+      "ok": true,
+      "bytes": 2879,
+      "sha256_16": "3d0ddf26f064f09b",
+      "file": "greenscreen/raw/spin.gif",
+      "suggestedFilename": "spin.gif"
+    },
+    "jam": {
+      "ok": true,
+      "bytes": 1875,
+      "sha256_16": "f0b2d5c5bafb27ce",
+      "file": "greenscreen/raw/jam.gif",
+      "suggestedFilename": "jam.gif"
+    },
+    "panic": {
+      "ok": true,
+      "bytes": 1759,
+      "sha256_16": "2b600306bd4dcf00",
+      "file": "greenscreen/raw/panic.gif",
+      "suggestedFilename": "panic.gif"
+    },
+    "2x-wide-1": {
+      "ok": true,
+      "bytes": 634,
+      "ext": "png",
+      "sha256_16": "032998c9897730a4",
+      "file": "greenscreen/raw/2x-wide-1.png"
+    },
+    "2x-wide-2": {
+      "ok": true,
+      "bytes": 634,
+      "ext": "png",
+      "sha256_16": "032998c9897730a4",
+      "file": "greenscreen/raw/2x-wide-2.png"
+    },
+    "3d-flip": {
+      "ok": true,
+      "bytes": 3168,
+      "ext": "gif",
+      "sha256_16": "333f513b9fecb5b0",
+      "file": "greenscreen/raw/3d-flip.gif"
+    },
+    "3x-wide-1": {
+      "ok": true,
+      "bytes": 634,
+      "ext": "png",
+      "sha256_16": "032998c9897730a4",
+      "file": "greenscreen/raw/3x-wide-1.png"
+    },
+    "3x-wide-2": {
+      "ok": true,
+      "bytes": 634,
+      "ext": "png",
+      "sha256_16": "032998c9897730a4",
+      "file": "greenscreen/raw/3x-wide-2.png"
+    },
+    "3x-wide-3": {
+      "ok": true,
+      "bytes": 634,
+      "ext": "png",
+      "sha256_16": "032998c9897730a4",
+      "file": "greenscreen/raw/3x-wide-3.png"
+    },
+    "4x-wide-1": {
+      "ok": false,
+      "error": "not-gif",
+      "bytes": 634
+    },
+    "4x-wide-2": {
+      "ok": false,
+      "error": "not-gif",
+      "bytes": 634
+    },
+    "4x-wide-3": {
+      "ok": false,
+      "error": "not-gif",
+      "bytes": 634
+    },
+    "4x-wide-4": {
+      "ok": false,
+      "error": "not-gif",
+      "bytes": 634
+    },
+    "abdul-pls": {
+      "ok": true,
+      "bytes": 45755,
+      "ext": "gif",
+      "sha256_16": "c49e099428774e49",
+      "file": "greenscreen/raw/abdul-pls.gif"
+    },
+    "accordion": {
+      "ok": true,
+      "bytes": 39485,
+      "ext": "gif",
+      "sha256_16": "551709e1098f8514",
+      "file": "greenscreen/raw/accordion.gif"
+    },
+    "aflame": {
+      "ok": true,
+      "bytes": 65349,
+      "ext": "gif",
+      "sha256_16": "f8bfb6f33d9258e2",
+      "file": "greenscreen/raw/aflame.gif"
+    },
+    "aha": {
+      "ok": true,
+      "bytes": 67869,
+      "sha256_16": "5a535e8c9325fd7d",
+      "file": "greenscreen/raw/aha.gif",
+      "suggestedFilename": "aha.gif"
+    },
+    "airball": {
+      "ok": true,
+      "bytes": 10430,
+      "ext": "gif",
+      "sha256_16": "73b510477fd405a6",
+      "file": "greenscreen/raw/airball.gif"
+    },
+    "alarm": {
+      "ok": true,
+      "bytes": 14185,
+      "sha256_16": "723e7b8ba909d089",
+      "file": "greenscreen/raw/alarm.gif",
+      "suggestedFilename": "alarm.gif"
+    },
+    "alarms": {
+      "ok": true,
+      "bytes": 34841,
+      "sha256_16": "6ddfcc37f803506b",
+      "file": "greenscreen/raw/alarms.gif",
+      "suggestedFilename": "alarms.gif"
+    },
+    "alert": {
+      "ok": true,
+      "bytes": 14187,
+      "sha256_16": "0b4ba8b261188a72",
+      "file": "greenscreen/raw/alert.gif",
+      "suggestedFilename": "alert.gif"
+    },
+    "alien-pls": {
+      "ok": true,
+      "bytes": 426307,
+      "sha256_16": "f54912e77c4d75e9",
+      "file": "greenscreen/raw/alien-pls.gif",
+      "suggestedFilename": "alien-pls.gif"
+    },
+    "alien-pls-3": {
+      "ok": true,
+      "bytes": 98628,
+      "sha256_16": "c65ae7350a4f8c7d",
+      "file": "greenscreen/raw/alien-pls-3.gif",
+      "suggestedFilename": "alien-pls-3.gif"
+    },
+    "alowo": {
+      "ok": true,
+      "bytes": 40423,
+      "sha256_16": "7f3997658de7dda8",
+      "file": "greenscreen/raw/alowo.gif",
+      "suggestedFilename": "alowo.gif"
+    },
+    "amaze": {
+      "ok": true,
+      "bytes": 6763,
+      "sha256_16": "1901210a107ca62f",
+      "file": "greenscreen/raw/amaze.gif",
+      "suggestedFilename": "amaze.gif"
+    },
+    "angel": {
+      "ok": false,
+      "error": "not-gif",
+      "bytes": 5692
+    },
+    "anime-scream": {
+      "ok": true,
+      "bytes": 230121,
+      "sha256_16": "a44ad014fd099b94",
+      "file": "greenscreen/raw/anime-scream.gif",
+      "suggestedFilename": "anime-scream.gif"
+    },
+    "anime-speed": {
+      "ok": true,
+      "bytes": 11229,
+      "sha256_16": "79eba1e41313d48d",
+      "file": "greenscreen/raw/anime-speed.gif",
+      "suggestedFilename": "anime-speed.gif"
+    },
+    "anticipation": {
+      "ok": true,
+      "bytes": 68839,
+      "sha256_16": "a96712b220b54e9a",
+      "file": "greenscreen/raw/anticipation.gif",
+      "suggestedFilename": "anticipation.gif"
+    },
+    "approve-arms": {
+      "ok": true,
+      "bytes": 29116,
+      "sha256_16": "05eff84a2a240947",
+      "file": "greenscreen/raw/approve-arms.gif",
+      "suggestedFilename": "approve-arms.gif"
+    },
+    "attention-alert": {
+      "ok": true,
+      "bytes": 9013,
+      "ext": "gif",
+      "sha256_16": "a3cd8996035de601",
+      "file": "greenscreen/raw/attention-alert.gif"
+    },
+    "banana-dance": {
+      "ok": true,
+      "bytes": 19596,
+      "sha256_16": "d2b540f9233d3319",
+      "file": "greenscreen/raw/banana-dance.gif",
+      "suggestedFilename": "banana-dance.gif"
+    },
+    "bat-signal": {
+      "ok": false,
+      "error": "not-gif",
+      "bytes": 5831
+    },
+    "bat-signal-scene": {
+      "ok": false,
+      "error": "not-gif",
+      "bytes": 26033
+    },
+    "bedge": {
+      "ok": false,
+      "error": "not-gif",
+      "bytes": 11281
+    },
+    "beers": {
+      "ok": true,
+      "bytes": 18165,
+      "sha256_16": "fee93a46ccbe18aa",
+      "file": "greenscreen/raw/beers.gif",
+      "suggestedFilename": "beers.gif"
+    },
+    "big-brain": {
+      "ok": true,
+      "bytes": 19861,
+      "sha256_16": "52fd87a4a0a14b11",
+      "file": "greenscreen/raw/big-brain.gif",
+      "suggestedFilename": "big-brain.gif"
+    },
+    "binoculars": {
+      "ok": false,
+      "error": "not-gif",
+      "bytes": 14340
+    },
+    "blah-blah-blah": {
+      "ok": true,
+      "bytes": 191062,
+      "sha256_16": "86d34ec416e661ca",
+      "file": "greenscreen/raw/blah-blah-blah.gif",
+      "suggestedFilename": "blah-blah-blah.gif"
+    },
+    "blame": {
+      "ok": false,
+      "error": "not-gif",
+      "bytes": 13366
+    },
+    "blame-animated": {
+      "ok": true,
+      "bytes": 12529,
+      "sha256_16": "51fe6e3227d73b5a",
+      "file": "greenscreen/raw/blame-animated.gif",
+      "suggestedFilename": "blame-animated.gif"
+    },
+    "blanket": {
+      "ok": false,
+      "error": "not-gif",
+      "bytes": 14732
+    },
+    "blankies": {
+      "ok": true,
+      "bytes": 32597,
+      "sha256_16": "b594f273a15081ca",
+      "file": "greenscreen/raw/blankies.gif",
+      "suggestedFilename": "blankies.gif"
+    },
+    "blast": {
+      "ok": true,
+      "bytes": 16250,
+      "sha256_16": "05a93909ece77dab",
+      "file": "greenscreen/raw/blast.gif",
+      "suggestedFilename": "blast.gif"
+    },
+    "blaze": {
+      "ok": true,
+      "bytes": 28536,
+      "sha256_16": "5dd5a4d45d6e79d9",
+      "file": "greenscreen/raw/blaze.gif",
+      "suggestedFilename": "blaze.gif"
+    },
+    "bless-up": {
+      "ok": true,
+      "bytes": 16405,
+      "sha256_16": "214963f6da06ca78",
+      "file": "greenscreen/raw/bless-up.gif",
+      "suggestedFilename": "bless-up.gif"
+    },
+    "blink": {
+      "ok": true,
+      "bytes": 1569,
+      "sha256_16": "674ae48fd0f5d23c",
+      "file": "greenscreen/raw/blink.gif",
+      "suggestedFilename": "blink.gif"
+    },
+    "blob-help": {
+      "ok": false,
+      "error": "not-gif",
+      "bytes": 9692
+    },
+    "blob-no": {
+      "ok": false,
+      "error": "not-gif",
+      "bytes": 13954
+    },
+    "blob-smiley": {
+      "ok": true,
+      "bytes": 5391,
+      "ext": "png",
+      "sha256_16": "3b078ac6e0e25dec",
+      "file": "greenscreen/raw/blob-smiley.png"
+    },
+    "blob-yes": {
+      "ok": true,
+      "bytes": 12686,
+      "ext": "png",
+      "sha256_16": "67bab77d72b98e2c",
+      "file": "greenscreen/raw/blob-yes.png"
+    },
+    "blush": {
+      "ok": true,
+      "bytes": 9089,
+      "ext": "png",
+      "sha256_16": "3c4f16a639025127",
+      "file": "greenscreen/raw/blush.png"
+    },
+    "bobble": {
+      "ok": true,
+      "bytes": 2759,
+      "ext": "gif",
+      "sha256_16": "1cd59ab668403a33",
+      "file": "greenscreen/raw/bobble.gif"
+    },
+    "boing": {
+      "ok": true,
+      "bytes": 2361,
+      "ext": "gif",
+      "sha256_16": "241f4e64b2f0c089",
+      "file": "greenscreen/raw/boing.gif"
+    },
+    "bongo-cat": {
+      "ok": true,
+      "bytes": 19703,
+      "ext": "gif",
+      "sha256_16": "6ba60e2ddf42b73d",
+      "file": "greenscreen/raw/bongo-cat.gif"
+    },
+    "bongo-heart": {
+      "ok": true,
+      "bytes": 30659,
+      "ext": "gif",
+      "sha256_16": "0a824b6d96cae640",
+      "file": "greenscreen/raw/bongo-heart.gif"
+    },
+    "bonk-doge": {
+      "ok": true,
+      "bytes": 36050,
+      "ext": "gif",
+      "sha256_16": "429ec2fe217d04b2",
+      "file": "greenscreen/raw/bonk-doge.gif"
+    },
+    "booba": {
+      "ok": true,
+      "bytes": 336547,
+      "ext": "gif",
+      "sha256_16": "e73e4fa7909c5a3e",
+      "file": "greenscreen/raw/booba.gif"
+    },
+    "bonk": {
+      "ok": true,
+      "bytes": 13492,
+      "ext": "gif",
+      "sha256_16": "234296ac136a81d6",
+      "file": "greenscreen/raw/bonk.gif"
+    },
+    "boooo": {
+      "ok": true,
+      "bytes": 322791,
+      "ext": "gif",
+      "sha256_16": "df5c268124ef2533",
+      "file": "greenscreen/raw/boooo.gif"
+    },
+    "boom": {
+      "ok": true,
+      "bytes": 26934,
+      "ext": "gif",
+      "sha256_16": "e29205631f2a35c6",
+      "file": "greenscreen/raw/boom.gif"
+    },
+    "bounce-and-spin": {
+      "ok": true,
+      "bytes": 2649,
+      "ext": "gif",
+      "sha256_16": "e152655aa8f20dcd",
+      "file": "greenscreen/raw/bounce-and-spin.gif"
+    },
+    "box": {
+      "ok": true,
+      "bytes": 66731,
+      "ext": "gif",
+      "sha256_16": "fb45002a153718fb",
+      "file": "greenscreen/raw/box.gif"
+    },
+    "breaking-news": {
+      "ok": true,
+      "bytes": 23877,
+      "ext": "gif",
+      "sha256_16": "eee29c1893513c05",
+      "file": "greenscreen/raw/breaking-news.gif"
+    },
+    "breathe": {
+      "ok": true,
+      "bytes": 1746,
+      "ext": "gif",
+      "sha256_16": "ede7fd5f8c091563",
+      "file": "greenscreen/raw/breathe.gif"
+    },
+    "bubble": {
+      "ok": true,
+      "bytes": 3112,
+      "ext": "gif",
+      "sha256_16": "c4c5a4e9204be922",
+      "file": "greenscreen/raw/bubble.gif"
+    },
+    "bubbles": {
+      "ok": true,
+      "bytes": 172253,
+      "ext": "gif",
+      "sha256_16": "d4bf2248ee4da70b",
+      "file": "greenscreen/raw/bubbles.gif"
+    },
+    "bufo-offers": {
+      "ok": true,
+      "bytes": 12738,
+      "ext": "png",
+      "sha256_16": "fe48f704a97e4d5b",
+      "file": "greenscreen/raw/bufo-offers.png"
+    },
+    "bufo-takes": {
+      "ok": true,
+      "bytes": 15871,
+      "ext": "png",
+      "sha256_16": "97df49a0ec7596ee",
+      "file": "greenscreen/raw/bufo-takes.png"
+    },
+    "bulge": {
+      "ok": true,
+      "bytes": 2427,
+      "ext": "gif",
+      "sha256_16": "dbd4c908c6fab2e0",
+      "file": "greenscreen/raw/bulge.gif"
+    },
+    "burger": {
+      "ok": true,
+      "bytes": 17723,
+      "ext": "png",
+      "sha256_16": "c353e41932651a83",
+      "file": "greenscreen/raw/burger.png"
+    },
+    "burn": {
+      "ok": true,
+      "bytes": 5895,
+      "ext": "gif",
+      "sha256_16": "0774c4432544ff9d",
+      "file": "greenscreen/raw/burn.gif"
+    },
+    "bush-disappear": {
+      "ok": true,
+      "bytes": 40108,
+      "ext": "gif",
+      "sha256_16": "224b5e9c924285c7",
+      "file": "greenscreen/raw/bush-disappear.gif"
+    },
+    "bush-texture": {
+      "ok": true,
+      "bytes": 80513,
+      "ext": "gif",
+      "sha256_16": "ec679f0bd053c274",
+      "file": "greenscreen/raw/bush-texture.gif"
+    },
+    "butterfly": {
+      "ok": true,
+      "bytes": 4269,
+      "ext": "gif",
+      "sha256_16": "468501e1a516121e",
+      "file": "greenscreen/raw/butterfly.gif"
+    },
+    "cancel": {
+      "ok": true,
+      "bytes": 7391,
+      "ext": "gif",
+      "sha256_16": "58a32d21e96b1693",
+      "file": "greenscreen/raw/cancel.gif"
+    },
+    "cat-ears": {
+      "ok": true,
+      "bytes": 38606,
+      "ext": "gif",
+      "sha256_16": "5ccdf18d31fce8a2",
+      "file": "greenscreen/raw/cat-ears.gif"
+    },
+    "cat-jam": {
+      "ok": true,
+      "bytes": 830278,
+      "ext": "gif",
+      "sha256_16": "39d63f4e6a9f7a8a",
+      "file": "greenscreen/raw/cat-jam.gif"
+    },
+    "cat-jam-crying": {
+      "ok": true,
+      "bytes": 891911,
+      "ext": "gif",
+      "sha256_16": "d9e5f84468f65503",
+      "file": "greenscreen/raw/cat-jam-crying.gif"
+    },
+    "cat-no": {
+      "ok": true,
+      "bytes": 110427,
+      "ext": "gif",
+      "sha256_16": "81e19d5cb88f0500",
+      "file": "greenscreen/raw/cat-no.gif"
+    },
+    "cat-slap": {
+      "ok": true,
+      "bytes": 33253,
+      "ext": "gif",
+      "sha256_16": "495634878bb1810a",
+      "file": "greenscreen/raw/cat-slap.gif"
+    },
+    "cat-yes": {
+      "ok": true,
+      "bytes": 110841,
+      "ext": "gif",
+      "sha256_16": "ace516f7c80cf760",
+      "file": "greenscreen/raw/cat-yes.gif"
+    },
+    "catjam-bob": {
+      "ok": true,
+      "bytes": 7623,
+      "ext": "gif",
+      "sha256_16": "6ba228e8f2ed9044",
+      "file": "greenscreen/raw/catjam-bob.gif"
+    },
+    "caught-in-4k": {
+      "ok": true,
+      "bytes": 24046,
+      "ext": "gif",
+      "sha256_16": "1c63831af7de5ee5",
+      "file": "greenscreen/raw/caught-in-4k.gif"
+    },
+    "clap": {
+      "ok": true,
+      "bytes": 22596,
+      "ext": "gif",
+      "sha256_16": "5f6620ca3a0defb8",
+      "file": "greenscreen/raw/clap.gif"
+    },
+    "clap-glove": {
+      "ok": true,
+      "bytes": 18202,
+      "ext": "gif",
+      "sha256_16": "4f05244235a71e95",
+      "file": "greenscreen/raw/clap-glove.gif"
+    },
+    "clap-loop": {
+      "ok": true,
+      "bytes": 16787,
+      "ext": "gif",
+      "sha256_16": "83def017657d2ae4",
+      "file": "greenscreen/raw/clap-loop.gif"
+    },
+    "claude-code": {
+      "ok": true,
+      "bytes": 12267,
+      "ext": "gif",
+      "sha256_16": "aebe33151becd365",
+      "file": "greenscreen/raw/claude-code.gif"
+    },
+    "claude-dancing": {
+      "ok": true,
+      "bytes": 7550,
+      "ext": "gif",
+      "sha256_16": "8ce9cd6d67a4e997",
+      "file": "greenscreen/raw/claude-dancing.gif"
+    },
+    "claude-football": {
+      "ok": true,
+      "bytes": 42381,
+      "ext": "gif",
+      "sha256_16": "02621571c58ff033",
+      "file": "greenscreen/raw/claude-football.gif"
+    },
+    "claude-fu": {
+      "ok": true,
+      "bytes": 12252,
+      "ext": "gif",
+      "sha256_16": "aefa7692c9208f4d",
+      "file": "greenscreen/raw/claude-fu.gif"
+    },
+    "claude-idea": {
+      "ok": true,
+      "bytes": 7142,
+      "ext": "gif",
+      "sha256_16": "2b93ef624a58341c",
+      "file": "greenscreen/raw/claude-idea.gif"
+    },
+    "claude-jam": {
+      "ok": true,
+      "bytes": 8405,
+      "ext": "gif",
+      "sha256_16": "60c6e05c801de89e",
+      "file": "greenscreen/raw/claude-jam.gif"
+    },
+    "cleaning": {
+      "ok": true,
+      "bytes": 32169,
+      "ext": "gif",
+      "sha256_16": "e18631896515e14c",
+      "file": "greenscreen/raw/cleaning.gif"
+    },
+    "clone-army": {
+      "ok": true,
+      "bytes": 5798,
+      "ext": "gif",
+      "sha256_16": "060ff9f9fd17635c",
+      "file": "greenscreen/raw/clone-army.gif"
+    },
+    "coggers": {
+      "ok": true,
+      "bytes": 6303,
+      "ext": "png",
+      "sha256_16": "30b0c28d2a880374",
+      "file": "greenscreen/raw/coggers.png"
+    },
+    "combust": {
+      "ok": true,
+      "bytes": 47235,
+      "ext": "gif",
+      "sha256_16": "34f93766c6285862",
+      "file": "greenscreen/raw/combust.gif"
+    },
+    "comfy": {
+      "ok": true,
+      "bytes": 18434,
+      "ext": "png",
+      "sha256_16": "df456ce5f12f2bda",
+      "file": "greenscreen/raw/comfy.png"
+    },
+    "concerned": {
+      "ok": true,
+      "bytes": 161178,
+      "ext": "gif",
+      "sha256_16": "2b5c80696b80eaac",
+      "file": "greenscreen/raw/concerned.gif"
+    },
+    "confetti-drop": {
+      "ok": true,
+      "bytes": 8423,
+      "ext": "gif",
+      "sha256_16": "da524fd5fc8a149a",
+      "file": "greenscreen/raw/confetti-drop.gif"
+    },
+    "confused-cat": {
+      "ok": true,
+      "bytes": 3800,
+      "ext": "png",
+      "sha256_16": "a642d1bd577f0c07",
+      "file": "greenscreen/raw/confused-cat.png"
+    },
+    "conga-line": {
+      "ok": true,
+      "bytes": 4476,
+      "ext": "gif",
+      "sha256_16": "edfb00b289292faa",
+      "file": "greenscreen/raw/conga-line.gif"
+    },
+    "content-aware": {
+      "ok": true,
+      "bytes": 1569,
+      "ext": "gif",
+      "sha256_16": "f7a45c0591080615",
+      "file": "greenscreen/raw/content-aware.gif"
+    },
+    "cool-glasses": {
+      "ok": true,
+      "bytes": 30410,
+      "ext": "gif",
+      "sha256_16": "e1001169d973741a",
+      "file": "greenscreen/raw/cool-glasses.gif"
+    },
+    "copium": {
+      "ok": true,
+      "bytes": 18855,
+      "ext": "png",
+      "sha256_16": "a1f2aa9247994b71",
+      "file": "greenscreen/raw/copium.png"
+    },
+    "courage-scream": {
+      "ok": true,
+      "bytes": 1083911,
+      "ext": "gif",
+      "sha256_16": "dea27235d176e26e",
+      "file": "greenscreen/raw/courage-scream.gif"
+    },
+    "cowboy": {
+      "ok": true,
+      "bytes": 9393,
+      "ext": "png",
+      "sha256_16": "7f16366637d64f40",
+      "file": "greenscreen/raw/cowboy.png"
+    },
+    "credit-swipe": {
+      "ok": true,
+      "bytes": 28575,
+      "ext": "gif",
+      "sha256_16": "7d22c3448e4f911b",
+      "file": "greenscreen/raw/credit-swipe.gif"
+    },
+    "crab": {
+      "ok": true,
+      "bytes": 23892,
+      "ext": "gif",
+      "sha256_16": "6446d0721d46ff80",
+      "file": "greenscreen/raw/crab.gif"
+    },
+    "crying-laughing": {
+      "ok": true,
+      "bytes": 13740,
+      "ext": "png",
+      "sha256_16": "0b3a0ffabf325d0a",
+      "file": "greenscreen/raw/crying-laughing.png"
+    },
+    "cube": {
+      "ok": true,
+      "bytes": 9037,
+      "ext": "gif",
+      "sha256_16": "7e99c1d864ffcd18",
+      "file": "greenscreen/raw/cube.gif"
+    },
+    "cute-ghost": {
+      "ok": true,
+      "bytes": 8101,
+      "ext": "gif",
+      "sha256_16": "a246818082c9975e",
+      "file": "greenscreen/raw/cute-ghost.gif"
+    },
+    "transmute-reality": {
+      "ok": true,
+      "bytes": 6437,
+      "ext": "gif",
+      "sha256_16": "43308dcc0f10f672",
+      "file": "greenscreen/raw/transmute-reality.gif"
+    },
+    "nesting-doll": {
+      "ok": true,
+      "bytes": 11906,
+      "ext": "gif",
+      "sha256_16": "bd74ba4d3c5d3761",
+      "file": "greenscreen/raw/nesting-doll.gif"
+    },
+    "flare-eyes": {
+      "ok": true,
+      "bytes": 34661,
+      "ext": "gif",
+      "sha256_16": "d63dca4d8338f6d3",
+      "file": "greenscreen/raw/flare-eyes.gif"
+    },
+    "ponder": {
+      "ok": true,
+      "bytes": 277296,
+      "ext": "gif",
+      "sha256_16": "6ec712d5bd4ddad3",
+      "file": "greenscreen/raw/ponder.gif"
+    },
+    "fall-leaves": {
+      "ok": true,
+      "bytes": 65201,
+      "ext": "gif",
+      "sha256_16": "9f977170b2290375",
+      "file": "greenscreen/raw/fall-leaves.gif"
+    },
+    "pumpkin": {
+      "ok": true,
+      "bytes": 16663,
+      "ext": "png",
+      "sha256_16": "27b9b9d202eaae90",
+      "file": "greenscreen/raw/pumpkin.png"
+    },
+    "pumpkin2": {
+      "ok": true,
+      "bytes": 16425,
+      "ext": "png",
+      "sha256_16": "2ecad9505c47f7f0",
+      "file": "greenscreen/raw/pumpkin2.png"
+    },
+    "pumpkin-surprise": {
+      "ok": true,
+      "bytes": 17145,
+      "ext": "png",
+      "sha256_16": "6439497eacbf97c8",
+      "file": "greenscreen/raw/pumpkin-surprise.png"
+    },
+    "pumpkin-give": {
+      "ok": true,
+      "bytes": 130148,
+      "ext": "gif",
+      "sha256_16": "a46dd6f7e5b35ca1",
+      "file": "greenscreen/raw/pumpkin-give.gif"
+    },
+    "pumpkin-take": {
+      "ok": true,
+      "bytes": 130569,
+      "ext": "gif",
+      "sha256_16": "fa674b0df4e92563",
+      "file": "greenscreen/raw/pumpkin-take.gif"
+    },
+    "skeleton-dance": {
+      "ok": true,
+      "bytes": 10013,
+      "ext": "gif",
+      "sha256_16": "8024bfc9bd429d14",
+      "file": "greenscreen/raw/skeleton-dance.gif"
+    },
+    "green-fire": {
+      "ok": true,
+      "bytes": 26071,
+      "ext": "gif",
+      "sha256_16": "d8862e496ee50c3e",
+      "file": "greenscreen/raw/green-fire.gif"
+    },
+    "floating-pumpkins": {
+      "ok": true,
+      "bytes": 64082,
+      "ext": "gif",
+      "sha256_16": "ec4b61123c8dd896",
+      "file": "greenscreen/raw/floating-pumpkins.gif"
+    },
+    "rare-ghost": {
+      "ok": true,
+      "bytes": 47122,
+      "ext": "gif",
+      "sha256_16": "5950b83abd4d0168",
+      "file": "greenscreen/raw/rare-ghost.gif"
+    },
+    "pumpkin-cat": {
+      "ok": true,
+      "bytes": 39277,
+      "ext": "gif",
+      "sha256_16": "3e0a2f2279def314",
+      "file": "greenscreen/raw/pumpkin-cat.gif"
+    },
+    "purple-stars": {
+      "ok": true,
+      "bytes": 4288,
+      "ext": "gif",
+      "sha256_16": "562ac20aed9bc0dc",
+      "file": "greenscreen/raw/purple-stars.gif"
+    },
+    "vampire-offers": {
+      "ok": true,
+      "bytes": 14071,
+      "ext": "png",
+      "sha256_16": "7c4b1343c6b664f2",
+      "file": "greenscreen/raw/vampire-offers.png"
+    },
+    "vampire-takes": {
+      "ok": true,
+      "bytes": 14720,
+      "ext": "png",
+      "sha256_16": "95b8d2da95619342",
+      "file": "greenscreen/raw/vampire-takes.png"
+    },
+    "will-presents": {
+      "ok": true,
+      "bytes": 147527,
+      "ext": "gif",
+      "sha256_16": "a64e2d9aa54a5ca1",
+      "file": "greenscreen/raw/will-presents.gif"
+    },
+    "pikachu": {
+      "ok": true,
+      "bytes": 38183,
+      "ext": "gif",
+      "sha256_16": "37da1082153dd14c",
+      "file": "greenscreen/raw/pikachu.gif"
+    },
+    "pika-stand": {
+      "ok": true,
+      "bytes": 6660,
+      "ext": "gif",
+      "sha256_16": "118c92bcbdf72f36",
+      "file": "greenscreen/raw/pika-stand.gif"
+    },
+    "surprised-pikachu": {
+      "ok": true,
+      "bytes": 30345,
+      "ext": "gif",
+      "sha256_16": "52b10e4ee95670ad",
+      "file": "greenscreen/raw/surprised-pikachu.gif"
+    },
+    "gengar": {
+      "ok": true,
+      "bytes": 41722,
+      "ext": "gif",
+      "sha256_16": "14ef6e9f809bfcd1",
+      "file": "greenscreen/raw/gengar.gif"
+    },
+    "snorlax": {
+      "ok": true,
+      "bytes": 114026,
+      "ext": "gif",
+      "sha256_16": "613321239db7ddee",
+      "file": "greenscreen/raw/snorlax.gif"
+    },
+    "ditto": {
+      "ok": true,
+      "bytes": 38941,
+      "ext": "gif",
+      "sha256_16": "6949100004a50292",
+      "file": "greenscreen/raw/ditto.gif"
+    },
+    "jumping-on-the-bed": {
+      "ok": true,
+      "bytes": 9938,
+      "ext": "gif",
+      "sha256_16": "8787cc3667bbc1db",
+      "file": "greenscreen/raw/jumping-on-the-bed.gif"
+    },
+    "long": {
+      "ok": true,
+      "bytes": 634,
+      "ext": "png",
+      "sha256_16": "032998c9897730a4",
+      "file": "greenscreen/raw/long.png"
+    },
+    "i-love": {
+      "ok": true,
+      "bytes": 51210,
+      "ext": "gif",
+      "sha256_16": "ada850b3810a82cf",
+      "file": "greenscreen/raw/i-love.gif"
+    },
+    "tilt": {
+      "ok": true,
+      "bytes": 2809,
+      "ext": "gif",
+      "sha256_16": "c5b02db7fe9f21f0",
+      "file": "greenscreen/raw/tilt.gif"
+    },
+    "runn": {
+      "ok": true,
+      "bytes": 448214,
+      "ext": "gif",
+      "sha256_16": "c64b2d514a09b340",
+      "file": "greenscreen/raw/runn.gif"
+    },
+    "pepe-meltdown": {
+      "ok": true,
+      "bytes": 17636,
+      "ext": "gif",
+      "sha256_16": "c76bfe0ca79ce64e",
+      "file": "greenscreen/raw/pepe-meltdown.gif"
+    },
+    "pp-hopper": {
+      "ok": true,
+      "bytes": 8288,
+      "ext": "gif",
+      "sha256_16": "fb4d6a4fd41f63c8",
+      "file": "greenscreen/raw/pp-hopper.gif"
+    },
+    "rainbow-bloom": {
+      "ok": true,
+      "bytes": 11133,
+      "ext": "gif",
+      "sha256_16": "a7cbea7db66ca604",
+      "file": "greenscreen/raw/rainbow-bloom.gif"
+    },
+    "pastel-bloom": {
+      "ok": true,
+      "bytes": 30078,
+      "ext": "gif",
+      "sha256_16": "e706f085bca79b4d",
+      "file": "greenscreen/raw/pastel-bloom.gif"
+    },
+    "lolface": {
+      "ok": true,
+      "bytes": 6912,
+      "ext": "png",
+      "sha256_16": "dc9832c85fd7e677",
+      "file": "greenscreen/raw/lolface.png"
+    },
+    "flag": {
+      "ok": true,
+      "bytes": 10612,
+      "ext": "gif",
+      "sha256_16": "82c5ec8a128984d0",
+      "file": "greenscreen/raw/flag.gif"
+    },
+    "pepe-flag": {
+      "ok": true,
+      "bytes": 17877,
+      "ext": "gif",
+      "sha256_16": "8bff8c505d546086",
+      "file": "greenscreen/raw/pepe-flag.gif"
+    },
+    "frog-flag": {
+      "ok": true,
+      "bytes": 17185,
+      "ext": "png",
+      "sha256_16": "f58a1491df48ded4",
+      "file": "greenscreen/raw/frog-flag.png"
+    },
+    "sisyphus": {
+      "ok": true,
+      "bytes": 18030,
+      "ext": "png",
+      "sha256_16": "3ded5aeb94588f29",
+      "file": "greenscreen/raw/sisyphus.png"
+    },
+    "hype": {
+      "ok": true,
+      "bytes": 26630,
+      "ext": "gif",
+      "sha256_16": "ef3ae741932469d8",
+      "file": "greenscreen/raw/hype.gif"
+    },
+    "hype-shake": {
+      "ok": true,
+      "bytes": 31381,
+      "ext": "gif",
+      "sha256_16": "f888a182daf07018",
+      "file": "greenscreen/raw/hype-shake.gif"
+    },
+    "hype-jam": {
+      "ok": true,
+      "bytes": 29870,
+      "ext": "gif",
+      "sha256_16": "e5e72b4e243b0dc2",
+      "file": "greenscreen/raw/hype-jam.gif"
+    },
+    "sir": {
+      "ok": true,
+      "bytes": 6383,
+      "ext": "png",
+      "sha256_16": "2a8006bbd607e567",
+      "file": "greenscreen/raw/sir.png"
+    },
+    "pepe": {
+      "ok": true,
+      "bytes": 5945,
+      "ext": "png",
+      "sha256_16": "0cc9389a121c777e",
+      "file": "greenscreen/raw/pepe.png"
+    },
+    "prayge": {
+      "ok": true,
+      "bytes": 6744,
+      "ext": "png",
+      "sha256_16": "561274dfb30812a3",
+      "file": "greenscreen/raw/prayge.png"
+    },
+    "sadge": {
+      "ok": true,
+      "bytes": 5068,
+      "ext": "png",
+      "sha256_16": "8a1a06b9edf5a68c",
+      "file": "greenscreen/raw/sadge.png"
+    },
+    "pepe-cheer": {
+      "ok": true,
+      "bytes": 6885,
+      "ext": "png",
+      "sha256_16": "611d666eaa4562ac",
+      "file": "greenscreen/raw/pepe-cheer.png"
+    },
+    "pepe-dab": {
+      "ok": true,
+      "bytes": 11315,
+      "ext": "png",
+      "sha256_16": "f16530c57e2e8dd0",
+      "file": "greenscreen/raw/pepe-dab.png"
+    },
+    "pepega": {
+      "ok": true,
+      "bytes": 2632,
+      "ext": "png",
+      "sha256_16": "7c394abc16d43c11",
+      "file": "greenscreen/raw/pepega.png"
+    },
+    "laser-eyes": {
+      "ok": true,
+      "bytes": 11838,
+      "ext": "gif",
+      "sha256_16": "f331976c188f6ce8",
+      "file": "greenscreen/raw/laser-eyes.gif"
+    },
+    "stonks": {
+      "ok": true,
+      "bytes": 22249,
+      "ext": "png",
+      "sha256_16": "502afc30ec6f3873",
+      "file": "greenscreen/raw/stonks.png"
+    },
+    "not-stonks": {
+      "ok": true,
+      "bytes": 19160,
+      "ext": "png",
+      "sha256_16": "4e5d0a7aada31810",
+      "file": "greenscreen/raw/not-stonks.png"
+    },
+    "wokege": {
+      "ok": true,
+      "bytes": 18996,
+      "ext": "png",
+      "sha256_16": "51deedb95f949074",
+      "file": "greenscreen/raw/wokege.png"
+    },
+    "heyyeyaa": {
+      "ok": true,
+      "bytes": 18237,
+      "ext": "png",
+      "sha256_16": "c07ddc45b28cac68",
+      "file": "greenscreen/raw/heyyeyaa.png"
+    },
+    "glorp": {
+      "ok": true,
+      "bytes": 16952,
+      "ext": "png",
+      "sha256_16": "fd27b5cd8235ad46",
+      "file": "greenscreen/raw/glorp.png"
+    },
+    "glorpa": {
+      "ok": true,
+      "bytes": 13936,
+      "ext": "png",
+      "sha256_16": "cc7ed770e2bfef6d",
+      "file": "greenscreen/raw/glorpa.png"
+    },
+    "glorming": {
+      "ok": true,
+      "bytes": 798996,
+      "ext": "gif",
+      "sha256_16": "f53dc2055a66df1b",
+      "file": "greenscreen/raw/glorming.gif"
+    },
+    "labubu": {
+      "ok": true,
+      "bytes": 16248,
+      "ext": "png",
+      "sha256_16": "bb486d6ee7088f7e",
+      "file": "greenscreen/raw/labubu.png"
+    },
+    "hazmat": {
+      "ok": true,
+      "bytes": 25075,
+      "ext": "png",
+      "sha256_16": "c94784de1ca02c58",
+      "file": "greenscreen/raw/hazmat.png"
+    },
+    "hazmat-2": {
+      "ok": true,
+      "bytes": 20169,
+      "ext": "png",
+      "sha256_16": "56577e387c643796",
+      "file": "greenscreen/raw/hazmat-2.png"
+    },
+    "hoodie": {
+      "ok": true,
+      "bytes": 11232,
+      "ext": "png",
+      "sha256_16": "7ab8ae50ce88190e",
+      "file": "greenscreen/raw/hoodie.png"
+    },
+    "oui-oui": {
+      "ok": true,
+      "bytes": 15347,
+      "ext": "png",
+      "sha256_16": "4fca70aa9b9c4280",
+      "file": "greenscreen/raw/oui-oui.png"
+    },
+    "on-fire": {
+      "ok": true,
+      "bytes": 8919,
+      "ext": "gif",
+      "sha256_16": "8125f3f6f18b3efe",
+      "file": "greenscreen/raw/on-fire.gif"
+    },
+    "gigachad": {
+      "ok": true,
+      "bytes": 49613,
+      "ext": "gif",
+      "sha256_16": "5a9e80ce8d3ceb48",
+      "file": "greenscreen/raw/gigachad.gif"
+    },
+    "let-me-in": {
+      "ok": true,
+      "bytes": 294458,
+      "ext": "gif",
+      "sha256_16": "767be8ec4c7cc49c",
+      "file": "greenscreen/raw/let-me-in.gif"
+    },
+    "keanu-thanks": {
+      "ok": true,
+      "bytes": 245015,
+      "ext": "gif",
+      "sha256_16": "443ef7c83c8daedb",
+      "file": "greenscreen/raw/keanu-thanks.gif"
+    },
+    "red-alert": {
+      "ok": true,
+      "bytes": 153164,
+      "ext": "gif",
+      "sha256_16": "926e475498dba746",
+      "file": "greenscreen/raw/red-alert.gif"
+    },
+    "facepalm": {
+      "ok": true,
+      "bytes": 119322,
+      "ext": "gif",
+      "sha256_16": "e25a5aa1b7f9a856",
+      "file": "greenscreen/raw/facepalm.gif"
+    },
+    "smart": {
+      "ok": true,
+      "bytes": 42233,
+      "ext": "gif",
+      "sha256_16": "901c6c6b4a980c2f",
+      "file": "greenscreen/raw/smart.gif"
+    },
+    "fry": {
+      "ok": true,
+      "bytes": 71775,
+      "ext": "gif",
+      "sha256_16": "dd49ec039660a614",
+      "file": "greenscreen/raw/fry.gif"
+    },
+    "leave-me-alone": {
+      "ok": true,
+      "bytes": 801291,
+      "ext": "gif",
+      "sha256_16": "683d4f2f7c451672",
+      "file": "greenscreen/raw/leave-me-alone.gif"
+    },
+    "mine-block": {
+      "ok": true,
+      "bytes": 750391,
+      "ext": "gif",
+      "sha256_16": "4137cb1ea0f7b02f",
+      "file": "greenscreen/raw/mine-block.gif"
+    },
+    "phone-time": {
+      "ok": true,
+      "bytes": 412443,
+      "ext": "gif",
+      "sha256_16": "59fa2f45162df155",
+      "file": "greenscreen/raw/phone-time.gif"
+    },
+    "ice-cube": {
+      "ok": true,
+      "bytes": 25922,
+      "ext": "png",
+      "sha256_16": "5f8f4b1a733e4a7c",
+      "file": "greenscreen/raw/ice-cube.png"
+    },
+    "wolverine": {
+      "ok": true,
+      "bytes": 626366,
+      "ext": "gif",
+      "sha256_16": "08bd124e79d0406b",
+      "file": "greenscreen/raw/wolverine.gif"
+    },
+    "spongebob-worship": {
+      "ok": true,
+      "bytes": 44341,
+      "ext": "gif",
+      "sha256_16": "7f53c9a179d7b077",
+      "file": "greenscreen/raw/spongebob-worship.gif"
+    },
+    "pat": {
+      "ok": true,
+      "bytes": 23329,
+      "ext": "gif",
+      "sha256_16": "4ea2b93e0c4de92c",
+      "file": "greenscreen/raw/pat.gif"
+    },
+    "middle-fingers": {
+      "ok": true,
+      "bytes": 104871,
+      "ext": "gif",
+      "sha256_16": "57eb495b1ad1b275",
+      "file": "greenscreen/raw/middle-fingers.gif"
+    },
+    "doesnt-know": {
+      "ok": true,
+      "bytes": 4558,
+      "ext": "gif",
+      "sha256_16": "655f8b3a3e8d234f",
+      "file": "greenscreen/raw/doesnt-know.gif"
+    },
+    "venom": {
+      "ok": true,
+      "bytes": 652605,
+      "ext": "gif",
+      "sha256_16": "02e332d42d4a297f",
+      "file": "greenscreen/raw/venom.gif"
+    },
+    "mustache-glasses": {
+      "ok": true,
+      "bytes": 13848,
+      "ext": "png",
+      "sha256_16": "ae23be380843c9fd",
+      "file": "greenscreen/raw/mustache-glasses.png"
+    },
+    "jail-time": {
+      "ok": true,
+      "bytes": 42723,
+      "ext": "gif",
+      "sha256_16": "ffa83a979910522d",
+      "file": "greenscreen/raw/jail-time.gif"
+    },
+    "pixar-think": {
+      "ok": true,
+      "bytes": 939891,
+      "ext": "gif",
+      "sha256_16": "4849d28bf8779837",
+      "file": "greenscreen/raw/pixar-think.gif"
+    },
+    "reading": {
+      "ok": true,
+      "bytes": 10614,
+      "ext": "gif",
+      "sha256_16": "b6966268910e69fd",
+      "file": "greenscreen/raw/reading.gif"
+    },
+    "spongebob-watching-tv": {
+      "ok": true,
+      "bytes": 303315,
+      "ext": "gif",
+      "sha256_16": "4e02c3cb7f104298",
+      "file": "greenscreen/raw/spongebob-watching-tv.gif"
+    },
+    "reveal": {
+      "ok": true,
+      "bytes": 221216,
+      "ext": "gif",
+      "sha256_16": "526d7ee9f735d789",
+      "file": "greenscreen/raw/reveal.gif"
+    },
+    "huh": {
+      "ok": true,
+      "bytes": 340220,
+      "ext": "gif",
+      "sha256_16": "bdb376258deffcd1",
+      "file": "greenscreen/raw/huh.gif"
+    },
+    "speechless": {
+      "ok": true,
+      "bytes": 356876,
+      "ext": "gif",
+      "sha256_16": "5d7d8f48e816bf81",
+      "file": "greenscreen/raw/speechless.gif"
+    },
+    "suspicion": {
+      "ok": true,
+      "bytes": 198848,
+      "ext": "gif",
+      "sha256_16": "62a48ebf2c9c3918",
+      "file": "greenscreen/raw/suspicion.gif"
+    },
+    "surprised-clapping": {
+      "ok": true,
+      "bytes": 694488,
+      "ext": "gif",
+      "sha256_16": "abb56ec9a4bcc41d",
+      "file": "greenscreen/raw/surprised-clapping.gif"
+    },
+    "drake-duh": {
+      "ok": true,
+      "bytes": 358682,
+      "ext": "gif",
+      "sha256_16": "29edaae4270deb04",
+      "file": "greenscreen/raw/drake-duh.gif"
+    },
+    "meow-coffee-spit": {
+      "ok": true,
+      "bytes": 464635,
+      "ext": "gif",
+      "sha256_16": "643ddd45296cb048",
+      "file": "greenscreen/raw/meow-coffee-spit.gif"
+    },
+    "willem-dafoe": {
+      "ok": true,
+      "bytes": 263123,
+      "ext": "gif",
+      "sha256_16": "573c3d836822e6c4",
+      "file": "greenscreen/raw/willem-dafoe.gif"
+    },
+    "mhm": {
+      "ok": true,
+      "bytes": 29348,
+      "ext": "gif",
+      "sha256_16": "23f7b2a14a0b4a88",
+      "file": "greenscreen/raw/mhm.gif"
+    },
+    "pepe-binoculars": {
+      "ok": true,
+      "bytes": 42093,
+      "ext": "gif",
+      "sha256_16": "a63ad699c8d11c2b",
+      "file": "greenscreen/raw/pepe-binoculars.gif"
+    },
+    "pepe-point": {
+      "ok": true,
+      "bytes": 348999,
+      "ext": "gif",
+      "sha256_16": "083c11b6fe5101a4",
+      "file": "greenscreen/raw/pepe-point.gif"
+    },
+    "smoge": {
+      "ok": true,
+      "bytes": 232563,
+      "ext": "gif",
+      "sha256_16": "c0c947f76681922b",
+      "file": "greenscreen/raw/smoge.gif"
+    },
+    "feels-weak-man": {
+      "ok": true,
+      "bytes": 371008,
+      "ext": "gif",
+      "sha256_16": "f6ec3440bae47bb3",
+      "file": "greenscreen/raw/feels-weak-man.gif"
+    },
+    "madge-clap": {
+      "ok": true,
+      "bytes": 157919,
+      "ext": "gif",
+      "sha256_16": "b9cd5bb256fbd702",
+      "file": "greenscreen/raw/madge-clap.gif"
+    },
+    "smadge": {
+      "ok": true,
+      "bytes": 69197,
+      "ext": "gif",
+      "sha256_16": "d1cecf001a0c1662",
+      "file": "greenscreen/raw/smadge.gif"
+    },
+    "pepe-nodders": {
+      "ok": true,
+      "bytes": 383162,
+      "ext": "gif",
+      "sha256_16": "c9602e54edbd8c45",
+      "file": "greenscreen/raw/pepe-nodders.gif"
+    },
+    "sure": {
+      "ok": true,
+      "bytes": 395752,
+      "ext": "gif",
+      "sha256_16": "9d7f0d50246d45ea",
+      "file": "greenscreen/raw/sure.gif"
+    },
+    "nopers": {
+      "ok": true,
+      "bytes": 364107,
+      "ext": "gif",
+      "sha256_16": "cf131ebbbb4ea106",
+      "file": "greenscreen/raw/nopers.gif"
+    },
+    "pepo-popcorn": {
+      "ok": true,
+      "bytes": 158011,
+      "ext": "gif",
+      "sha256_16": "1512de5c866471bb",
+      "file": "greenscreen/raw/pepo-popcorn.gif"
+    },
+    "monka-hmm": {
+      "ok": true,
+      "bytes": 83963,
+      "ext": "gif",
+      "sha256_16": "fdeb7ee21ecc46ad",
+      "file": "greenscreen/raw/monka-hmm.gif"
+    },
+    "pause-champ": {
+      "ok": true,
+      "bytes": 70737,
+      "ext": "gif",
+      "sha256_16": "aa43c38bae09bb93",
+      "file": "greenscreen/raw/pause-champ.gif"
+    },
+    "peepo-clap": {
+      "ok": true,
+      "bytes": 166156,
+      "ext": "gif",
+      "sha256_16": "37a1c92229e6e0d5",
+      "file": "greenscreen/raw/peepo-clap.gif"
+    },
+    "shruge": {
+      "ok": true,
+      "bytes": 57775,
+      "ext": "gif",
+      "sha256_16": "a844d9ccfd33b99c",
+      "file": "greenscreen/raw/shruge.gif"
+    },
+    "peepo-giggles": {
+      "ok": true,
+      "bytes": 312589,
+      "ext": "gif",
+      "sha256_16": "a7d1b75e6d37f3e5",
+      "file": "greenscreen/raw/peepo-giggles.gif"
+    },
+    "peepo-sit-hey": {
+      "ok": true,
+      "bytes": 121233,
+      "ext": "gif",
+      "sha256_16": "a5715077cc0a7318",
+      "file": "greenscreen/raw/peepo-sit-hey.gif"
+    },
+    "peepo-bye": {
+      "ok": true,
+      "bytes": 143915,
+      "ext": "gif",
+      "sha256_16": "160259abb080c8e4",
+      "file": "greenscreen/raw/peepo-bye.gif"
+    },
+    "pepe-s": {
+      "ok": true,
+      "bytes": 128018,
+      "ext": "gif",
+      "sha256_16": "146fb112d25b5ab9",
+      "file": "greenscreen/raw/pepe-s.gif"
+    },
+    "saved": {
+      "ok": true,
+      "bytes": 416931,
+      "ext": "gif",
+      "sha256_16": "608053610547e1d3",
+      "file": "greenscreen/raw/saved.gif"
+    },
+    "monka-christ": {
+      "ok": true,
+      "bytes": 1165557,
+      "ext": "gif",
+      "sha256_16": "e54e9bf692704d17",
+      "file": "greenscreen/raw/monka-christ.gif"
+    },
+    "ono": {
+      "ok": true,
+      "bytes": 218410,
+      "ext": "gif",
+      "sha256_16": "f8fccc4d50ed2918",
+      "file": "greenscreen/raw/ono.gif"
+    },
+    "this-is-fine": {
+      "ok": true,
+      "bytes": 81330,
+      "ext": "gif",
+      "sha256_16": "d9404b11b1e0f329",
+      "file": "greenscreen/raw/this-is-fine.gif"
+    },
+    "elmo-fire": {
+      "ok": true,
+      "bytes": 478143,
+      "ext": "gif",
+      "sha256_16": "1556c7ccea9791cb",
+      "file": "greenscreen/raw/elmo-fire.gif"
+    },
+    "unimpressed-cat": {
+      "ok": true,
+      "bytes": 359611,
+      "ext": "gif",
+      "sha256_16": "ed6012c69efd1fad",
+      "file": "greenscreen/raw/unimpressed-cat.gif"
+    },
+    "emoji-scream": {
+      "ok": true,
+      "bytes": 180366,
+      "ext": "gif",
+      "sha256_16": "0086bdcda19cf675",
+      "file": "greenscreen/raw/emoji-scream.gif"
+    },
+    "side-eye-dog": {
+      "ok": true,
+      "bytes": 570502,
+      "ext": "gif",
+      "sha256_16": "2bbd381354d5c67d",
+      "file": "greenscreen/raw/side-eye-dog.gif"
+    },
+    "pepe-sweat": {
+      "ok": true,
+      "bytes": 247962,
+      "ext": "gif",
+      "sha256_16": "c23614d3caa6130f",
+      "file": "greenscreen/raw/pepe-sweat.gif"
+    },
+    "side-eye-chloe": {
+      "ok": true,
+      "bytes": 256763,
+      "ext": "gif",
+      "sha256_16": "356dc91de81e17cb",
+      "file": "greenscreen/raw/side-eye-chloe.gif"
+    },
+    "lets-gooo": {
+      "ok": true,
+      "bytes": 325651,
+      "ext": "gif",
+      "sha256_16": "ea0b35f5b45763cc",
+      "file": "greenscreen/raw/lets-gooo.gif"
+    },
+    "kek-laugh": {
+      "ok": true,
+      "bytes": 133386,
+      "ext": "gif",
+      "sha256_16": "b11a22bc8ae0010b",
+      "file": "greenscreen/raw/kek-laugh.gif"
+    },
+    "roll-safe": {
+      "ok": true,
+      "bytes": 225528,
+      "ext": "gif",
+      "sha256_16": "553e0ec666f501f4",
+      "file": "greenscreen/raw/roll-safe.gif"
+    },
+    "leave": {
+      "ok": true,
+      "bytes": 31134,
+      "ext": "gif",
+      "sha256_16": "ec60a2d21af76f53",
+      "file": "greenscreen/raw/leave.gif"
+    },
+    "startled-rat": {
+      "ok": true,
+      "bytes": 189797,
+      "ext": "gif",
+      "sha256_16": "35e86f738f12baf7",
+      "file": "greenscreen/raw/startled-rat.gif"
+    },
+    "shocked-man": {
+      "ok": true,
+      "bytes": 687798,
+      "ext": "gif",
+      "sha256_16": "f94bf3a15d967cd1",
+      "file": "greenscreen/raw/shocked-man.gif"
+    },
+    "lebron-jam": {
+      "ok": true,
+      "bytes": 783319,
+      "ext": "gif",
+      "sha256_16": "905ab9a23577d4d5",
+      "file": "greenscreen/raw/lebron-jam.gif"
+    },
+    "patrick-bateman": {
+      "ok": true,
+      "bytes": 356958,
+      "ext": "gif",
+      "sha256_16": "b169c4c53e6024e7",
+      "file": "greenscreen/raw/patrick-bateman.gif"
+    },
+    "kek-jam": {
+      "ok": true,
+      "bytes": 400759,
+      "ext": "gif",
+      "sha256_16": "377dfb4848ae422a",
+      "file": "greenscreen/raw/kek-jam.gif"
+    },
+    "owl-jam": {
+      "ok": true,
+      "bytes": 160921,
+      "ext": "gif",
+      "sha256_16": "b59477bc0c5b1c2d",
+      "file": "greenscreen/raw/owl-jam.gif"
+    },
+    "polar-bear": {
+      "ok": true,
+      "bytes": 46895,
+      "ext": "gif",
+      "sha256_16": "bc30b8c348a762da",
+      "file": "greenscreen/raw/polar-bear.gif"
+    },
+    "sign": {
+      "ok": true,
+      "bytes": 22945,
+      "ext": "gif",
+      "sha256_16": "bc2c4372adfb27ea",
+      "file": "greenscreen/raw/sign.gif"
+    },
+    "sign-mad": {
+      "ok": true,
+      "bytes": 27061,
+      "ext": "gif",
+      "sha256_16": "8064c49d709f3f83",
+      "file": "greenscreen/raw/sign-mad.gif"
+    },
+    "nod": {
+      "ok": true,
+      "bytes": 2965,
+      "ext": "gif",
+      "sha256_16": "9b8446db05f8ccaa",
+      "file": "greenscreen/raw/nod.gif"
+    },
+    "nodders": {
+      "ok": true,
+      "bytes": 2622,
+      "ext": "gif",
+      "sha256_16": "fd38d21acedf41a0",
+      "file": "greenscreen/raw/nodders.gif"
+    },
+    "lurk": {
+      "ok": true,
+      "bytes": 13776,
+      "ext": "gif",
+      "sha256_16": "1b3b42b68825f55d",
+      "file": "greenscreen/raw/lurk.gif"
+    },
+    "kablooey": {
+      "ok": true,
+      "bytes": 10733,
+      "ext": "gif",
+      "sha256_16": "861a73c7b54e3cd7",
+      "file": "greenscreen/raw/kablooey.gif"
+    },
+    "intensifies": {
+      "ok": true,
+      "bytes": 3086,
+      "ext": "gif",
+      "sha256_16": "dbc6a698886b5857",
+      "file": "greenscreen/raw/intensifies.gif"
+    },
+    "excited": {
+      "ok": true,
+      "bytes": 1810,
+      "ext": "gif",
+      "sha256_16": "fa50b3c184ce2ae5",
+      "file": "greenscreen/raw/excited.gif"
+    },
+    "flip": {
+      "ok": true,
+      "bytes": 1569,
+      "ext": "gif",
+      "sha256_16": "f7a45c0591080615",
+      "file": "greenscreen/raw/flip.gif"
+    },
+    "sphere": {
+      "ok": true,
+      "bytes": 60731,
+      "ext": "gif",
+      "sha256_16": "29d0a25cc1709cb2",
+      "file": "greenscreen/raw/sphere.gif"
+    },
+    "diamond": {
+      "ok": true,
+      "bytes": 30900,
+      "ext": "gif",
+      "sha256_16": "2c58cc985539ad18",
+      "file": "greenscreen/raw/diamond.gif"
+    },
+    "pyramid": {
+      "ok": true,
+      "bytes": 9731,
+      "ext": "gif",
+      "sha256_16": "3074d9ee689cf9fe",
+      "file": "greenscreen/raw/pyramid.gif"
+    },
+    "slide": {
+      "ok": true,
+      "bytes": 2299,
+      "ext": "gif",
+      "sha256_16": "6ecbf91f9268b016",
+      "file": "greenscreen/raw/slide.gif"
+    },
+    "scroll": {
+      "ok": true,
+      "bytes": 1569,
+      "ext": "gif",
+      "sha256_16": "b3b87c1b20c05ee7",
+      "file": "greenscreen/raw/scroll.gif"
+    },
+    "depth-tilt": {
+      "ok": true,
+      "bytes": 10655,
+      "ext": "gif",
+      "sha256_16": "f20876c0a2b86622",
+      "file": "greenscreen/raw/depth-tilt.gif"
+    },
+    "zoom": {
+      "ok": true,
+      "bytes": 2299,
+      "ext": "gif",
+      "sha256_16": "c000afcf06975382",
+      "file": "greenscreen/raw/zoom.gif"
+    },
+    "zoom-close": {
+      "ok": true,
+      "bytes": 1569,
+      "ext": "gif",
+      "sha256_16": "c405d6a0200fccb7",
+      "file": "greenscreen/raw/zoom-close.gif"
+    },
+    "zoom-in": {
+      "ok": true,
+      "bytes": 1894,
+      "ext": "gif",
+      "sha256_16": "8a4c4a8a37b8b237",
+      "file": "greenscreen/raw/zoom-in.gif"
+    },
+    "mega-bounce": {
+      "ok": true,
+      "bytes": 1998,
+      "ext": "gif",
+      "sha256_16": "ea99be19776b8bb9",
+      "file": "greenscreen/raw/mega-bounce.gif"
+    },
+    "pulse": {
+      "ok": true,
+      "bytes": 2359,
+      "ext": "gif",
+      "sha256_16": "1f136380da646024",
+      "file": "greenscreen/raw/pulse.gif"
+    },
+    "wobble": {
+      "ok": true,
+      "bytes": 3123,
+      "ext": "gif",
+      "sha256_16": "1a2ab1a2d08441da",
+      "file": "greenscreen/raw/wobble.gif"
+    },
+    "spiral-zoom": {
+      "ok": true,
+      "bytes": 1787,
+      "ext": "gif",
+      "sha256_16": "d178e10ebc26e611",
+      "file": "greenscreen/raw/spiral-zoom.gif"
+    },
+    "ripple": {
+      "ok": true,
+      "bytes": 3112,
+      "ext": "gif",
+      "sha256_16": "f2d7892dfe9ad599",
+      "file": "greenscreen/raw/ripple.gif"
+    },
+    "flag-wave": {
+      "ok": true,
+      "bytes": 2024,
+      "ext": "gif",
+      "sha256_16": "736c804104ccdd49",
+      "file": "greenscreen/raw/flag-wave.gif"
+    },
+    "peeking": {
+      "ok": true,
+      "bytes": 3211,
+      "ext": "png",
+      "sha256_16": "707998567901d692",
+      "file": "greenscreen/raw/peeking.png"
+    },
+    "raising-hand": {
+      "ok": true,
+      "bytes": 8760,
+      "ext": "png",
+      "sha256_16": "3cbe0eef2e0a3da5",
+      "file": "greenscreen/raw/raising-hand.png"
+    },
+    "face-cover": {
+      "ok": true,
+      "bytes": 5884,
+      "ext": "png",
+      "sha256_16": "ac4e95e7a1fef582",
+      "file": "greenscreen/raw/face-cover.png"
+    },
+    "flipp": {
+      "ok": true,
+      "bytes": 281370,
+      "ext": "gif",
+      "sha256_16": "186636f16b11ac71",
+      "file": "greenscreen/raw/flipp.gif"
+    },
+    "hugg": {
+      "ok": true,
+      "bytes": 9968,
+      "ext": "png",
+      "sha256_16": "e7fe5206e1649597",
+      "file": "greenscreen/raw/hugg.png"
+    },
+    "riott": {
+      "ok": true,
+      "bytes": 6069,
+      "ext": "gif",
+      "sha256_16": "f60f5adea899fc59",
+      "file": "greenscreen/raw/riott.gif"
+    },
+    "peepo-riot": {
+      "ok": true,
+      "bytes": 12421,
+      "ext": "gif",
+      "sha256_16": "edaa2e7b3fe3b2a5",
+      "file": "greenscreen/raw/peepo-riot.gif"
+    },
+    "luvv": {
+      "ok": true,
+      "bytes": 12708,
+      "ext": "png",
+      "sha256_16": "7211e09a1ec02fb7",
+      "file": "greenscreen/raw/luvv.png"
+    },
+    "stripp": {
+      "ok": true,
+      "bytes": 14840,
+      "ext": "gif",
+      "sha256_16": "22686557f3f9fd9c",
+      "file": "greenscreen/raw/stripp.gif"
+    },
+    "hellowo": {
+      "ok": true,
+      "bytes": 9362,
+      "ext": "gif",
+      "sha256_16": "23dd10f6fe9400c0",
+      "file": "greenscreen/raw/hellowo.gif"
+    },
+    "vibee": {
+      "ok": true,
+      "bytes": 81044,
+      "ext": "gif",
+      "sha256_16": "fe65d3bf91f4e478",
+      "file": "greenscreen/raw/vibee.gif"
+    },
+    "nowoted": {
+      "ok": true,
+      "bytes": 252710,
+      "ext": "gif",
+      "sha256_16": "fddabe0a13405158",
+      "file": "greenscreen/raw/nowoted.gif"
+    },
+    "slow-jam": {
+      "ok": true,
+      "bytes": 7749,
+      "ext": "gif",
+      "sha256_16": "951c69ad5e9a297d",
+      "file": "greenscreen/raw/slow-jam.gif"
+    },
+    "peepo-cheer": {
+      "ok": true,
+      "bytes": 102071,
+      "ext": "gif",
+      "sha256_16": "875703c523389f20",
+      "file": "greenscreen/raw/peepo-cheer.gif"
+    },
+    "so-cute": {
+      "ok": true,
+      "bytes": 28747,
+      "ext": "gif",
+      "sha256_16": "61d965ae729c6602",
+      "file": "greenscreen/raw/so-cute.gif"
+    },
+    "feels-rain-man": {
+      "ok": true,
+      "bytes": 42274,
+      "ext": "gif",
+      "sha256_16": "56ef032b246c4862",
+      "file": "greenscreen/raw/feels-rain-man.gif"
+    },
+    "pepe-clown": {
+      "ok": true,
+      "bytes": 13858,
+      "ext": "png",
+      "sha256_16": "93bff99866529088",
+      "file": "greenscreen/raw/pepe-clown.png"
+    },
+    "plotge": {
+      "ok": true,
+      "bytes": 16737,
+      "ext": "gif",
+      "sha256_16": "62dcd4cd0de67c66",
+      "file": "greenscreen/raw/plotge.gif"
+    },
+    "i-have-a-question": {
+      "ok": true,
+      "bytes": 6286,
+      "ext": "png",
+      "sha256_16": "5e9ecd800419b586",
+      "file": "greenscreen/raw/i-have-a-question.png"
+    },
+    "nise": {
+      "ok": true,
+      "bytes": 8303,
+      "ext": "png",
+      "sha256_16": "52c666dfe9f6ae11",
+      "file": "greenscreen/raw/nise.png"
+    },
+    "peepo-love-heart": {
+      "ok": true,
+      "bytes": 11368,
+      "ext": "png",
+      "sha256_16": "89e3d5477c4059c5",
+      "file": "greenscreen/raw/peepo-love-heart.png"
+    },
+    "stare": {
+      "ok": true,
+      "bytes": 4963,
+      "ext": "png",
+      "sha256_16": "22f7ecb30b505586",
+      "file": "greenscreen/raw/stare.png"
+    },
+    "peepo-poopoo": {
+      "ok": true,
+      "bytes": 45207,
+      "ext": "gif",
+      "sha256_16": "76658a2f15771db8",
+      "file": "greenscreen/raw/peepo-poopoo.gif"
+    },
+    "heyy": {
+      "ok": true,
+      "bytes": 5739,
+      "ext": "png",
+      "sha256_16": "76b74f56c89cc729",
+      "file": "greenscreen/raw/heyy.png"
+    },
+    "yes-yes": {
+      "ok": true,
+      "bytes": 521,
+      "ext": "gif",
+      "sha256_16": "726985f9d8c6bfa8",
+      "file": "greenscreen/raw/yes-yes.gif"
+    },
+    "no-no": {
+      "ok": true,
+      "bytes": 550,
+      "ext": "gif",
+      "sha256_16": "f99235eaafaec05b",
+      "file": "greenscreen/raw/no-no.gif"
+    },
+    "peepo-dj": {
+      "ok": true,
+      "bytes": 210705,
+      "ext": "gif",
+      "sha256_16": "90e1557e5ea3ff58",
+      "file": "greenscreen/raw/peepo-dj.gif"
+    },
+    "weird": {
+      "ok": true,
+      "bytes": 3475,
+      "ext": "gif",
+      "sha256_16": "30715b3f76534890",
+      "file": "greenscreen/raw/weird.gif"
+    },
+    "trash": {
+      "ok": true,
+      "bytes": 17421,
+      "ext": "png",
+      "sha256_16": "f666dff1f627d6a3",
+      "file": "greenscreen/raw/trash.png"
+    },
+    "trash-pop": {
+      "ok": true,
+      "bytes": 188542,
+      "ext": "gif",
+      "sha256_16": "2516810bce4f6032",
+      "file": "greenscreen/raw/trash-pop.gif"
+    },
+    "donk": {
+      "ok": true,
+      "bytes": 11735,
+      "ext": "png",
+      "sha256_16": "70114632dbc54f7c",
+      "file": "greenscreen/raw/donk.png"
+    },
+    "fivehead": {
+      "ok": true,
+      "bytes": 634,
+      "ext": "png",
+      "sha256_16": "032998c9897730a4",
+      "file": "greenscreen/raw/fivehead.png"
+    },
+    "fivehead-pulse": {
+      "ok": true,
+      "bytes": 1569,
+      "ext": "gif",
+      "sha256_16": "f7a45c0591080615",
+      "file": "greenscreen/raw/fivehead-pulse.gif"
+    },
+    "omega-lul": {
+      "ok": true,
+      "bytes": 634,
+      "ext": "png",
+      "sha256_16": "032998c9897730a4",
+      "file": "greenscreen/raw/omega-lul.png"
+    },
+    "omega-lul-pulse": {
+      "ok": true,
+      "bytes": 1569,
+      "ext": "gif",
+      "sha256_16": "f7a45c0591080615",
+      "file": "greenscreen/raw/omega-lul-pulse.gif"
+    },
+    "mercator": {
+      "ok": true,
+      "bytes": 634,
+      "ext": "png",
+      "sha256_16": "032998c9897730a4",
+      "file": "greenscreen/raw/mercator.png"
+    },
+    "mercator-pulse": {
+      "ok": true,
+      "bytes": 1569,
+      "ext": "gif",
+      "sha256_16": "f7a45c0591080615",
+      "file": "greenscreen/raw/mercator-pulse.gif"
+    },
+    "squish": {
+      "ok": true,
+      "bytes": 657,
+      "ext": "png",
+      "sha256_16": "2ffe948c8948729f",
+      "file": "greenscreen/raw/squish.png"
+    },
+    "squish-pulse": {
+      "ok": true,
+      "bytes": 2985,
+      "ext": "gif",
+      "sha256_16": "a21bf34ed4ab9a05",
+      "file": "greenscreen/raw/squish-pulse.gif"
+    },
+    "pagman": {
+      "ok": true,
+      "bytes": 3639,
+      "ext": "gif",
+      "sha256_16": "547b8d5dd7c3cb3e",
+      "file": "greenscreen/raw/pagman.gif"
+    },
+    "pag-bounce": {
+      "ok": true,
+      "bytes": 6741,
+      "ext": "gif",
+      "sha256_16": "ad61ed82518f6be2",
+      "file": "greenscreen/raw/pag-bounce.gif"
+    },
+    "hop": {
+      "ok": true,
+      "bytes": 3060,
+      "ext": "gif",
+      "sha256_16": "212d55baec244646",
+      "file": "greenscreen/raw/hop.gif"
+    },
+    "wave": {
+      "ok": true,
+      "bytes": 2022,
+      "ext": "gif",
+      "sha256_16": "9e33666a376817ba",
+      "file": "greenscreen/raw/wave.gif"
+    },
+    "flick": {
+      "ok": true,
+      "bytes": 2106,
+      "ext": "gif",
+      "sha256_16": "6b70dcc3ee79ddb2",
+      "file": "greenscreen/raw/flick.gif"
+    },
+    "glitch": {
+      "ok": true,
+      "bytes": 1603,
+      "ext": "gif",
+      "sha256_16": "d6671749b44257f2",
+      "file": "greenscreen/raw/glitch.gif"
+    },
+    "snap": {
+      "ok": true,
+      "bytes": 2095,
+      "ext": "gif",
+      "sha256_16": "2e114b2f1ce9ecaa",
+      "file": "greenscreen/raw/snap.gif"
+    },
+    "orbit": {
+      "ok": true,
+      "bytes": 3491,
+      "ext": "gif",
+      "sha256_16": "742c3751a95e641e",
+      "file": "greenscreen/raw/orbit.gif"
+    },
+    "orbit-two": {
+      "ok": true,
+      "bytes": 2950,
+      "ext": "gif",
+      "sha256_16": "97fbdc89c2b61fec",
+      "file": "greenscreen/raw/orbit-two.gif"
+    },
+    "orbit-three": {
+      "ok": true,
+      "bytes": 3360,
+      "ext": "gif",
+      "sha256_16": "ca80876232e5edd4",
+      "file": "greenscreen/raw/orbit-three.gif"
+    },
+    "orbit-four": {
+      "ok": true,
+      "bytes": 3540,
+      "ext": "gif",
+      "sha256_16": "2724125719190fdc",
+      "file": "greenscreen/raw/orbit-four.gif"
+    },
+    "orbit-five": {
+      "ok": true,
+      "bytes": 3713,
+      "ext": "gif",
+      "sha256_16": "bc963ed7857ca241",
+      "file": "greenscreen/raw/orbit-five.gif"
+    },
+    "orbit-six": {
+      "ok": true,
+      "bytes": 3885,
+      "ext": "gif",
+      "sha256_16": "6c234bb335763468",
+      "file": "greenscreen/raw/orbit-six.gif"
+    },
+    "orbit-seven": {
+      "ok": true,
+      "bytes": 3945,
+      "ext": "gif",
+      "sha256_16": "ab8b295ef04b3562",
+      "file": "greenscreen/raw/orbit-seven.gif"
+    },
+    "orbit-eight": {
+      "ok": true,
+      "bytes": 4197,
+      "ext": "gif",
+      "sha256_16": "a1f848a8206ba601",
+      "file": "greenscreen/raw/orbit-eight.gif"
+    },
+    "orbit-nine": {
+      "ok": true,
+      "bytes": 4438,
+      "ext": "gif",
+      "sha256_16": "ac8993ee6fbd0866",
+      "file": "greenscreen/raw/orbit-nine.gif"
+    },
+    "loading-two": {
+      "ok": true,
+      "bytes": 3042,
+      "ext": "gif",
+      "sha256_16": "e8eb5f63f81d41ae",
+      "file": "greenscreen/raw/loading-two.gif"
+    },
+    "loading-three": {
+      "ok": true,
+      "bytes": 3504,
+      "ext": "gif",
+      "sha256_16": "6c94ce79b26df89d",
+      "file": "greenscreen/raw/loading-three.gif"
+    },
+    "loading-four": {
+      "ok": true,
+      "bytes": 3552,
+      "ext": "gif",
+      "sha256_16": "a9f9055f782ba1c9",
+      "file": "greenscreen/raw/loading-four.gif"
+    },
+    "loading-five": {
+      "ok": true,
+      "bytes": 3534,
+      "ext": "gif",
+      "sha256_16": "9035cb52361c9f1b",
+      "file": "greenscreen/raw/loading-five.gif"
+    },
+    "loading-six": {
+      "ok": true,
+      "bytes": 3678,
+      "ext": "gif",
+      "sha256_16": "96f43316dad1ebd3",
+      "file": "greenscreen/raw/loading-six.gif"
+    },
+    "loading-seven": {
+      "ok": true,
+      "bytes": 3680,
+      "ext": "gif",
+      "sha256_16": "088af6450bd42337",
+      "file": "greenscreen/raw/loading-seven.gif"
+    },
+    "loading-eight": {
+      "ok": true,
+      "bytes": 3800,
+      "ext": "gif",
+      "sha256_16": "be3400b7b7bf7dd7",
+      "file": "greenscreen/raw/loading-eight.gif"
+    },
+    "loading-nine": {
+      "ok": true,
+      "bytes": 3860,
+      "ext": "gif",
+      "sha256_16": "28ed300ab96e6c8c",
+      "file": "greenscreen/raw/loading-nine.gif"
+    },
+    "mitosis": {
+      "ok": true,
+      "bytes": 5441,
+      "ext": "gif",
+      "sha256_16": "08fad9c484d71e71",
+      "file": "greenscreen/raw/mitosis.gif"
+    },
+    "split": {
+      "ok": true,
+      "bytes": 13059,
+      "ext": "gif",
+      "sha256_16": "df3ffa355a76c8fa",
+      "file": "greenscreen/raw/split.gif"
+    },
+    "squad": {
+      "ok": true,
+      "bytes": 4294,
+      "ext": "gif",
+      "sha256_16": "4763074ee1cf85df",
+      "file": "greenscreen/raw/squad.gif"
+    },
+    "hyperspace": {
+      "ok": true,
+      "bytes": 3989,
+      "ext": "gif",
+      "sha256_16": "35e43f9211f14d6c",
+      "file": "greenscreen/raw/hyperspace.gif"
+    },
+    "twirl": {
+      "ok": true,
+      "bytes": 4140,
+      "ext": "gif",
+      "sha256_16": "97957aa9fdf56410",
+      "file": "greenscreen/raw/twirl.gif"
+    },
+    "misalign": {
+      "ok": true,
+      "bytes": 2894,
+      "ext": "gif",
+      "sha256_16": "0c5c6d0accb0bef8",
+      "file": "greenscreen/raw/misalign.gif"
+    },
+    "jiggle": {
+      "ok": true,
+      "bytes": 1951,
+      "ext": "gif",
+      "sha256_16": "de4d42e5b27f4f74",
+      "file": "greenscreen/raw/jiggle.gif"
+    },
+    "pixelate": {
+      "ok": true,
+      "bytes": 1569,
+      "ext": "gif",
+      "sha256_16": "f7a45c0591080615",
+      "file": "greenscreen/raw/pixelate.gif"
+    },
+    "hovering": {
+      "ok": true,
+      "bytes": 1785,
+      "ext": "gif",
+      "sha256_16": "356fa5b9b37259b8",
+      "file": "greenscreen/raw/hovering.gif"
+    },
+    "spiral-in": {
+      "ok": true,
+      "bytes": 2957,
+      "ext": "gif",
+      "sha256_16": "5cac436e28321209",
+      "file": "greenscreen/raw/spiral-in.gif"
+    },
+    "sway": {
+      "ok": true,
+      "bytes": 3199,
+      "ext": "gif",
+      "sha256_16": "12464ccec53050f6",
+      "file": "greenscreen/raw/sway.gif"
+    },
+    "tumble": {
+      "ok": true,
+      "bytes": 3326,
+      "ext": "gif",
+      "sha256_16": "92ef7ee8923ac1c7",
+      "file": "greenscreen/raw/tumble.gif"
+    },
+    "fling": {
+      "ok": true,
+      "bytes": 3547,
+      "ext": "gif",
+      "sha256_16": "cc7bf1eccf174c08",
+      "file": "greenscreen/raw/fling.gif"
+    },
+    "sparkle": {
+      "ok": true,
+      "bytes": 5199,
+      "ext": "gif",
+      "sha256_16": "e2d1e1739505cf76",
+      "file": "greenscreen/raw/sparkle.gif"
+    },
+    "rain": {
+      "ok": true,
+      "bytes": 10348,
+      "ext": "gif",
+      "sha256_16": "c05259fce65ebaa4",
+      "file": "greenscreen/raw/rain.gif"
+    },
+    "slide-bounce": {
+      "ok": true,
+      "bytes": 2553,
+      "ext": "gif",
+      "sha256_16": "343783c48cb27795",
+      "file": "greenscreen/raw/slide-bounce.gif"
+    },
+    "lightning-flash": {
+      "ok": true,
+      "bytes": 1569,
+      "ext": "gif",
+      "sha256_16": "a33e4c842e1588ac",
+      "file": "greenscreen/raw/lightning-flash.gif"
+    },
+    "slide-spin": {
+      "ok": true,
+      "bytes": 3444,
+      "ext": "gif",
+      "sha256_16": "07d612cdc291788e",
+      "file": "greenscreen/raw/slide-spin.gif"
+    },
+    "thanos-snap": {
+      "ok": true,
+      "bytes": 4137,
+      "ext": "gif",
+      "sha256_16": "39a4a536ad74c4ef",
+      "file": "greenscreen/raw/thanos-snap.gif"
+    },
+    "explode": {
+      "ok": true,
+      "bytes": 2822,
+      "ext": "gif",
+      "sha256_16": "2ed136f3c01856a9",
+      "file": "greenscreen/raw/explode.gif"
+    },
+    "rotate-180": {
+      "ok": true,
+      "bytes": 2889,
+      "ext": "gif",
+      "sha256_16": "6626fe5baf4c5c22",
+      "file": "greenscreen/raw/rotate-180.gif"
+    },
+    "rotate-90": {
+      "ok": true,
+      "bytes": 2889,
+      "ext": "gif",
+      "sha256_16": "83cd89b8739aa262",
+      "file": "greenscreen/raw/rotate-90.gif"
+    },
+    "rotate-45": {
+      "ok": true,
+      "bytes": 3038,
+      "ext": "gif",
+      "sha256_16": "deff8689f99213cc",
+      "file": "greenscreen/raw/rotate-45.gif"
+    },
+    "stretch": {
+      "ok": true,
+      "bytes": 1569,
+      "ext": "gif",
+      "sha256_16": "c405d6a0200fccb7",
+      "file": "greenscreen/raw/stretch.gif"
+    },
+    "thick-3d-flip": {
+      "ok": true,
+      "bytes": 5705,
+      "ext": "gif",
+      "sha256_16": "4adfab4c42bca754",
+      "file": "greenscreen/raw/thick-3d-flip.gif"
+    },
+    "helicopter": {
+      "ok": true,
+      "bytes": 9179,
+      "ext": "gif",
+      "sha256_16": "b21a6aec0ec1f3b1",
+      "file": "greenscreen/raw/helicopter.gif"
+    },
+    "wawa": {
+      "ok": true,
+      "bytes": 6879,
+      "ext": "gif",
+      "sha256_16": "154f20cd18eef96e",
+      "file": "greenscreen/raw/wawa.gif"
+    },
+    "peepo-run": {
+      "ok": true,
+      "bytes": 17034,
+      "ext": "gif",
+      "sha256_16": "d51d3d5621e96685",
+      "file": "greenscreen/raw/peepo-run.gif"
+    },
+    "toilet-spin": {
+      "ok": true,
+      "bytes": 53435,
+      "ext": "gif",
+      "sha256_16": "3f6deec65a1d86e8",
+      "file": "greenscreen/raw/toilet-spin.gif"
+    },
+    "toilet-bounce": {
+      "ok": true,
+      "bytes": 38114,
+      "ext": "gif",
+      "sha256_16": "4cff2681ae22b18c",
+      "file": "greenscreen/raw/toilet-bounce.gif"
+    },
+    "skibidi": {
+      "ok": true,
+      "bytes": 38389,
+      "ext": "gif",
+      "sha256_16": "c08e5e4337c49a6e",
+      "file": "greenscreen/raw/skibidi.gif"
+    },
+    "matrix-rain": {
+      "ok": true,
+      "bytes": 1569,
+      "ext": "gif",
+      "sha256_16": "076ebb8896e59596",
+      "file": "greenscreen/raw/matrix-rain.gif"
+    },
+    "heart-hypno": {
+      "ok": true,
+      "bytes": 21293,
+      "ext": "gif",
+      "sha256_16": "6fc97c32e01a79e9",
+      "file": "greenscreen/raw/heart-hypno.gif"
+    },
+    "wildfire": {
+      "ok": true,
+      "bytes": 17018,
+      "ext": "gif",
+      "sha256_16": "b7fdb5f539ab14ce",
+      "file": "greenscreen/raw/wildfire.gif"
+    },
+    "excuse-me": {
+      "ok": true,
+      "bytes": 51972,
+      "ext": "gif",
+      "sha256_16": "d1236c827f0ccca5",
+      "file": "greenscreen/raw/excuse-me.gif"
+    },
+    "fire-pixel": {
+      "ok": true,
+      "bytes": 39527,
+      "ext": "gif",
+      "sha256_16": "c2bb4bd45a127a0d",
+      "file": "greenscreen/raw/fire-pixel.gif"
+    },
+    "fireplace": {
+      "ok": true,
+      "bytes": 37449,
+      "ext": "gif",
+      "sha256_16": "ed512c4dd5293fa4",
+      "file": "greenscreen/raw/fireplace.gif"
+    },
+    "flame": {
+      "ok": true,
+      "bytes": 29435,
+      "ext": "gif",
+      "sha256_16": "a9f52ee1d628125f",
+      "file": "greenscreen/raw/flame.gif"
+    },
+    "loading": {
+      "ok": true,
+      "bytes": 28717,
+      "ext": "gif",
+      "sha256_16": "71aca557ee6f2a53",
+      "file": "greenscreen/raw/loading.gif"
+    },
+    "math": {
+      "ok": true,
+      "bytes": 14934,
+      "ext": "gif",
+      "sha256_16": "05b91ae06fe7949e",
+      "file": "greenscreen/raw/math.gif"
+    },
+    "touch-grass": {
+      "ok": true,
+      "bytes": 31841,
+      "ext": "gif",
+      "sha256_16": "a7f33098b5f69e98",
+      "file": "greenscreen/raw/touch-grass.gif"
+    },
+    "heart-locket": {
+      "ok": true,
+      "bytes": 24641,
+      "ext": "gif",
+      "sha256_16": "27120c50b479efe3",
+      "file": "greenscreen/raw/heart-locket.gif"
+    },
+    "old-man-yells": {
+      "ok": true,
+      "bytes": 37987,
+      "ext": "gif",
+      "sha256_16": "da9852665c621859",
+      "file": "greenscreen/raw/old-man-yells.gif"
+    },
+    "raincloud": {
+      "ok": true,
+      "bytes": 26072,
+      "ext": "gif",
+      "sha256_16": "13e9c0b54707610e",
+      "file": "greenscreen/raw/raincloud.gif"
+    },
+    "rave": {
+      "ok": true,
+      "bytes": 5902,
+      "ext": "gif",
+      "sha256_16": "da1c7138be935bd9",
+      "file": "greenscreen/raw/rave.gif"
+    },
+    "tidal-wave": {
+      "ok": true,
+      "bytes": 31008,
+      "ext": "gif",
+      "sha256_16": "5ac363d8f7a013a7",
+      "file": "greenscreen/raw/tidal-wave.gif"
+    },
+    "triggered": {
+      "ok": true,
+      "bytes": 43742,
+      "ext": "gif",
+      "sha256_16": "e5671f3602dccdf0",
+      "file": "greenscreen/raw/triggered.gif"
+    },
+    "sparkle-color": {
+      "ok": true,
+      "bytes": 9674,
+      "ext": "gif",
+      "sha256_16": "d49add31f298198a",
+      "file": "greenscreen/raw/sparkle-color.gif"
+    },
+    "sparkle-party": {
+      "ok": true,
+      "bytes": 11196,
+      "ext": "gif",
+      "sha256_16": "c759004579737138",
+      "file": "greenscreen/raw/sparkle-party.gif"
+    },
+    "sparkle-rainbow": {
+      "ok": true,
+      "bytes": 14177,
+      "ext": "gif",
+      "sha256_16": "05bcdf2bc78ed073",
+      "file": "greenscreen/raw/sparkle-rainbow.gif"
+    },
+    "wave-ocean": {
+      "ok": true,
+      "bytes": 9325,
+      "ext": "gif",
+      "sha256_16": "9142df8e27ea3419",
+      "file": "greenscreen/raw/wave-ocean.gif"
+    },
+    "lick": {
+      "ok": true,
+      "bytes": 21471,
+      "ext": "gif",
+      "sha256_16": "7c4526169d3473e7",
+      "file": "greenscreen/raw/lick.gif"
+    },
+    "treasure-chest": {
+      "ok": true,
+      "bytes": 21803,
+      "ext": "gif",
+      "sha256_16": "186034278b23c5f0",
+      "file": "greenscreen/raw/treasure-chest.gif"
+    },
+    "wobble-scale": {
+      "ok": true,
+      "bytes": 2370,
+      "ext": "gif",
+      "sha256_16": "0d6fa1432e8e2c2b",
+      "file": "greenscreen/raw/wobble-scale.gif"
+    },
+    "drift": {
+      "ok": true,
+      "bytes": 2809,
+      "ext": "gif",
+      "sha256_16": "0168e86c93d72135",
+      "file": "greenscreen/raw/drift.gif"
+    },
+    "jitter": {
+      "ok": true,
+      "bytes": 2956,
+      "ext": "gif",
+      "sha256_16": "a0e3602de84f0c79",
+      "file": "greenscreen/raw/jitter.gif"
+    },
+    "glasses-shine": {
+      "ok": true,
+      "bytes": 15241,
+      "ext": "gif",
+      "sha256_16": "3eddad0e4062eccc",
+      "file": "greenscreen/raw/glasses-shine.gif"
+    },
+    "googly-eyes": {
+      "ok": true,
+      "bytes": 17699,
+      "ext": "gif",
+      "sha256_16": "af4afa56d754d5be",
+      "file": "greenscreen/raw/googly-eyes.gif"
+    },
+    "pounce": {
+      "ok": true,
+      "bytes": 2243,
+      "ext": "gif",
+      "sha256_16": "9a2504d926faf94b",
+      "file": "greenscreen/raw/pounce.gif"
+    },
+    "elastic": {
+      "ok": true,
+      "bytes": 2270,
+      "ext": "gif",
+      "sha256_16": "0d67d3a9c7042b01",
+      "file": "greenscreen/raw/elastic.gif"
+    },
+    "heartbeat": {
+      "ok": true,
+      "bytes": 1958,
+      "ext": "gif",
+      "sha256_16": "ddedf0f01cc3b11c",
+      "file": "greenscreen/raw/heartbeat.gif"
+    },
+    "heartbeat-flash": {
+      "ok": true,
+      "bytes": 1607,
+      "ext": "gif",
+      "sha256_16": "c303fa95c71c0242",
+      "file": "greenscreen/raw/heartbeat-flash.gif"
+    },
+    "flutter": {
+      "ok": true,
+      "bytes": 2518,
+      "ext": "gif",
+      "sha256_16": "24eaa0b36b0194e4",
+      "file": "greenscreen/raw/flutter.gif"
+    },
+    "quiver": {
+      "ok": true,
+      "bytes": 2079,
+      "ext": "gif",
+      "sha256_16": "92edb5ce1c1faa6d",
+      "file": "greenscreen/raw/quiver.gif"
+    },
+    "melt": {
+      "ok": true,
+      "bytes": 2025,
+      "ext": "gif",
+      "sha256_16": "95045d70583065d3",
+      "file": "greenscreen/raw/melt.gif"
+    },
+    "teleport": {
+      "ok": true,
+      "bytes": 2113,
+      "ext": "gif",
+      "sha256_16": "acdf36b28f91c1d7",
+      "file": "greenscreen/raw/teleport.gif"
+    },
+    "rubber": {
+      "ok": true,
+      "bytes": 2613,
+      "ext": "gif",
+      "sha256_16": "5d531088a16b6fbe",
+      "file": "greenscreen/raw/rubber.gif"
+    },
+    "think": {
+      "ok": true,
+      "bytes": 15934,
+      "ext": "gif",
+      "sha256_16": "1df88151bcb6f158",
+      "file": "greenscreen/raw/think.gif"
+    },
+    "explain": {
+      "ok": true,
+      "bytes": 16440,
+      "ext": "gif",
+      "sha256_16": "dee0ed2325d56701",
+      "file": "greenscreen/raw/explain.gif"
+    },
+    "magnet": {
+      "ok": true,
+      "bytes": 2537,
+      "ext": "gif",
+      "sha256_16": "df86677c49cebe4a",
+      "file": "greenscreen/raw/magnet.gif"
+    },
+    "tornado": {
+      "ok": true,
+      "bytes": 3272,
+      "ext": "gif",
+      "sha256_16": "1ac1a5db3d507121",
+      "file": "greenscreen/raw/tornado.gif"
+    },
+    "tsunami": {
+      "ok": true,
+      "bytes": 3063,
+      "ext": "gif",
+      "sha256_16": "171a5655f80cf149",
+      "file": "greenscreen/raw/tsunami.gif"
+    },
+    "earthquake": {
+      "ok": true,
+      "bytes": 3122,
+      "ext": "gif",
+      "sha256_16": "a727f3bd305edb43",
+      "file": "greenscreen/raw/earthquake.gif"
+    },
+    "wormhole": {
+      "ok": true,
+      "bytes": 2766,
+      "ext": "gif",
+      "sha256_16": "694c317c36ac6c85",
+      "file": "greenscreen/raw/wormhole.gif"
+    },
+    "runway-landing": {
+      "ok": true,
+      "bytes": 6717,
+      "ext": "gif",
+      "sha256_16": "e6efdd0a8eea5f09",
+      "file": "greenscreen/raw/runway-landing.gif"
+    },
+    "runway-takeoff": {
+      "ok": true,
+      "bytes": 6693,
+      "ext": "gif",
+      "sha256_16": "3d970fe14fc81208",
+      "file": "greenscreen/raw/runway-takeoff.gif"
+    },
+    "typing": {
+      "ok": true,
+      "bytes": 18824,
+      "ext": "gif",
+      "sha256_16": "8c200b995c995199",
+      "file": "greenscreen/raw/typing.gif"
+    },
+    "shimmer": {
+      "ok": true,
+      "bytes": 40133,
+      "ext": "gif",
+      "sha256_16": "f286b1cf1adbd902",
+      "file": "greenscreen/raw/shimmer.gif"
+    },
+    "rgb-split": {
+      "ok": true,
+      "bytes": 3112,
+      "ext": "gif",
+      "sha256_16": "d3f935759f35cf8c",
+      "file": "greenscreen/raw/rgb-split.gif"
+    },
+    "wipe": {
+      "ok": true,
+      "bytes": 3203,
+      "ext": "gif",
+      "sha256_16": "9651db0fb75f22ac",
+      "file": "greenscreen/raw/wipe.gif"
+    },
+    "ken-burns": {
+      "ok": true,
+      "bytes": 2440,
+      "ext": "gif",
+      "sha256_16": "ef245065489bf98c",
+      "file": "greenscreen/raw/ken-burns.gif"
+    },
+    "swirl": {
+      "ok": true,
+      "bytes": 2905,
+      "ext": "gif",
+      "sha256_16": "f61bfa24153dff34",
+      "file": "greenscreen/raw/swirl.gif"
+    },
+    "swirling": {
+      "ok": true,
+      "bytes": 14936,
+      "ext": "gif",
+      "sha256_16": "22c3ca71baa1a1fc",
+      "file": "greenscreen/raw/swirling.gif"
+    },
+    "underwater": {
+      "ok": true,
+      "bytes": 2521,
+      "ext": "gif",
+      "sha256_16": "b22a3048078b95ce",
+      "file": "greenscreen/raw/underwater.gif"
+    },
+    "spotlight": {
+      "ok": true,
+      "bytes": 58538,
+      "ext": "gif",
+      "sha256_16": "1252168d341d2ae7",
+      "file": "greenscreen/raw/spotlight.gif"
+    },
+    "scanline": {
+      "ok": true,
+      "bytes": 2263,
+      "ext": "gif",
+      "sha256_16": "4d8475ebe75cba1a",
+      "file": "greenscreen/raw/scanline.gif"
+    },
+    "tsk": {
+      "ok": true,
+      "bytes": 24256,
+      "ext": "gif",
+      "sha256_16": "33e4b5606bcca5de",
+      "file": "greenscreen/raw/tsk.gif"
+    },
+    "pace": {
+      "ok": true,
+      "bytes": 2955,
+      "ext": "gif",
+      "sha256_16": "5ce44d9b247dc462",
+      "file": "greenscreen/raw/pace.gif"
+    },
+    "lean": {
+      "ok": true,
+      "bytes": 2960,
+      "ext": "gif",
+      "sha256_16": "5be868006a7cd8b0",
+      "file": "greenscreen/raw/lean.gif"
+    },
+    "scared": {
+      "ok": true,
+      "bytes": 2633,
+      "ext": "gif",
+      "sha256_16": "06f01750ce507545",
+      "file": "greenscreen/raw/scared.gif"
+    },
+    "leap": {
+      "ok": true,
+      "bytes": 3455,
+      "ext": "gif",
+      "sha256_16": "c69445d4c60694e9",
+      "file": "greenscreen/raw/leap.gif"
+    },
+    "pop": {
+      "ok": true,
+      "bytes": 1961,
+      "ext": "gif",
+      "sha256_16": "aa5df6a268e7eb20",
+      "file": "greenscreen/raw/pop.gif"
+    },
+    "pop-through": {
+      "ok": true,
+      "bytes": 1755,
+      "ext": "gif",
+      "sha256_16": "70f29c5d5c7b77cd",
+      "file": "greenscreen/raw/pop-through.gif"
+    },
+    "shudder": {
+      "ok": true,
+      "bytes": 2388,
+      "ext": "gif",
+      "sha256_16": "d022683cad76cb6b",
+      "file": "greenscreen/raw/shudder.gif"
+    },
+    "slice": {
+      "ok": true,
+      "bytes": 4875,
+      "ext": "gif",
+      "sha256_16": "3c92a91bd34f2c9e",
+      "file": "greenscreen/raw/slice.gif"
+    },
+    "grayscale": {
+      "ok": true,
+      "bytes": 1607,
+      "ext": "gif",
+      "sha256_16": "4d1e758255a2b19c",
+      "file": "greenscreen/raw/grayscale.gif"
+    },
+    "tilt-zoom": {
+      "ok": true,
+      "bytes": 1569,
+      "ext": "gif",
+      "sha256_16": "acaa693080052616",
+      "file": "greenscreen/raw/tilt-zoom.gif"
+    },
+    "gulp": {
+      "ok": true,
+      "bytes": 1809,
+      "ext": "gif",
+      "sha256_16": "806ac572e891515a",
+      "file": "greenscreen/raw/gulp.gif"
+    },
+    "shy-peek": {
+      "ok": true,
+      "bytes": 3200,
+      "ext": "gif",
+      "sha256_16": "4775fae2eb73f548",
+      "file": "greenscreen/raw/shy-peek.gif"
+    },
+    "stomp": {
+      "ok": true,
+      "bytes": 1763,
+      "ext": "gif",
+      "sha256_16": "0967808496dd7cc1",
+      "file": "greenscreen/raw/stomp.gif"
+    },
+    "strobe-soft": {
+      "ok": true,
+      "bytes": 1569,
+      "ext": "gif",
+      "sha256_16": "076ebb8896e59596",
+      "file": "greenscreen/raw/strobe-soft.gif"
+    },
+    "solarize-wave": {
+      "ok": true,
+      "bytes": 6423,
+      "ext": "gif",
+      "sha256_16": "06e61e402552a6e0",
+      "file": "greenscreen/raw/solarize-wave.gif"
+    },
+    "posterize-breath": {
+      "ok": true,
+      "bytes": 1569,
+      "ext": "gif",
+      "sha256_16": "3e61793c1f4fbf20",
+      "file": "greenscreen/raw/posterize-breath.gif"
+    },
+    "negative-blink": {
+      "ok": true,
+      "bytes": 1569,
+      "ext": "gif",
+      "sha256_16": "ef3433ec6181e648",
+      "file": "greenscreen/raw/negative-blink.gif"
+    },
+    "heat-haze": {
+      "ok": true,
+      "bytes": 2925,
+      "ext": "gif",
+      "sha256_16": "b804adca30ddb299",
+      "file": "greenscreen/raw/heat-haze.gif"
+    },
+    "portal-peek": {
+      "ok": true,
+      "bytes": 9547,
+      "ext": "gif",
+      "sha256_16": "c7af2d7fdfe519c2",
+      "file": "greenscreen/raw/portal-peek.gif"
+    },
+    "portal-warp": {
+      "ok": true,
+      "bytes": 9288,
+      "ext": "gif",
+      "sha256_16": "f85020b3ffa547a4",
+      "file": "greenscreen/raw/portal-warp.gif"
+    },
+    "headbop": {
+      "ok": true,
+      "bytes": 2789,
+      "ext": "gif",
+      "sha256_16": "8a63e4ba1ee1eb65",
+      "file": "greenscreen/raw/headbop.gif"
+    },
+    "cute-hop": {
+      "ok": true,
+      "bytes": 1783,
+      "ext": "gif",
+      "sha256_16": "ac8d49301ba08cc6",
+      "file": "greenscreen/raw/cute-hop.gif"
+    },
+    "drop": {
+      "ok": true,
+      "bytes": 1714,
+      "ext": "gif",
+      "sha256_16": "6f804a0791dad4b9",
+      "file": "greenscreen/raw/drop.gif"
+    },
+    "drop-bounce": {
+      "ok": true,
+      "bytes": 2340,
+      "ext": "gif",
+      "sha256_16": "9c8958735806ab07",
+      "file": "greenscreen/raw/drop-bounce.gif"
+    },
+    "rubber-stamp": {
+      "ok": true,
+      "bytes": 2098,
+      "ext": "gif",
+      "sha256_16": "15f99f81fa9b3452",
+      "file": "greenscreen/raw/rubber-stamp.gif"
+    },
+    "dbz-aura": {
+      "ok": true,
+      "bytes": 32380,
+      "ext": "gif",
+      "sha256_16": "d51dc9a28e65bafb",
+      "file": "greenscreen/raw/dbz-aura.gif"
+    },
+    "orbit-drift": {
+      "ok": true,
+      "bytes": 3470,
+      "ext": "gif",
+      "sha256_16": "ac65fe7198dc32b1",
+      "file": "greenscreen/raw/orbit-drift.gif"
+    },
+    "tilt-nod": {
+      "ok": true,
+      "bytes": 2942,
+      "ext": "gif",
+      "sha256_16": "6817c697cbfd2b75",
+      "file": "greenscreen/raw/tilt-nod.gif"
+    },
+    "prance": {
+      "ok": true,
+      "bytes": 3251,
+      "ext": "gif",
+      "sha256_16": "83416653bc25b54b",
+      "file": "greenscreen/raw/prance.gif"
+    },
+    "peek-corner": {
+      "ok": true,
+      "bytes": 3182,
+      "ext": "gif",
+      "sha256_16": "e3abd2af727cce35",
+      "file": "greenscreen/raw/peek-corner.gif"
+    },
+    "recoil-pop": {
+      "ok": true,
+      "bytes": 2261,
+      "ext": "gif",
+      "sha256_16": "0e8b34c0cbba7d0e",
+      "file": "greenscreen/raw/recoil-pop.gif"
+    },
+    "sweep": {
+      "ok": true,
+      "bytes": 3147,
+      "ext": "gif",
+      "sha256_16": "02ce6c544cd09b29",
+      "file": "greenscreen/raw/sweep.gif"
+    },
+    "sideeye-slide": {
+      "ok": true,
+      "bytes": 3268,
+      "ext": "gif",
+      "sha256_16": "660f6250038cd567",
+      "file": "greenscreen/raw/sideeye-slide.gif"
+    },
+    "figure-8": {
+      "ok": true,
+      "bytes": 3241,
+      "ext": "gif",
+      "sha256_16": "ff0bd2ffb6926342",
+      "file": "greenscreen/raw/figure-8.gif"
+    },
+    "skid-stop": {
+      "ok": true,
+      "bytes": 3428,
+      "ext": "gif",
+      "sha256_16": "61f221763d466425",
+      "file": "greenscreen/raw/skid-stop.gif"
+    },
+    "steer": {
+      "ok": true,
+      "bytes": 16362,
+      "ext": "gif",
+      "sha256_16": "28ba37b21cb99235",
+      "file": "greenscreen/raw/steer.gif"
+    },
+    "gun": {
+      "ok": true,
+      "bytes": 31781,
+      "ext": "gif",
+      "sha256_16": "c00b153050d1e7f0",
+      "file": "greenscreen/raw/gun.gif"
+    },
+    "ddr": {
+      "ok": true,
+      "bytes": 23401,
+      "ext": "gif",
+      "sha256_16": "fa74a8fa45fb7df6",
+      "file": "greenscreen/raw/ddr.gif"
+    },
+    "electricity": {
+      "ok": true,
+      "bytes": 12794,
+      "ext": "gif",
+      "sha256_16": "0cfe0277577a99d5",
+      "file": "greenscreen/raw/electricity.gif"
+    },
+    "roast": {
+      "ok": true,
+      "bytes": 30953,
+      "ext": "gif",
+      "sha256_16": "97535b47f131fe38",
+      "file": "greenscreen/raw/roast.gif"
+    },
+    "fireworks": {
+      "ok": true,
+      "bytes": 20026,
+      "ext": "gif",
+      "sha256_16": "09326c76b6aa05f3",
+      "file": "greenscreen/raw/fireworks.gif"
+    },
+    "fps": {
+      "ok": true,
+      "bytes": 36583,
+      "ext": "gif",
+      "sha256_16": "4f4dd1adc86a00e1",
+      "file": "greenscreen/raw/fps.gif"
+    },
+    "hypnotize": {
+      "ok": true,
+      "bytes": 50670,
+      "ext": "gif",
+      "sha256_16": "af5cf993a3a2e23c",
+      "file": "greenscreen/raw/hypnotize.gif"
+    },
+    "jail": {
+      "ok": true,
+      "bytes": 31006,
+      "ext": "gif",
+      "sha256_16": "bb97fdb103b4eb20",
+      "file": "greenscreen/raw/jail.gif"
+    },
+    "lightning": {
+      "ok": true,
+      "bytes": 9364,
+      "ext": "gif",
+      "sha256_16": "fc68d3787aca7a1b",
+      "file": "greenscreen/raw/lightning.gif"
+    },
+    "mc-fire": {
+      "ok": true,
+      "bytes": 12769,
+      "ext": "gif",
+      "sha256_16": "b0ac0a9f74244c49",
+      "file": "greenscreen/raw/mc-fire.gif"
+    },
+    "music": {
+      "ok": true,
+      "bytes": 12094,
+      "ext": "gif",
+      "sha256_16": "0cf87a050a45d44f",
+      "file": "greenscreen/raw/music.gif"
+    },
+    "italian-hand": {
+      "ok": true,
+      "bytes": 20962,
+      "ext": "gif",
+      "sha256_16": "a371f9a774cf2073",
+      "file": "greenscreen/raw/italian-hand.gif"
+    },
+    "peace-out": {
+      "ok": true,
+      "bytes": 20532,
+      "ext": "gif",
+      "sha256_16": "33ca9939566cd1e5",
+      "file": "greenscreen/raw/peace-out.gif"
+    },
+    "fire-frame": {
+      "ok": true,
+      "bytes": 27507,
+      "ext": "gif",
+      "sha256_16": "c349ab24aa3e0c39",
+      "file": "greenscreen/raw/fire-frame.gif"
+    },
+    "polish": {
+      "ok": true,
+      "bytes": 34979,
+      "ext": "gif",
+      "sha256_16": "c673de2f586ba14a",
+      "file": "greenscreen/raw/polish.gif"
+    },
+    "rave-lights": {
+      "ok": true,
+      "bytes": 27600,
+      "ext": "gif",
+      "sha256_16": "11e1bdb11db0c6a8",
+      "file": "greenscreen/raw/rave-lights.gif"
+    },
+    "slap": {
+      "ok": true,
+      "bytes": 24637,
+      "ext": "gif",
+      "sha256_16": "463cf3bdb4c822c4",
+      "file": "greenscreen/raw/slap.gif"
+    },
+    "will-slap": {
+      "ok": true,
+      "bytes": 38904,
+      "ext": "gif",
+      "sha256_16": "31e074d3b87ef530",
+      "file": "greenscreen/raw/will-slap.gif"
+    },
+    "wine": {
+      "ok": true,
+      "bytes": 5096,
+      "ext": "gif",
+      "sha256_16": "902b796e24a7a646",
+      "file": "greenscreen/raw/wine.gif"
+    },
+    "hat-tip": {
+      "ok": true,
+      "bytes": 24332,
+      "ext": "gif",
+      "sha256_16": "fec5df5493928499",
+      "file": "greenscreen/raw/hat-tip.gif"
+    },
+    "gravity-flip": {
+      "ok": true,
+      "bytes": 3481,
+      "ext": "gif",
+      "sha256_16": "7092008143b6491d",
+      "file": "greenscreen/raw/gravity-flip.gif"
+    },
+    "glitchy": {
+      "ok": true,
+      "bytes": 3922,
+      "ext": "gif",
+      "sha256_16": "79c980054ab5bd37",
+      "file": "greenscreen/raw/glitchy.gif"
+    },
+    "washing-machine": {
+      "ok": true,
+      "bytes": 3114,
+      "ext": "gif",
+      "sha256_16": "cdca5ef01957afc3",
+      "file": "greenscreen/raw/washing-machine.gif"
+    },
+    "elastic-corner-pinch": {
+      "ok": true,
+      "bytes": 2541,
+      "ext": "gif",
+      "sha256_16": "7de6ead0e1e9c84d",
+      "file": "greenscreen/raw/elastic-corner-pinch.gif"
+    },
+    "scanning": {
+      "ok": true,
+      "bytes": 9825,
+      "ext": "gif",
+      "sha256_16": "2d2a0541ceba02a0",
+      "file": "greenscreen/raw/scanning.gif"
+    },
+    "hologram": {
+      "ok": true,
+      "bytes": 3315,
+      "ext": "gif",
+      "sha256_16": "1eb16ab8f43597ce",
+      "file": "greenscreen/raw/hologram.gif"
+    },
+    "radar-ping": {
+      "ok": true,
+      "bytes": 71726,
+      "ext": "gif",
+      "sha256_16": "8cc8bf6ee3844359",
+      "file": "greenscreen/raw/radar-ping.gif"
+    },
+    "shy": {
+      "ok": true,
+      "bytes": 4228,
+      "ext": "gif",
+      "sha256_16": "9707476e5fb1209f",
+      "file": "greenscreen/raw/shy.gif"
+    },
+    "taking-notes": {
+      "ok": true,
+      "bytes": 28077,
+      "ext": "gif",
+      "sha256_16": "14e0c493939b5dd9",
+      "file": "greenscreen/raw/taking-notes.gif"
+    },
+    "roll": {
+      "ok": true,
+      "bytes": 1961,
+      "ext": "gif",
+      "sha256_16": "f1b640e9c0c48e08",
+      "file": "greenscreen/raw/roll.gif"
+    },
+    "wiggle-shear": {
+      "ok": true,
+      "bytes": 3363,
+      "ext": "gif",
+      "sha256_16": "8ab0c5a71f3f6a4e",
+      "file": "greenscreen/raw/wiggle-shear.gif"
+    },
+    "glitchwave": {
+      "ok": true,
+      "bytes": 2127,
+      "ext": "gif",
+      "sha256_16": "3aa82fbfb967791e",
+      "file": "greenscreen/raw/glitchwave.gif"
+    },
+    "glitch-out": {
+      "ok": true,
+      "bytes": 6796,
+      "ext": "gif",
+      "sha256_16": "5a23d1de78da8444",
+      "file": "greenscreen/raw/glitch-out.gif"
+    },
+    "drums": {
+      "ok": true,
+      "bytes": 26817,
+      "ext": "gif",
+      "sha256_16": "f03a978947febeeb",
+      "file": "greenscreen/raw/drums.gif"
+    },
+    "typing2": {
+      "ok": true,
+      "bytes": 23209,
+      "ext": "gif",
+      "sha256_16": "ba008e6c054e7f40",
+      "file": "greenscreen/raw/typing2.gif"
+    },
+    "float-loop": {
+      "ok": true,
+      "bytes": 3819,
+      "ext": "gif",
+      "sha256_16": "ee9cbf9f50268e26",
+      "file": "greenscreen/raw/float-loop.gif"
+    },
+    "jolt": {
+      "ok": true,
+      "bytes": 2488,
+      "ext": "gif",
+      "sha256_16": "1c325c09afa4031b",
+      "file": "greenscreen/raw/jolt.gif"
+    },
+    "eyebrows": {
+      "ok": true,
+      "bytes": 2655,
+      "ext": "gif",
+      "sha256_16": "ecf4868d5ce36f02",
+      "file": "greenscreen/raw/eyebrows.gif"
+    },
+    "guitar": {
+      "ok": true,
+      "bytes": 24345,
+      "ext": "gif",
+      "sha256_16": "40b59c1ddee17432",
+      "file": "greenscreen/raw/guitar.gif"
+    },
+    "shimmy": {
+      "ok": true,
+      "bytes": 2981,
+      "ext": "gif",
+      "sha256_16": "1e031e940239ac3d",
+      "file": "greenscreen/raw/shimmy.gif"
+    },
+    "guns": {
+      "ok": true,
+      "bytes": 21689,
+      "ext": "gif",
+      "sha256_16": "2eee9bc68d8a1192",
+      "file": "greenscreen/raw/guns.gif"
+    },
+    "shoot": {
+      "ok": true,
+      "bytes": 24505,
+      "ext": "gif",
+      "sha256_16": "340f52f30d312709",
+      "file": "greenscreen/raw/shoot.gif"
+    },
+    "waving": {
+      "ok": true,
+      "bytes": 24681,
+      "ext": "gif",
+      "sha256_16": "919f028522a71d22",
+      "file": "greenscreen/raw/waving.gif"
+    },
+    "mirror-flip": {
+      "ok": true,
+      "bytes": 1569,
+      "ext": "gif",
+      "sha256_16": "f7a45c0591080615",
+      "file": "greenscreen/raw/mirror-flip.gif"
+    },
+    "shake-grab": {
+      "ok": true,
+      "bytes": 22062,
+      "ext": "gif",
+      "sha256_16": "1bc8d83734db1aea",
+      "file": "greenscreen/raw/shake-grab.gif"
+    },
+    "pog-zoom": {
+      "ok": true,
+      "bytes": 1569,
+      "ext": "gif",
+      "sha256_16": "acaa693080052616",
+      "file": "greenscreen/raw/pog-zoom.gif"
+    },
+    "kekw-laugh": {
+      "ok": true,
+      "bytes": 13575,
+      "ext": "gif",
+      "sha256_16": "41d658d87a05f729",
+      "file": "greenscreen/raw/kekw-laugh.gif"
+    },
+    "wide-happy": {
+      "ok": true,
+      "bytes": 6784,
+      "ext": "gif",
+      "sha256_16": "1a276c24a982278f",
+      "file": "greenscreen/raw/wide-happy.gif"
+    },
+    "dancing-squares": {
+      "ok": true,
+      "bytes": 19247,
+      "ext": "gif",
+      "sha256_16": "f66a788fe705f677",
+      "file": "greenscreen/raw/dancing-squares.gif"
+    },
+    "popcorn-watch": {
+      "ok": true,
+      "bytes": 26039,
+      "ext": "gif",
+      "sha256_16": "ae51b2f79e445c05",
+      "file": "greenscreen/raw/popcorn-watch.gif"
+    },
+    "sip-judgement": {
+      "ok": true,
+      "bytes": 16143,
+      "ext": "gif",
+      "sha256_16": "6227bc8cac790c53",
+      "file": "greenscreen/raw/sip-judgement.gif"
+    },
+    "loading-think": {
+      "ok": true,
+      "bytes": 13742,
+      "ext": "gif",
+      "sha256_16": "613129b969f84f9a",
+      "file": "greenscreen/raw/loading-think.gif"
+    },
+    "tinfoil-hat": {
+      "ok": true,
+      "bytes": 22490,
+      "ext": "gif",
+      "sha256_16": "07045f7011306d33",
+      "file": "greenscreen/raw/tinfoil-hat.gif"
+    },
+    "mic-drop": {
+      "ok": true,
+      "bytes": 9884,
+      "ext": "gif",
+      "sha256_16": "d40c9d9476e3c382",
+      "file": "greenscreen/raw/mic-drop.gif"
+    },
+    "prime-sub": {
+      "ok": true,
+      "bytes": 14517,
+      "ext": "gif",
+      "sha256_16": "55e0a8e31d6ab234",
+      "file": "greenscreen/raw/prime-sub.gif"
+    },
+    "side-eye-drama": {
+      "ok": true,
+      "bytes": 13083,
+      "ext": "gif",
+      "sha256_16": "9309c7f7cddad000",
+      "file": "greenscreen/raw/side-eye-drama.gif"
+    },
+    "fire-drill": {
+      "ok": true,
+      "bytes": 9277,
+      "ext": "gif",
+      "sha256_16": "e6cb48cfe60f4309",
+      "file": "greenscreen/raw/fire-drill.gif"
+    },
+    "walk-in": {
+      "ok": true,
+      "bytes": 3143,
+      "ext": "gif",
+      "sha256_16": "1eedca3685969040",
+      "file": "greenscreen/raw/walk-in.gif"
+    },
+    "leave-fast": {
+      "ok": true,
+      "bytes": 2291,
+      "ext": "gif",
+      "sha256_16": "1f94309d1f03d173",
+      "file": "greenscreen/raw/leave-fast.gif"
+    },
+    "naruto-run": {
+      "ok": true,
+      "bytes": 3488,
+      "ext": "gif",
+      "sha256_16": "853c8e48c5864d58",
+      "file": "greenscreen/raw/naruto-run.gif"
+    },
+    "hadoken": {
+      "ok": true,
+      "bytes": 6112,
+      "ext": "gif",
+      "sha256_16": "1c4f05d238ea688a",
+      "file": "greenscreen/raw/hadoken.gif"
+    },
+    "drained": {
+      "ok": true,
+      "bytes": 5839,
+      "ext": "gif",
+      "sha256_16": "e128357f838ead89",
+      "file": "greenscreen/raw/drained.gif"
+    },
+    "money-rain": {
+      "ok": true,
+      "bytes": 33346,
+      "ext": "gif",
+      "sha256_16": "eece028b5bc5d40f",
+      "file": "greenscreen/raw/money-rain.gif"
+    },
+    "seesaw": {
+      "ok": true,
+      "bytes": 12400,
+      "ext": "gif",
+      "sha256_16": "f411a91cfaaab6a6",
+      "file": "greenscreen/raw/seesaw.gif"
+    },
+    "skipping-stone": {
+      "ok": true,
+      "bytes": 6635,
+      "ext": "gif",
+      "sha256_16": "a777f496fb85195d",
+      "file": "greenscreen/raw/skipping-stone.gif"
+    },
+    "perspective-conveyor": {
+      "ok": true,
+      "bytes": 10624,
+      "ext": "gif",
+      "sha256_16": "502d742a8168a5dc",
+      "file": "greenscreen/raw/perspective-conveyor.gif"
+    },
+    "fisheye-pass": {
+      "ok": true,
+      "bytes": 16702,
+      "ext": "gif",
+      "sha256_16": "baae19b8a0bc42ee",
+      "file": "greenscreen/raw/fisheye-pass.gif"
+    },
+    "polaroid-develop": {
+      "ok": true,
+      "bytes": 24758,
+      "ext": "gif",
+      "sha256_16": "9efd627a4e14ccff",
+      "file": "greenscreen/raw/polaroid-develop.gif"
+    },
+    "paparazzi": {
+      "ok": true,
+      "bytes": 26954,
+      "ext": "gif",
+      "sha256_16": "a0a3e808228bcbf5",
+      "file": "greenscreen/raw/paparazzi.gif"
+    },
+    "elevator-reveal": {
+      "ok": true,
+      "bytes": 34560,
+      "ext": "gif",
+      "sha256_16": "64ac6ccf9cfdf07e",
+      "file": "greenscreen/raw/elevator-reveal.gif"
+    },
+    "toaster-pop": {
+      "ok": true,
+      "bytes": 35334,
+      "ext": "gif",
+      "sha256_16": "b572be902482992a",
+      "file": "greenscreen/raw/toaster-pop.gif"
+    },
+    "jack-in-the-box": {
+      "ok": true,
+      "bytes": 13505,
+      "ext": "gif",
+      "sha256_16": "7ac47c7f5a9ed81d",
+      "file": "greenscreen/raw/jack-in-the-box.gif"
+    },
+    "photocopier": {
+      "ok": true,
+      "bytes": 20403,
+      "ext": "gif",
+      "sha256_16": "fd3ad9d798d62e0a",
+      "file": "greenscreen/raw/photocopier.gif"
+    },
+    "microwave-ding": {
+      "ok": true,
+      "bytes": 22459,
+      "ext": "gif",
+      "sha256_16": "8f8b24033954f8e0",
+      "file": "greenscreen/raw/microwave-ding.gif"
+    },
+    "hydraulic-press": {
+      "ok": true,
+      "bytes": 13330,
+      "ext": "gif",
+      "sha256_16": "6f95585ec83ef12b",
+      "file": "greenscreen/raw/hydraulic-press.gif"
+    },
+    "ufo-abduction": {
+      "ok": true,
+      "bytes": 45250,
+      "ext": "gif",
+      "sha256_16": "f9fe158641b1f991",
+      "file": "greenscreen/raw/ufo-abduction.gif"
+    },
+    "train-window": {
+      "ok": true,
+      "bytes": 24584,
+      "ext": "gif",
+      "sha256_16": "a588dfff3bf2c6d9",
+      "file": "greenscreen/raw/train-window.gif"
+    },
+    "kaiju-city": {
+      "ok": true,
+      "bytes": 35821,
+      "ext": "gif",
+      "sha256_16": "97b873aa34d046e5",
+      "file": "greenscreen/raw/kaiju-city.gif"
+    },
+    "hot-air-balloon": {
+      "ok": true,
+      "bytes": 30247,
+      "ext": "gif",
+      "sha256_16": "d62931c0c00ffce8",
+      "file": "greenscreen/raw/hot-air-balloon.gif"
+    },
+    "medal-drop": {
+      "ok": true,
+      "bytes": 37321,
+      "ext": "gif",
+      "sha256_16": "ad070258e608c15e",
+      "file": "greenscreen/raw/medal-drop.gif"
+    },
+    "crown-drop": {
+      "ok": true,
+      "bytes": 20094,
+      "ext": "gif",
+      "sha256_16": "db0524dd2155099d",
+      "file": "greenscreen/raw/crown-drop.gif"
+    },
+    "heart-merge": {
+      "ok": true,
+      "bytes": 6938,
+      "ext": "gif",
+      "sha256_16": "55103d60d86a17cf",
+      "file": "greenscreen/raw/heart-merge.gif"
+    },
+    "woodcut-portrait": {
+      "ok": true,
+      "bytes": 3393,
+      "ext": "png",
+      "sha256_16": "2b3aac848687f0a9",
+      "file": "greenscreen/raw/woodcut-portrait.png"
+    },
+    "xray-scan": {
+      "ok": true,
+      "bytes": 18541,
+      "ext": "gif",
+      "sha256_16": "718bb2cbcd9a1c10",
+      "file": "greenscreen/raw/xray-scan.gif"
+    },
+    "technical-difficulties": {
+      "ok": true,
+      "bytes": 29254,
+      "ext": "gif",
+      "sha256_16": "0d492e3479c111c6",
+      "file": "greenscreen/raw/technical-difficulties.gif"
+    }
+  },
+  "startedAt": "2026-09-01T16:19:12.969Z",
+  "greenSubject": "/tmp/me687/green_512.png",
+  "finishedAt": "2026-09-01T17:23:27.063Z",
+  "ok": 47,
+  "fail": 33,
+  "lastRun": {
+    "mode": "sweep",
+    "passes": 5,
+    "newFromSweep": 504,
+    "hunted": 0,
+    "have": 570
+  }
+}

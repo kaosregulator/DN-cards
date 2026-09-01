@@ -1,0 +1,33 @@
+{
+  "id": "lolface",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 5,
+    "y": 5,
+    "w": 119,
+    "h": 119,
+    "greenPixels": 6030
+  },
+  "perFrame": [
+    {
+      "x": 5,
+      "y": 5,
+      "w": 119,
+      "h": 119,
+      "cx": 66.87180762852405,
+      "cy": 56.19734660033168,
+      "greenPixels": 6030,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
+  "layerPixels": 7105,
+  "source": "greenscreen/raw/lolface.png",
+  "animationMode": "per-frame-slot-mask"
+}

@@ -10,7 +10,9 @@
     "makeemoji:discover": "pnpm --filter @workspace/scripts run makeemoji:discover",
     "makeemoji:backup": "pnpm --filter @workspace/scripts run makeemoji:backup",
     "emoji:install-browser": "pnpm --filter @workspace/api-server run emoji:install-browser",
-    "makeemoji:harvest-official": "pnpm --filter @workspace/scripts run makeemoji:harvest-official"
+    "makeemoji:harvest-official": "pnpm --filter @workspace/scripts run makeemoji:harvest-official",
+    "makeemoji:harvest-greenscreen": "pnpm --filter @workspace/api-server exec node ./scripts/makeemoji-harvest-greenscreen.mjs",
+    "makeemoji:build-layers": "pnpm --filter @workspace/api-server exec node ./scripts/makeemoji-build-layers.mjs"
   },
   "private": true,
   "devDependencies": {

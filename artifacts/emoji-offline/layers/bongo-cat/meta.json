@@ -1,0 +1,110 @@
+{
+  "id": "bongo-cat",
+  "kind": "layer",
+  "frames": 8,
+  "sourcePages": 8,
+  "delayMs": 60,
+  "size": 128,
+  "slot": {
+    "x": 16,
+    "y": 82,
+    "w": 97,
+    "h": 46,
+    "greenPixels": 31812
+  },
+  "perFrame": [
+    {
+      "x": 18,
+      "y": 82,
+      "w": 94,
+      "h": 46,
+      "cx": 64.5,
+      "cy": 104.5,
+      "greenPixels": 4324,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 17,
+      "y": 82,
+      "w": 94,
+      "h": 45,
+      "cx": 63.5,
+      "cy": 104,
+      "greenPixels": 4230,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 16,
+      "y": 87,
+      "w": 97,
+      "h": 40,
+      "cx": 63.61201883134866,
+      "cy": 107.69399058432568,
+      "greenPixels": 3611,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 17,
+      "y": 85,
+      "w": 95,
+      "h": 42,
+      "cx": 63.45388933440257,
+      "cy": 106.63993584603047,
+      "greenPixels": 3741,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 18,
+      "y": 82,
+      "w": 94,
+      "h": 46,
+      "cx": 64.5,
+      "cy": 104.5,
+      "greenPixels": 4324,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 17,
+      "y": 82,
+      "w": 94,
+      "h": 45,
+      "cx": 63.5,
+      "cy": 104,
+      "greenPixels": 4230,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 16,
+      "y": 87,
+      "w": 97,
+      "h": 40,
+      "cx": 63.61201883134866,
+      "cy": 107.69399058432568,
+      "greenPixels": 3611,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 17,
+      "y": 85,
+      "w": 95,
+      "h": 42,
+      "cx": 63.45388933440257,
+      "cy": 106.63993584603047,
+      "greenPixels": 3741,
+      "visible": true,
+      "delayMs": 60
+    }
+  ],
+  "motionPx": 3.8,
+  "areaRatio": 1.11,
+  "layerPixels": 44904,
+  "source": "greenscreen/raw/bongo-cat.gif",
+  "animationMode": "per-frame-slot-mask"
+}

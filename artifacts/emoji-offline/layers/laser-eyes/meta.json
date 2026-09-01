@@ -1,0 +1,132 @@
+{
+  "id": "laser-eyes",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 142854
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.465912153058476,
+      "cy": 63.524252223120456,
+      "greenPixels": 14844,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.383510677877815,
+      "cy": 63.54877595059156,
+      "greenPixels": 13439,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.50061661785109,
+      "cy": 63.09688607985201,
+      "greenPixels": 12974,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 61.62458200799282,
+      "cy": 62.308294592610714,
+      "greenPixels": 12261,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 61.769381472152254,
+      "cy": 62.680660509375876,
+      "greenPixels": 14292,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 62.11141072949191,
+      "cy": 63.304853817768944,
+      "greenPixels": 14092,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 62.11141072949191,
+      "cy": 63.304853817768944,
+      "greenPixels": 14092,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 62.11141072949191,
+      "cy": 63.304853817768944,
+      "greenPixels": 14092,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 2.2,
+  "areaRatio": 1,
+  "layerPixels": 20986,
+  "source": "greenscreen/raw/laser-eyes.gif",
+  "animationMode": "per-frame-slot-mask"
+}

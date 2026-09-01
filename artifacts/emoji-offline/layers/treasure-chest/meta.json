@@ -1,0 +1,132 @@
+{
+  "id": "treasure-chest",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 80,
+  "size": 128,
+  "slot": {
+    "x": 23,
+    "y": 0,
+    "w": 83,
+    "h": 72,
+    "greenPixels": 38807
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 80
+    },
+    {
+      "x": 27,
+      "y": 42,
+      "w": 73,
+      "h": 19,
+      "cx": 63.02597402597402,
+      "cy": 51.006493506493506,
+      "greenPixels": 1386,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 25,
+      "y": 15,
+      "w": 79,
+      "h": 57,
+      "cx": 64,
+      "cy": 39.706870229007635,
+      "greenPixels": 3930,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 24,
+      "y": 1,
+      "w": 82,
+      "h": 71,
+      "cx": 64.51100110011001,
+      "cy": 34.26439310597726,
+      "greenPixels": 5454,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 23,
+      "y": 0,
+      "w": 83,
+      "h": 72,
+      "cx": 64,
+      "cy": 33.8141940085592,
+      "greenPixels": 5608,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 23,
+      "y": 0,
+      "w": 83,
+      "h": 72,
+      "cx": 64,
+      "cy": 33.8141940085592,
+      "greenPixels": 5608,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 23,
+      "y": 0,
+      "w": 83,
+      "h": 72,
+      "cx": 64,
+      "cy": 33.81309077938291,
+      "greenPixels": 5607,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 23,
+      "y": 0,
+      "w": 83,
+      "h": 72,
+      "cx": 64,
+      "cy": 33.82158786797502,
+      "greenPixels": 5605,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 23,
+      "y": 0,
+      "w": 83,
+      "h": 72,
+      "cx": 64,
+      "cy": 33.81226600106971,
+      "greenPixels": 5609,
+      "visible": true,
+      "delayMs": 80
+    }
+  ],
+  "motionPx": 17.3,
+  "areaRatio": 4.31,
+  "layerPixels": 66591,
+  "source": "greenscreen/raw/treasure-chest.gif",
+  "animationMode": "per-frame-slot-mask"
+}

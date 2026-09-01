@@ -1,0 +1,132 @@
+{
+  "id": "squish-pulse",
+  "kind": "transform-slot",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 80,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 161800
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 1,
+      "y": 1,
+      "w": 127,
+      "h": 127,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 16129,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 1,
+      "y": 1,
+      "w": 127,
+      "h": 127,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 16129,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 1,
+      "y": 1,
+      "w": 127,
+      "h": 127,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 16129,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 1,
+      "y": 1,
+      "w": 127,
+      "h": 127,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 16129,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 1,
+      "y": 1,
+      "w": 127,
+      "h": 127,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 16129,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 1,
+      "y": 1,
+      "w": 127,
+      "h": 127,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 16129,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 1,
+      "y": 1,
+      "w": 127,
+      "h": 127,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 16129,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 1,
+      "y": 1,
+      "w": 127,
+      "h": 127,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 16129,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 80
+    }
+  ],
+  "motionPx": 0.7,
+  "areaRatio": 1.02,
+  "layerPixels": 0,
+  "source": "greenscreen/raw/squish-pulse.gif",
+  "animationMode": "per-frame-slot-mask"
+}

@@ -1,0 +1,44 @@
+{
+  "id": "yes-yes",
+  "kind": "transform-slot",
+  "frames": 2,
+  "sourcePages": 2,
+  "delayMs": 100,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 30463
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.6283418938496,
+      "cy": 67.40306861583036,
+      "greenPixels": 15186,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.62924657982588,
+      "cy": 59.88381226680631,
+      "greenPixels": 15277,
+      "visible": true,
+      "delayMs": 100
+    }
+  ],
+  "motionPx": 7.5,
+  "areaRatio": 1,
+  "layerPixels": 0,
+  "source": "greenscreen/raw/yes-yes.gif",
+  "animationMode": "per-frame-slot-mask"
+}

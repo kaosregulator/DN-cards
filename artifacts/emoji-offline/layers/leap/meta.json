@@ -1,0 +1,132 @@
+{
+  "id": "leap",
+  "kind": "transform-slot",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 136054
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 106,
+      "h": 128,
+      "cx": 52.5,
+      "cy": 63.5,
+      "greenPixels": 13568,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 112,
+      "h": 122,
+      "cx": 55.5,
+      "cy": 60.5,
+      "greenPixels": 13664,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 116,
+      "h": 116,
+      "cx": 57.5,
+      "cy": 57.5,
+      "greenPixels": 13456,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 122,
+      "h": 112,
+      "cx": 60.5,
+      "cy": 55.5,
+      "greenPixels": 13664,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 127,
+      "h": 110,
+      "cx": 62.99549001360155,
+      "cy": 54.496098503829906,
+      "greenPixels": 13969,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 2,
+      "y": 0,
+      "w": 126,
+      "h": 110,
+      "cx": 64.50450970488491,
+      "cy": 54.49606753734036,
+      "greenPixels": 13859,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 7,
+      "y": 0,
+      "w": 121,
+      "h": 112,
+      "cx": 67,
+      "cy": 55.5,
+      "greenPixels": 13552,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 13,
+      "y": 0,
+      "w": 115,
+      "h": 116,
+      "cx": 70,
+      "cy": 57.5,
+      "greenPixels": 13340,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 17,
+      "y": 0,
+      "w": 111,
+      "h": 122,
+      "cx": 72,
+      "cy": 60.5,
+      "greenPixels": 13542,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 23,
+      "y": 0,
+      "w": 105,
+      "h": 128,
+      "cx": 75,
+      "cy": 63.5,
+      "greenPixels": 13440,
+      "visible": true,
+      "delayMs": 70
+    }
+  ],
+  "motionPx": 24.2,
+  "areaRatio": 1.05,
+  "layerPixels": 0,
+  "source": "greenscreen/raw/leap.gif",
+  "animationMode": "per-frame-slot-mask"
+}

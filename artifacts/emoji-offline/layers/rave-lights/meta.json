@@ -1,0 +1,132 @@
+{
+  "id": "rave-lights",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 110962
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 66.7756783752289,
+      "cy": 58.09389046112868,
+      "greenPixels": 12014,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 72.54287274713272,
+      "cy": 62.079737848170396,
+      "greenPixels": 9155,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 49.39226139294927,
+      "cy": 61.07446259673259,
+      "greenPixels": 5815,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 97.78554281141638,
+      "cy": 46.820485462790074,
+      "greenPixels": 3749,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 61.66737258223917,
+      "cy": 61.593533813355926,
+      "greenPixels": 14166,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 65.87912005965697,
+      "cy": 55.98351976137211,
+      "greenPixels": 13410,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 65.31321915975381,
+      "cy": 64.47471233609848,
+      "greenPixels": 14948,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 57.633146110640915,
+      "cy": 62.898361160267754,
+      "greenPixels": 12997,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 60.085017212992064,
+      "cy": 63.44910941475827,
+      "greenPixels": 13362,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 65.55429226158999,
+      "cy": 56.14489687995769,
+      "greenPixels": 11346,
+      "visible": true,
+      "delayMs": 70
+    }
+  ],
+  "motionPx": 51.5,
+  "areaRatio": 1,
+  "layerPixels": 52878,
+  "source": "greenscreen/raw/rave-lights.gif",
+  "animationMode": "per-frame-slot-mask"
+}

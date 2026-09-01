@@ -1,0 +1,132 @@
+{
+  "id": "kekw-laugh",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 60,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 146720
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 60.78164327600975,
+      "cy": 66.34539105225012,
+      "greenPixels": 15177,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 1,
+      "w": 128,
+      "h": 127,
+      "cx": 60.35526132404181,
+      "cy": 69.36118466898955,
+      "greenPixels": 14350,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 1,
+      "w": 128,
+      "h": 127,
+      "cx": 61.17349086711482,
+      "cy": 68.1598424662185,
+      "greenPixels": 14727,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 1,
+      "w": 128,
+      "h": 127,
+      "cx": 61.17349086711482,
+      "cy": 68.1598424662185,
+      "greenPixels": 14727,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 1,
+      "w": 128,
+      "h": 127,
+      "cx": 60.35526132404181,
+      "cy": 69.36118466898955,
+      "greenPixels": 14350,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 60.78164327600975,
+      "cy": 66.34539105225012,
+      "greenPixels": 15177,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 1,
+      "w": 128,
+      "h": 127,
+      "cx": 61.10833159613647,
+      "cy": 69.2744771037454,
+      "greenPixels": 14391,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 1,
+      "w": 128,
+      "h": 127,
+      "cx": 60.29412164458036,
+      "cy": 68.20387359836901,
+      "greenPixels": 14715,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 1,
+      "w": 128,
+      "h": 127,
+      "cx": 60.29412164458036,
+      "cy": 68.20387359836901,
+      "greenPixels": 14715,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 1,
+      "w": 128,
+      "h": 127,
+      "cx": 61.10833159613647,
+      "cy": 69.2744771037454,
+      "greenPixels": 14391,
+      "visible": true,
+      "delayMs": 60
+    }
+  ],
+  "motionPx": 3.1,
+  "areaRatio": 1.01,
+  "layerPixels": 12054,
+  "source": "greenscreen/raw/kekw-laugh.gif",
+  "animationMode": "per-frame-slot-mask"
+}

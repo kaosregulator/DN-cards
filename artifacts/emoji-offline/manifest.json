@@ -1,20 +1,13 @@
 {
   "source": "makeemoji.com",
-  "discoveredAt": "2026-08-30T09:23:02.909Z",
-  "styleCount": 473,
-  "implementedStyleCount": 470,
-  "version": "2.1.0",
-  "offlineReady": false,
-  "primaryProvider": "makeemoji-browser",
-  "notes": "Official MakeEmoji assets harvested for all 473 styles (prerendered). Offline user-image composite: 470/473. Blocked: pokeball-go, pokeball-capture, pokeball-almost (CDN frame overlays 404; procedural recreations removed). Enable with EMOJI_ALLOW_OFFLINE_FALLBACK=1.",
-  "browser": {
-    "readySelector": "input[type=file]",
-    "fileInputSelector": "input[type=file]",
-    "generateSelector": null,
-    "resultSelector": "img[alt*=\"generated\" i]",
-    "downloadSelector": null,
-    "dismissSelectors": []
-  },
+  "discoveredAt": "2026-09-01T18:12:52.124Z",
+  "styleCount": 566,
+  "implementedStyleCount": 566,
+  "version": "3.2.0",
+  "offlineReady": true,
+  "primaryProvider": "offline",
+  "notes": "566 MakeEmoji styles. User image follows per-frame green subject motion/mask; chrome layered on top.",
   "siteUrl": "https://makeemoji.com/",
+  "zipSource": "greenscreen/makeemoji-all-green.zip",
   "api": null
 }

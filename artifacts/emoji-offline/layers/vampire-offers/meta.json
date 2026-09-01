@@ -1,0 +1,33 @@
+{
+  "id": "vampire-offers",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 8,
+    "y": 6,
+    "w": 103,
+    "h": 110,
+    "greenPixels": 5465
+  },
+  "perFrame": [
+    {
+      "x": 8,
+      "y": 6,
+      "w": 103,
+      "h": 110,
+      "cx": 43.62250686184812,
+      "cy": 75.41134492223239,
+      "greenPixels": 5465,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
+  "layerPixels": 9048,
+  "source": "greenscreen/raw/vampire-offers.png",
+  "animationMode": "per-frame-slot-mask"
+}

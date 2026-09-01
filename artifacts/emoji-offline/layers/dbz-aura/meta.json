@@ -1,0 +1,132 @@
+{
+  "id": "dbz-aura",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 109610
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 61.93783486238532,
+      "cy": 65.71236697247707,
+      "greenPixels": 13625,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 61.93783486238532,
+      "cy": 65.71236697247707,
+      "greenPixels": 13625,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 66.21187619544428,
+      "cy": 66.28829768735872,
+      "greenPixels": 11502,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 66.21187619544428,
+      "cy": 66.28829768735872,
+      "greenPixels": 11502,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 66.21187619544428,
+      "cy": 66.28829768735872,
+      "greenPixels": 11502,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 64.40786193672099,
+      "cy": 64.46979865771812,
+      "greenPixels": 10430,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 64.40786193672099,
+      "cy": 64.46979865771812,
+      "greenPixels": 10430,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 64.40786193672099,
+      "cy": 64.46979865771812,
+      "greenPixels": 10430,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 58.466070997343635,
+      "cy": 67.59297271190533,
+      "greenPixels": 8282,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 58.466070997343635,
+      "cy": 67.59297271190533,
+      "greenPixels": 8282,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 8.4,
+  "areaRatio": 1,
+  "layerPixels": 54230,
+  "source": "greenscreen/raw/dbz-aura.gif",
+  "animationMode": "per-frame-slot-mask"
+}

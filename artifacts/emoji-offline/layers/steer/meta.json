@@ -1,0 +1,132 @@
+{
+  "id": "steer",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 129931
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 61.44593540333906,
+      "cy": 53.007879544390704,
+      "greenPixels": 12818,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 60.71910828025478,
+      "cy": 54.09673566878981,
+      "greenPixels": 12560,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 65.13983676642052,
+      "cy": 52.75258453167509,
+      "greenPixels": 12865,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 60.48087133041849,
+      "cy": 53.788023110555905,
+      "greenPixels": 12808,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 59.345823515999086,
+      "cy": 56.03093410351904,
+      "greenPixels": 13157,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 65.37507137613183,
+      "cy": 52.683579411044946,
+      "greenPixels": 12259,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 59.60093761269383,
+      "cy": 57.85914172376488,
+      "greenPixels": 13865,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.642832155600644,
+      "cy": 57.05863009864969,
+      "greenPixels": 14293,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 60.90408455181183,
+      "cy": 52.875079465988556,
+      "greenPixels": 12584,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 61.38649583398837,
+      "cy": 54.37824241471467,
+      "greenPixels": 12722,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 7.9,
+  "areaRatio": 1,
+  "layerPixels": 33909,
+  "source": "greenscreen/raw/steer.gif",
+  "animationMode": "per-frame-slot-mask"
+}

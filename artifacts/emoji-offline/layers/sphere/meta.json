@@ -1,0 +1,132 @@
+{
+  "id": "sphere",
+  "kind": "transform-slot",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 80,
+  "size": 128,
+  "slot": {
+    "x": 5,
+    "y": 5,
+    "w": 119,
+    "h": 119,
+    "greenPixels": 110330
+  },
+  "perFrame": [
+    {
+      "x": 5,
+      "y": 5,
+      "w": 119,
+      "h": 119,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 11033,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 5,
+      "y": 5,
+      "w": 119,
+      "h": 119,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 11033,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 5,
+      "y": 5,
+      "w": 119,
+      "h": 119,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 11033,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 5,
+      "y": 5,
+      "w": 119,
+      "h": 119,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 11033,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 5,
+      "y": 5,
+      "w": 119,
+      "h": 119,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 11033,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 5,
+      "y": 5,
+      "w": 119,
+      "h": 119,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 11033,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 5,
+      "y": 5,
+      "w": 119,
+      "h": 119,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 11033,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 5,
+      "y": 5,
+      "w": 119,
+      "h": 119,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 11033,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 5,
+      "y": 5,
+      "w": 119,
+      "h": 119,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 11033,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 5,
+      "y": 5,
+      "w": 119,
+      "h": 119,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 11033,
+      "visible": true,
+      "delayMs": 80
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
+  "layerPixels": 0,
+  "source": "greenscreen/raw/sphere.gif",
+  "animationMode": "per-frame-slot-mask"
+}

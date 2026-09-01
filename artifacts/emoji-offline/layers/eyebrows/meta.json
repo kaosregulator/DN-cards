@@ -1,0 +1,132 @@
+{
+  "id": "eyebrows",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 157530
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.39850196775422,
+      "cy": 64.40789640726165,
+      "greenPixels": 15754,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.39850196775422,
+      "cy": 64.40789640726165,
+      "greenPixels": 15754,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.39850196775422,
+      "cy": 64.40789640726165,
+      "greenPixels": 15754,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.39850196775422,
+      "cy": 64.40789640726165,
+      "greenPixels": 15754,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.39850196775422,
+      "cy": 64.40789640726165,
+      "greenPixels": 15754,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.403694768918236,
+      "cy": 64.84859065515491,
+      "greenPixels": 15752,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.403694768918236,
+      "cy": 64.84859065515491,
+      "greenPixels": 15752,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.403694768918236,
+      "cy": 64.84859065515491,
+      "greenPixels": 15752,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.403694768918236,
+      "cy": 64.84859065515491,
+      "greenPixels": 15752,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.403694768918236,
+      "cy": 64.84859065515491,
+      "greenPixels": 15752,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0.4,
+  "areaRatio": 1,
+  "layerPixels": 6310,
+  "source": "greenscreen/raw/eyebrows.gif",
+  "animationMode": "per-frame-slot-mask"
+}

@@ -1,0 +1,33 @@
+{
+  "id": "bedge",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 14,
+    "y": 3,
+    "w": 114,
+    "h": 108,
+    "greenPixels": 6743
+  },
+  "perFrame": [
+    {
+      "x": 14,
+      "y": 3,
+      "w": 114,
+      "h": 108,
+      "cx": 70.0705917247516,
+      "cy": 55.398932226012164,
+      "greenPixels": 6743,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
+  "layerPixels": 7066,
+  "source": "greenscreen/raw/bedge.png",
+  "animationMode": "per-frame-slot-mask"
+}

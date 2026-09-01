@@ -1,0 +1,33 @@
+{
+  "id": "ice-cube",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 14031
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 66.20219513933434,
+      "cy": 64.2185161428266,
+      "greenPixels": 14031,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
+  "layerPixels": 2353,
+  "source": "greenscreen/raw/ice-cube.png",
+  "animationMode": "per-frame-slot-mask"
+}

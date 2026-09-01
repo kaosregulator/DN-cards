@@ -1,0 +1,132 @@
+{
+  "id": "bonk-doge",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 59,
+    "y": 64,
+    "w": 69,
+    "h": 64,
+    "greenPixels": 34186
+  },
+  "perFrame": [
+    {
+      "x": 64,
+      "y": 64,
+      "w": 64,
+      "h": 64,
+      "cx": 96.40353260869566,
+      "cy": 97.00652173913043,
+      "greenPixels": 3680,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 64,
+      "y": 64,
+      "w": 64,
+      "h": 64,
+      "cx": 96.40353260869566,
+      "cy": 97.00652173913043,
+      "greenPixels": 3680,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 62,
+      "y": 80,
+      "w": 66,
+      "h": 48,
+      "cx": 96.40213645761544,
+      "cy": 104.61164713990351,
+      "greenPixels": 2902,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 59,
+      "y": 96,
+      "w": 69,
+      "h": 32,
+      "cx": 94.57108778625954,
+      "cy": 112.06536259541984,
+      "greenPixels": 2096,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 62,
+      "y": 80,
+      "w": 66,
+      "h": 48,
+      "cx": 96.40213645761544,
+      "cy": 104.61164713990351,
+      "greenPixels": 2902,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 63,
+      "y": 72,
+      "w": 65,
+      "h": 56,
+      "cx": 96.41827616027673,
+      "cy": 99.92216777169213,
+      "greenPixels": 3469,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 64,
+      "y": 67,
+      "w": 64,
+      "h": 61,
+      "cx": 96.86047759592165,
+      "cy": 97.44378856989536,
+      "greenPixels": 3727,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 64,
+      "y": 64,
+      "w": 64,
+      "h": 64,
+      "cx": 96.85677749360613,
+      "cy": 95.92736572890026,
+      "greenPixels": 3910,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 64,
+      "y": 64,
+      "w": 64,
+      "h": 64,
+      "cx": 96.85677749360613,
+      "cy": 95.92736572890026,
+      "greenPixels": 3910,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 64,
+      "y": 64,
+      "w": 64,
+      "h": 64,
+      "cx": 96.85677749360613,
+      "cy": 95.92736572890026,
+      "greenPixels": 3910,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 16.3,
+  "areaRatio": 1.86,
+  "layerPixels": 38627,
+  "source": "greenscreen/raw/bonk-doge.gif",
+  "animationMode": "per-frame-slot-mask"
+}

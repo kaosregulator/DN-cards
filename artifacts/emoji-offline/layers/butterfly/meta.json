@@ -1,0 +1,132 @@
+{
+  "id": "butterfly",
+  "kind": "transform-slot",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 135248
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.496062992125985,
+      "cy": 63.5,
+      "greenPixels": 16256,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 127,
+      "cx": 63.978741072911475,
+      "cy": 63.26988872280352,
+      "greenPixels": 12042,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.95805723439889,
+      "cy": 63.16980994684337,
+      "greenPixels": 13733,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 1,
+      "w": 128,
+      "h": 127,
+      "cx": 63.9577526771307,
+      "cy": 64.36929734487312,
+      "greenPixels": 13634,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 2,
+      "w": 128,
+      "h": 126,
+      "cx": 63.98929676394347,
+      "cy": 64.33004431808679,
+      "greenPixels": 11959,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.496062992125985,
+      "cy": 63.5,
+      "greenPixels": 16256,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 127,
+      "cx": 63.978741072911475,
+      "cy": 63.26988872280352,
+      "greenPixels": 12042,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.95805723439889,
+      "cy": 63.16980994684337,
+      "greenPixels": 13733,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 1,
+      "w": 128,
+      "h": 127,
+      "cx": 63.9577526771307,
+      "cy": 64.36929734487312,
+      "greenPixels": 13634,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 2,
+      "w": 128,
+      "h": 126,
+      "cx": 63.98929676394347,
+      "cy": 64.33004431808679,
+      "greenPixels": 11959,
+      "visible": true,
+      "delayMs": 70
+    }
+  ],
+  "motionPx": 1.3,
+  "areaRatio": 1.02,
+  "layerPixels": 0,
+  "source": "greenscreen/raw/butterfly.gif",
+  "animationMode": "per-frame-slot-mask"
+}

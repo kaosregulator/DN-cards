@@ -1,0 +1,132 @@
+{
+  "id": "excuse-me",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 100,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 71032
+  },
+  "perFrame": [
+    {
+      "x": 115,
+      "y": 0,
+      "w": 13,
+      "h": 128,
+      "cx": 122.55760773966578,
+      "cy": 55.959542656112575,
+      "greenPixels": 1137,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 111,
+      "y": 0,
+      "w": 17,
+      "h": 128,
+      "cx": 121.71812596006144,
+      "cy": 54.857142857142854,
+      "greenPixels": 1302,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 111,
+      "y": 0,
+      "w": 17,
+      "h": 128,
+      "cx": 122.60782347041123,
+      "cy": 49.53159478435306,
+      "greenPixels": 997,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 117,
+      "y": 0,
+      "w": 11,
+      "h": 128,
+      "cx": 123.73352033660589,
+      "cy": 47.922861150070126,
+      "greenPixels": 713,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 117,
+      "y": 0,
+      "w": 11,
+      "h": 128,
+      "cx": 123.92481203007519,
+      "cy": 47.24511278195489,
+      "greenPixels": 665,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 117,
+      "y": 0,
+      "w": 11,
+      "h": 128,
+      "cx": 123.8108504398827,
+      "cy": 46.69208211143695,
+      "greenPixels": 682,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 100
+    }
+  ],
+  "motionPx": 62.7,
+  "areaRatio": 11.64,
+  "layerPixels": 92808,
+  "source": "greenscreen/raw/excuse-me.gif",
+  "animationMode": "per-frame-slot-mask"
+}

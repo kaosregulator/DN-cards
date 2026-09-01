@@ -1,0 +1,66 @@
+{
+  "id": "riott",
+  "kind": "layer",
+  "frames": 4,
+  "sourcePages": 4,
+  "delayMs": 200,
+  "size": 128,
+  "slot": {
+    "x": 10,
+    "y": 30,
+    "w": 118,
+    "h": 60,
+    "greenPixels": 18112
+  },
+  "perFrame": [
+    {
+      "x": 10,
+      "y": 30,
+      "w": 118,
+      "h": 60,
+      "cx": 62.85379858657244,
+      "cy": 60.137367491166074,
+      "greenPixels": 4528,
+      "visible": true,
+      "delayMs": 200
+    },
+    {
+      "x": 10,
+      "y": 30,
+      "w": 118,
+      "h": 60,
+      "cx": 62.85379858657244,
+      "cy": 60.137367491166074,
+      "greenPixels": 4528,
+      "visible": true,
+      "delayMs": 200
+    },
+    {
+      "x": 10,
+      "y": 30,
+      "w": 118,
+      "h": 60,
+      "cx": 62.85379858657244,
+      "cy": 60.137367491166074,
+      "greenPixels": 4528,
+      "visible": true,
+      "delayMs": 200
+    },
+    {
+      "x": 10,
+      "y": 30,
+      "w": 118,
+      "h": 60,
+      "cx": 62.85379858657244,
+      "cy": 60.137367491166074,
+      "greenPixels": 4528,
+      "visible": true,
+      "delayMs": 200
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
+  "layerPixels": 25166,
+  "source": "greenscreen/raw/riott.gif",
+  "animationMode": "per-frame-slot-mask"
+}

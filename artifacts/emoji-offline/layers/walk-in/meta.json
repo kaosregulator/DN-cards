@@ -1,0 +1,132 @@
+{
+  "id": "walk-in",
+  "kind": "transform-slot",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 80,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 140639
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 46,
+      "h": 128,
+      "cx": 22.5,
+      "cy": 63.5,
+      "greenPixels": 5888,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 1,
+      "w": 82,
+      "h": 127,
+      "cx": 39.00730950235306,
+      "cy": 63.84599979973966,
+      "greenPixels": 9987,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 107,
+      "h": 128,
+      "cx": 51.40746142626852,
+      "cy": 65.17294849159438,
+      "greenPixels": 13027,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 123,
+      "h": 128,
+      "cx": 58.49909559857976,
+      "cy": 64.18972332015811,
+      "greenPixels": 14927,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.592418526992766,
+      "cy": 64.26955661369118,
+      "greenPixels": 16171,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.34147095179234,
+      "cy": 64.22045735475896,
+      "greenPixels": 16180,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 64.27611940298507,
+      "cy": 64.68286717672143,
+      "greenPixels": 15946,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.07368619089427,
+      "cy": 64.88605292863414,
+      "greenPixels": 15946,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.92677501081382,
+      "cy": 64.03497497373787,
+      "greenPixels": 16183,
+      "visible": true,
+      "delayMs": 80
+    }
+  ],
+  "motionPx": 41.8,
+  "areaRatio": 2.78,
+  "layerPixels": 0,
+  "source": "greenscreen/raw/walk-in.gif",
+  "animationMode": "per-frame-slot-mask"
+}

@@ -1,0 +1,33 @@
+{
+  "id": "glorpa",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 17,
+    "y": 19,
+    "w": 91,
+    "h": 104,
+    "greenPixels": 3785
+  },
+  "perFrame": [
+    {
+      "x": 17,
+      "y": 19,
+      "w": 91,
+      "h": 104,
+      "cx": 63.98705416116248,
+      "cy": 50.25653896961691,
+      "greenPixels": 3785,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
+  "layerPixels": 5761,
+  "source": "greenscreen/raw/glorpa.png",
+  "animationMode": "per-frame-slot-mask"
+}

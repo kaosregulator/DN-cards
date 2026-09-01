@@ -1,0 +1,66 @@
+{
+  "id": "green-fire",
+  "kind": "layer",
+  "frames": 4,
+  "sourcePages": 4,
+  "delayMs": 100,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 65305
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.50204480253922,
+      "cy": 63.49899285845083,
+      "greenPixels": 16383,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.51421931380344,
+      "cy": 63.42443887224023,
+      "greenPixels": 16351,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.47552404815743,
+      "cy": 63.43219458534499,
+      "greenPixels": 16363,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.10593534057256,
+      "cy": 62.94854392892399,
+      "greenPixels": 16208,
+      "visible": true,
+      "delayMs": 100
+    }
+  ],
+  "motionPx": 0.7,
+  "areaRatio": 1,
+  "layerPixels": 231,
+  "source": "greenscreen/raw/green-fire.gif",
+  "animationMode": "per-frame-slot-mask"
+}

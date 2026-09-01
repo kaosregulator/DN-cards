@@ -1,0 +1,33 @@
+{
+  "id": "sir",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 11,
+    "y": 23,
+    "w": 107,
+    "h": 105,
+    "greenPixels": 10120
+  },
+  "perFrame": [
+    {
+      "x": 11,
+      "y": 23,
+      "w": 107,
+      "h": 105,
+      "cx": 65.32766798418972,
+      "cy": 79.0959486166008,
+      "greenPixels": 10120,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
+  "layerPixels": 1607,
+  "source": "greenscreen/raw/sir.png",
+  "animationMode": "per-frame-slot-mask"
+}

@@ -1,0 +1,132 @@
+{
+  "id": "box",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 9,
+    "y": 1,
+    "w": 111,
+    "h": 119,
+    "greenPixels": 25938
+  },
+  "perFrame": [
+    {
+      "x": 32,
+      "y": 55,
+      "w": 65,
+      "h": 65,
+      "cx": 64,
+      "cy": 87,
+      "greenPixels": 4225,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 31,
+      "y": 53,
+      "w": 67,
+      "h": 67,
+      "cx": 64,
+      "cy": 86,
+      "greenPixels": 4489,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 29,
+      "y": 53,
+      "w": 71,
+      "h": 67,
+      "cx": 66.31837660700782,
+      "cy": 91.20317620368036,
+      "greenPixels": 3967,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 25,
+      "y": 77,
+      "w": 79,
+      "h": 42,
+      "cx": 69.5495028102032,
+      "cy": 102.98875918720276,
+      "greenPixels": 2313,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 21,
+      "y": 31,
+      "w": 87,
+      "h": 87,
+      "cx": 62.18741976893453,
+      "cy": 70.92939666238767,
+      "greenPixels": 1558,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 17,
+      "y": 23,
+      "w": 95,
+      "h": 92,
+      "cx": 57.26086956521739,
+      "cy": 42.776704240472355,
+      "greenPixels": 1863,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 31,
+      "y": 31,
+      "w": 79,
+      "h": 28,
+      "cx": 70.23785594639865,
+      "cy": 44.49078726968174,
+      "greenPixels": 1791,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 10,
+      "y": 3,
+      "w": 109,
+      "h": 57,
+      "cx": 64.61117196056955,
+      "cy": 45.96495071193866,
+      "greenPixels": 1826,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 9,
+      "y": 1,
+      "w": 111,
+      "h": 60,
+      "cx": 61.48140387637507,
+      "cy": 44.23991618648507,
+      "greenPixels": 1909,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 9,
+      "y": 1,
+      "w": 111,
+      "h": 61,
+      "cx": 64.23385077616425,
+      "cy": 44.550325488232346,
+      "greenPixels": 1997,
+      "visible": true,
+      "delayMs": 70
+    }
+  ],
+  "motionPx": 61.6,
+  "areaRatio": 3.95,
+  "layerPixels": 98220,
+  "source": "greenscreen/raw/box.gif",
+  "animationMode": "per-frame-slot-mask"
+}

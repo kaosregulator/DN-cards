@@ -1,0 +1,132 @@
+{
+  "id": "washing-machine",
+  "kind": "transform-slot",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 145818
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 6,
+      "w": 128,
+      "h": 122,
+      "cx": 63.5,
+      "cy": 66.5,
+      "greenPixels": 15616,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 64.88292992731635,
+      "cy": 64.48345212052784,
+      "greenPixels": 14171,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 65.13357943669675,
+      "cy": 63.27303800929724,
+      "greenPixels": 14628,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 64.3642355943015,
+      "cy": 62.5152030618754,
+      "greenPixels": 14109,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 62.970209689081706,
+      "cy": 63.70397686189443,
+      "greenPixels": 13830,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 62.90057819771541,
+      "cy": 64.99506416584403,
+      "greenPixels": 14182,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 62.84464778308551,
+      "cy": 64.25829240395613,
+      "greenPixels": 14863,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 64.05326674989597,
+      "cy": 62.98182827021778,
+      "greenPixels": 14418,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.602049069830144,
+      "cy": 62.01159342140739,
+      "greenPixels": 14836,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 65.24523574019123,
+      "cy": 64.07893175074184,
+      "greenPixels": 15165,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 5.1,
+  "areaRatio": 1.05,
+  "layerPixels": 0,
+  "source": "greenscreen/raw/washing-machine.gif",
+  "animationMode": "per-frame-slot-mask"
+}

@@ -1,0 +1,33 @@
+{
+  "id": "blush",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 14546
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.65076309638388,
+      "cy": 61.61405197305101,
+      "greenPixels": 14546,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
+  "layerPixels": 1838,
+  "source": "greenscreen/raw/blush.png",
+  "animationMode": "per-frame-slot-mask"
+}

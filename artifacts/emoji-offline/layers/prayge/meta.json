@@ -1,0 +1,33 @@
+{
+  "id": "prayge",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 1,
+    "w": 126,
+    "h": 127,
+    "greenPixels": 12470
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 1,
+      "w": 126,
+      "h": 127,
+      "cx": 60.180994386527665,
+      "cy": 64.82109061748196,
+      "greenPixels": 12470,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
+  "layerPixels": 1738,
+  "source": "greenscreen/raw/prayge.png",
+  "animationMode": "per-frame-slot-mask"
+}

@@ -1,0 +1,33 @@
+{
+  "id": "luvv",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 12,
+    "y": 17,
+    "w": 109,
+    "h": 111,
+    "greenPixels": 5681
+  },
+  "perFrame": [
+    {
+      "x": 12,
+      "y": 17,
+      "w": 109,
+      "h": 111,
+      "cx": 64.51628234465763,
+      "cy": 54.87255764830135,
+      "greenPixels": 5681,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
+  "layerPixels": 6613,
+  "source": "greenscreen/raw/luvv.png",
+  "animationMode": "per-frame-slot-mask"
+}

@@ -1,0 +1,33 @@
+{
+  "id": "copium",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 1,
+    "w": 126,
+    "h": 117,
+    "greenPixels": 8637
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 1,
+      "w": 126,
+      "h": 117,
+      "cx": 59.72768322334144,
+      "cy": 50.6386476785921,
+      "greenPixels": 8637,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
+  "layerPixels": 5762,
+  "source": "greenscreen/raw/copium.png",
+  "animationMode": "per-frame-slot-mask"
+}

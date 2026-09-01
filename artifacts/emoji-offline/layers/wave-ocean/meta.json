@@ -1,0 +1,132 @@
+{
+  "id": "wave-ocean",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 118,
+    "greenPixels": 109234
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 118,
+      "cx": 67.73068795491899,
+      "cy": 52.103310636299604,
+      "greenPixels": 12777,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 115,
+      "cx": 69.15441655801826,
+      "cy": 51.22229465449804,
+      "greenPixels": 12272,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 115,
+      "cx": 70.615786810592,
+      "cy": 50.95673806712768,
+      "greenPixels": 11858,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 116,
+      "cx": 71.69413726522731,
+      "cy": 50.73512374934176,
+      "greenPixels": 11394,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 115,
+      "cx": 72.49172987297815,
+      "cy": 49.873343690030154,
+      "greenPixels": 10943,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 116,
+      "cx": 73.01706996811104,
+      "cy": 49.88529356593509,
+      "greenPixels": 10662,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 115,
+      "cx": 71.76244516498188,
+      "cy": 48.04567995422468,
+      "greenPixels": 10486,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 114,
+      "cx": 70.89191909026869,
+      "cy": 44.76602596357049,
+      "greenPixels": 9937,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 112,
+      "cx": 67.8844254198222,
+      "cy": 38.07364723960048,
+      "greenPixels": 9111,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 102,
+      "cx": 63.90300183785991,
+      "cy": 38.63763528691035,
+      "greenPixels": 9794,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 16.7,
+  "areaRatio": 1.16,
+  "layerPixels": 54606,
+  "source": "greenscreen/raw/wave-ocean.gif",
+  "animationMode": "per-frame-slot-mask"
+}

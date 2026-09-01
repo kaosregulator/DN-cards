@@ -1,0 +1,132 @@
+{
+  "id": "nyan-cat",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 60,
+  "size": 128,
+  "slot": {
+    "x": 2,
+    "y": 23,
+    "w": 126,
+    "h": 74,
+    "greenPixels": 48798
+  },
+  "perFrame": [
+    {
+      "x": 2,
+      "y": 24,
+      "w": 126,
+      "h": 72,
+      "cx": 91.35133020344288,
+      "cy": 59.60719874804382,
+      "greenPixels": 5112,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 2,
+      "y": 23,
+      "w": 126,
+      "h": 72,
+      "cx": 93.37403625755366,
+      "cy": 58.158157949572825,
+      "greenPixels": 4799,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 2,
+      "y": 24,
+      "w": 126,
+      "h": 72,
+      "cx": 92.23990650233745,
+      "cy": 60.08329791755206,
+      "greenPixels": 4706,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 2,
+      "y": 25,
+      "w": 126,
+      "h": 72,
+      "cx": 91.13665987780041,
+      "cy": 61.0938900203666,
+      "greenPixels": 4910,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 2,
+      "y": 25,
+      "w": 126,
+      "h": 72,
+      "cx": 93.64932920536636,
+      "cy": 60.530650154798764,
+      "greenPixels": 4845,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 2,
+      "y": 24,
+      "w": 126,
+      "h": 72,
+      "cx": 91.86587771203156,
+      "cy": 59.39625246548324,
+      "greenPixels": 5070,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 2,
+      "y": 23,
+      "w": 126,
+      "h": 72,
+      "cx": 92.30154162384378,
+      "cy": 58.381294964028775,
+      "greenPixels": 4865,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 2,
+      "y": 24,
+      "w": 126,
+      "h": 72,
+      "cx": 91.95574846495872,
+      "cy": 59.9949184840144,
+      "greenPixels": 4723,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 2,
+      "y": 25,
+      "w": 126,
+      "h": 72,
+      "cx": 91.1430609333605,
+      "cy": 60.99633177093948,
+      "greenPixels": 4907,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 2,
+      "y": 25,
+      "w": 126,
+      "h": 72,
+      "cx": 93.36494548446822,
+      "cy": 60.607488171158195,
+      "greenPixels": 4861,
+      "visible": true,
+      "delayMs": 60
+    }
+  ],
+  "motionPx": 3.9,
+  "areaRatio": 1,
+  "layerPixels": 53243,
+  "source": "greenscreen/raw/nyan-cat.gif",
+  "animationMode": "per-frame-slot-mask"
+}

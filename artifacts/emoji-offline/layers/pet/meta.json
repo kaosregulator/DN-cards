@@ -1,0 +1,132 @@
+{
+  "id": "pet",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 25,
+    "y": 22,
+    "w": 103,
+    "h": 106,
+    "greenPixels": 64648
+  },
+  "perFrame": [
+    {
+      "x": 25,
+      "y": 22,
+      "w": 103,
+      "h": 104,
+      "cx": 81.77891898831686,
+      "cy": 86.06432147900885,
+      "greenPixels": 7789,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 25,
+      "y": 25,
+      "w": 103,
+      "h": 103,
+      "cx": 85.63291915938028,
+      "cy": 87.96487191287007,
+      "greenPixels": 6519,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 25,
+      "y": 30,
+      "w": 103,
+      "h": 98,
+      "cx": 91.94374648415526,
+      "cy": 88.39771235702231,
+      "greenPixels": 5333,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 25,
+      "y": 27,
+      "w": 99,
+      "h": 101,
+      "cx": 84.42315554729605,
+      "cy": 90.0629994424828,
+      "greenPixels": 5381,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 25,
+      "y": 25,
+      "w": 103,
+      "h": 103,
+      "cx": 83.5549164612435,
+      "cy": 89.38003286770748,
+      "greenPixels": 7302,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 25,
+      "y": 22,
+      "w": 103,
+      "h": 104,
+      "cx": 81.77891898831686,
+      "cy": 86.06432147900885,
+      "greenPixels": 7789,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 25,
+      "y": 25,
+      "w": 103,
+      "h": 103,
+      "cx": 85.63291915938028,
+      "cy": 87.96487191287007,
+      "greenPixels": 6519,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 25,
+      "y": 30,
+      "w": 103,
+      "h": 98,
+      "cx": 91.94374648415526,
+      "cy": 88.39771235702231,
+      "greenPixels": 5333,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 25,
+      "y": 27,
+      "w": 99,
+      "h": 101,
+      "cx": 84.42315554729605,
+      "cy": 90.0629994424828,
+      "greenPixels": 5381,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 25,
+      "y": 25,
+      "w": 103,
+      "h": 103,
+      "cx": 83.5549164612435,
+      "cy": 89.38003286770748,
+      "greenPixels": 7302,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 10.9,
+  "areaRatio": 1.07,
+  "layerPixels": 65212,
+  "source": "greenscreen/raw/pet.gif",
+  "animationMode": "per-frame-slot-mask"
+}

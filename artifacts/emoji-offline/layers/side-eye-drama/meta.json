@@ -1,0 +1,132 @@
+{
+  "id": "side-eye-drama",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 80,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 142884
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 60.378470368392954,
+      "cy": 66.90783502402563,
+      "greenPixels": 14984,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 2,
+      "y": 0,
+      "w": 126,
+      "h": 128,
+      "cx": 63.023442967109865,
+      "cy": 67.06095171448565,
+      "greenPixels": 14290,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 5,
+      "y": 0,
+      "w": 123,
+      "h": 128,
+      "cx": 64.8172206531972,
+      "cy": 67.51567818089651,
+      "greenPixels": 13809,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 5,
+      "y": 0,
+      "w": 123,
+      "h": 128,
+      "cx": 64.8172206531972,
+      "cy": 67.51567818089651,
+      "greenPixels": 13809,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 2,
+      "y": 0,
+      "w": 126,
+      "h": 128,
+      "cx": 63.023442967109865,
+      "cy": 67.06095171448565,
+      "greenPixels": 14290,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 60.378470368392954,
+      "cy": 66.90783502402563,
+      "greenPixels": 14984,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 127,
+      "h": 128,
+      "cx": 58.014215380348105,
+      "cy": 67.01664239650509,
+      "greenPixels": 14421,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 124,
+      "h": 128,
+      "cx": 56.002869852202615,
+      "cy": 67.46965131295738,
+      "greenPixels": 13938,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 124,
+      "h": 128,
+      "cx": 56.002869852202615,
+      "cy": 67.46965131295738,
+      "greenPixels": 13938,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 127,
+      "h": 128,
+      "cx": 58.014215380348105,
+      "cy": 67.01664239650509,
+      "greenPixels": 14421,
+      "visible": true,
+      "delayMs": 80
+    }
+  ],
+  "motionPx": 8.8,
+  "areaRatio": 1.04,
+  "layerPixels": 14008,
+  "source": "greenscreen/raw/side-eye-drama.gif",
+  "animationMode": "per-frame-slot-mask"
+}

@@ -1,0 +1,132 @@
+{
+  "id": "leave-fast",
+  "kind": "transform-slot",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 60,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 59521
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 126,
+      "h": 128,
+      "cx": 62.5,
+      "cy": 63.5,
+      "greenPixels": 16128,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 122,
+      "h": 128,
+      "cx": 60.5,
+      "cy": 63.5,
+      "greenPixels": 15616,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 53,
+      "y": 0,
+      "w": 75,
+      "h": 128,
+      "cx": 91.15302335734556,
+      "cy": 63.44859201047806,
+      "greenPixels": 9162,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 105,
+      "y": 0,
+      "w": 23,
+      "h": 122,
+      "cx": 118.10667861945316,
+      "cy": 65.51098162259076,
+      "greenPixels": 2231,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 60
+    }
+  ],
+  "motionPx": 57.6,
+  "areaRatio": 5.84,
+  "layerPixels": 0,
+  "source": "greenscreen/raw/leave-fast.gif",
+  "animationMode": "per-frame-slot-mask"
+}

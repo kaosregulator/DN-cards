@@ -1,0 +1,154 @@
+{
+  "id": "so-cute",
+  "kind": "layer",
+  "frames": 12,
+  "sourcePages": 12,
+  "delayMs": 20,
+  "size": 128,
+  "slot": {
+    "x": 5,
+    "y": 29,
+    "w": 123,
+    "h": 90,
+    "greenPixels": 61216
+  },
+  "perFrame": [
+    {
+      "x": 5,
+      "y": 35,
+      "w": 123,
+      "h": 76,
+      "cx": 68.59384498480243,
+      "cy": 66.18427051671732,
+      "greenPixels": 5264,
+      "visible": true,
+      "delayMs": 20
+    },
+    {
+      "x": 7,
+      "y": 29,
+      "w": 121,
+      "h": 90,
+      "cx": 74.4616607071911,
+      "cy": 61.859157727453315,
+      "greenPixels": 5034,
+      "visible": true,
+      "delayMs": 20
+    },
+    {
+      "x": 10,
+      "y": 31,
+      "w": 118,
+      "h": 88,
+      "cx": 75.17274107820805,
+      "cy": 67.76157934700076,
+      "greenPixels": 5268,
+      "visible": true,
+      "delayMs": 20
+    },
+    {
+      "x": 11,
+      "y": 30,
+      "w": 116,
+      "h": 89,
+      "cx": 74.72382026696748,
+      "cy": 66.29742432788117,
+      "greenPixels": 5319,
+      "visible": true,
+      "delayMs": 20
+    },
+    {
+      "x": 7,
+      "y": 30,
+      "w": 120,
+      "h": 89,
+      "cx": 75.60731039874902,
+      "cy": 63.04378420641126,
+      "greenPixels": 5116,
+      "visible": true,
+      "delayMs": 20
+    },
+    {
+      "x": 8,
+      "y": 31,
+      "w": 116,
+      "h": 82,
+      "cx": 70.88328012769354,
+      "cy": 64.7633679169992,
+      "greenPixels": 5012,
+      "visible": true,
+      "delayMs": 20
+    },
+    {
+      "x": 10,
+      "y": 34,
+      "w": 118,
+      "h": 85,
+      "cx": 72.29410585404972,
+      "cy": 64.77165196471532,
+      "greenPixels": 4988,
+      "visible": true,
+      "delayMs": 20
+    },
+    {
+      "x": 5,
+      "y": 38,
+      "w": 121,
+      "h": 68,
+      "cx": 71.72366930917327,
+      "cy": 68.8251415628539,
+      "greenPixels": 4415,
+      "visible": true,
+      "delayMs": 20
+    },
+    {
+      "x": 6,
+      "y": 38,
+      "w": 122,
+      "h": 81,
+      "cx": 73.12903857450559,
+      "cy": 69.54239279420403,
+      "greenPixels": 5107,
+      "visible": true,
+      "delayMs": 20
+    },
+    {
+      "x": 10,
+      "y": 32,
+      "w": 118,
+      "h": 87,
+      "cx": 75.79410681399632,
+      "cy": 66.79613259668508,
+      "greenPixels": 5430,
+      "visible": true,
+      "delayMs": 20
+    },
+    {
+      "x": 16,
+      "y": 34,
+      "w": 112,
+      "h": 85,
+      "cx": 75.20492151039457,
+      "cy": 66.81883750530335,
+      "greenPixels": 4714,
+      "visible": true,
+      "delayMs": 20
+    },
+    {
+      "x": 5,
+      "y": 31,
+      "w": 122,
+      "h": 86,
+      "cx": 71.17750946116418,
+      "cy": 65.35682104883763,
+      "greenPixels": 5549,
+      "visible": true,
+      "delayMs": 20
+    }
+  ],
+  "motionPx": 10.5,
+  "areaRatio": 1.32,
+  "layerPixels": 49065,
+  "source": "greenscreen/raw/so-cute.gif",
+  "animationMode": "per-frame-slot-mask"
+}

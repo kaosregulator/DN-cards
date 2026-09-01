@@ -1,0 +1,132 @@
+{
+  "id": "hadoken",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 150403
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 126,
+      "h": 128,
+      "cx": 62.5,
+      "cy": 63.5,
+      "greenPixels": 16128,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 120,
+      "h": 128,
+      "cx": 59.5,
+      "cy": 63.5,
+      "greenPixels": 15360,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 115,
+      "h": 128,
+      "cx": 55.774278946635086,
+      "cy": 63.53915284937997,
+      "greenPixels": 14354,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 115,
+      "h": 128,
+      "cx": 56.468271935240445,
+      "cy": 63.49975989572614,
+      "greenPixels": 14577,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 115,
+      "h": 128,
+      "cx": 57,
+      "cy": 63.5,
+      "greenPixels": 14720,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 115,
+      "h": 128,
+      "cx": 57,
+      "cy": 63.5,
+      "greenPixels": 14720,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 115,
+      "h": 128,
+      "cx": 57,
+      "cy": 63.5,
+      "greenPixels": 14720,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 115,
+      "h": 128,
+      "cx": 57,
+      "cy": 63.5,
+      "greenPixels": 14720,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 115,
+      "h": 128,
+      "cx": 57,
+      "cy": 63.5,
+      "greenPixels": 14720,
+      "visible": true,
+      "delayMs": 70
+    }
+  ],
+  "motionPx": 7.7,
+  "areaRatio": 1.11,
+  "layerPixels": 1506,
+  "source": "greenscreen/raw/hadoken.gif",
+  "animationMode": "per-frame-slot-mask"
+}

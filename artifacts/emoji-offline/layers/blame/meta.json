@@ -1,0 +1,33 @@
+{
+  "id": "blame",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 29,
+    "y": 32,
+    "w": 71,
+    "h": 71,
+    "greenPixels": 4699
+  },
+  "perFrame": [
+    {
+      "x": 29,
+      "y": 32,
+      "w": 71,
+      "h": 71,
+      "cx": 63.50478825281975,
+      "cy": 67.49542455841669,
+      "greenPixels": 4699,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
+  "layerPixels": 4593,
+  "source": "greenscreen/raw/blame.png",
+  "animationMode": "per-frame-slot-mask"
+}

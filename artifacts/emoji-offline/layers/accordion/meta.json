@@ -1,0 +1,132 @@
+{
+  "id": "accordion",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 116538
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 56.109471638098604,
+      "cy": 54.73087117865347,
+      "greenPixels": 11318,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 57.99331791313287,
+      "cy": 55.68234387047032,
+      "greenPixels": 11673,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 58.73132438592049,
+      "cy": 56.062547480374775,
+      "greenPixels": 11847,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 57.59765759559077,
+      "cy": 55.65415087840165,
+      "greenPixels": 11612,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 58.588882308147895,
+      "cy": 56.03993569675946,
+      "greenPixels": 11819,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 56.109471638098604,
+      "cy": 54.73087117865347,
+      "greenPixels": 11318,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 57.99331791313287,
+      "cy": 55.68234387047032,
+      "greenPixels": 11673,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 58.73132438592049,
+      "cy": 56.062547480374775,
+      "greenPixels": 11847,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 57.59765759559077,
+      "cy": 55.65415087840165,
+      "greenPixels": 11612,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 58.588882308147895,
+      "cy": 56.03993569675946,
+      "greenPixels": 11819,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 2.9,
+  "areaRatio": 1,
+  "layerPixels": 47302,
+  "source": "greenscreen/raw/accordion.gif",
+  "animationMode": "per-frame-slot-mask"
+}

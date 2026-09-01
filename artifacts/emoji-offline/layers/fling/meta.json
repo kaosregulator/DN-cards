@@ -1,0 +1,132 @@
+{
+  "id": "fling",
+  "kind": "transform-slot",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 73463
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 7,
+      "w": 127,
+      "h": 121,
+      "cx": 58.0706057843706,
+      "cy": 72.20328167730173,
+      "greenPixels": 12067,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 8,
+      "w": 123,
+      "h": 120,
+      "cx": 55.05770444504553,
+      "cy": 74.89423857181498,
+      "greenPixels": 11091,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 115,
+      "h": 128,
+      "cx": 55.30931860036832,
+      "cy": 66.91580110497237,
+      "greenPixels": 13575,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 8,
+      "y": 0,
+      "w": 120,
+      "h": 126,
+      "cx": 72.83346147931724,
+      "cy": 59.39051207135169,
+      "greenPixels": 13006,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 24,
+      "y": 0,
+      "w": 104,
+      "h": 112,
+      "cx": 84.07026779583428,
+      "cy": 49.176699473563744,
+      "greenPixels": 8738,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 42,
+      "y": 0,
+      "w": 86,
+      "h": 91,
+      "cx": 92.68496849684969,
+      "cy": 38.30549054905491,
+      "greenPixels": 5555,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 70,
+      "y": 0,
+      "w": 58,
+      "h": 80,
+      "cx": 102.94345807156515,
+      "cy": 37.696257853045616,
+      "greenPixels": 3661,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 94,
+      "y": 0,
+      "w": 34,
+      "h": 104,
+      "cx": 112.26824583866838,
+      "cy": 53.33866837387964,
+      "greenPixels": 3124,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 114,
+      "y": 0,
+      "w": 14,
+      "h": 128,
+      "cx": 120.5,
+      "cy": 63.5,
+      "greenPixels": 1792,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 121,
+      "y": 6,
+      "w": 7,
+      "h": 122,
+      "cx": 124,
+      "cy": 66.5,
+      "greenPixels": 854,
+      "visible": true,
+      "delayMs": 70
+    }
+  ],
+  "motionPx": 78.3,
+  "areaRatio": 17.99,
+  "layerPixels": 0,
+  "source": "greenscreen/raw/fling.gif",
+  "animationMode": "per-frame-slot-mask"
+}

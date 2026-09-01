@@ -1,0 +1,33 @@
+{
+  "id": "pepe-cheer",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 15,
+    "w": 128,
+    "h": 107,
+    "greenPixels": 8328
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 15,
+      "w": 128,
+      "h": 107,
+      "cx": 60.844860710854945,
+      "cy": 70.80535542747359,
+      "greenPixels": 8328,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
+  "layerPixels": 3213,
+  "source": "greenscreen/raw/pepe-cheer.png",
+  "animationMode": "per-frame-slot-mask"
+}

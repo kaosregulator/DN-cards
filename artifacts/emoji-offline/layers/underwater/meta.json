@@ -1,0 +1,132 @@
+{
+  "id": "underwater",
+  "kind": "transform-slot",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 80,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 162077
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.73029717774593,
+      "cy": 63.73029717774593,
+      "greenPixels": 16051,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.69865392965697,
+      "cy": 63.69865392965697,
+      "greenPixels": 16121,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.62842034065056,
+      "cy": 63.62842034065056,
+      "greenPixels": 16263,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.622549019607845,
+      "cy": 63.622549019607845,
+      "greenPixels": 16320,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.65292096219931,
+      "cy": 63.65292096219931,
+      "greenPixels": 16296,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.65200294912755,
+      "cy": 63.65200294912755,
+      "greenPixels": 16276,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.665620384047266,
+      "cy": 63.665620384047266,
+      "greenPixels": 16248,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.68848619329388,
+      "cy": 63.68848619329388,
+      "greenPixels": 16224,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.77450495049505,
+      "cy": 63.77450495049505,
+      "greenPixels": 16160,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.80952971832733,
+      "cy": 63.80952971832733,
+      "greenPixels": 16118,
+      "visible": true,
+      "delayMs": 80
+    }
+  ],
+  "motionPx": 0.3,
+  "areaRatio": 1,
+  "layerPixels": 0,
+  "source": "greenscreen/raw/underwater.gif",
+  "animationMode": "per-frame-slot-mask"
+}

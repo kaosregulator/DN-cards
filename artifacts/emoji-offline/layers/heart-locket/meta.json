@@ -1,0 +1,132 @@
+{
+  "id": "heart-locket",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 1,
+    "y": 13,
+    "w": 127,
+    "h": 108,
+    "greenPixels": 56970
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 70
+    },
+    {
+      "x": 52,
+      "y": 19,
+      "w": 76,
+      "h": 85,
+      "cx": 114.47567567567567,
+      "cy": 53.185135135135134,
+      "greenPixels": 1480,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 30,
+      "y": 13,
+      "w": 98,
+      "h": 98,
+      "cx": 83.03555678059537,
+      "cy": 58.705622932745314,
+      "greenPixels": 7256,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 16,
+      "y": 13,
+      "w": 112,
+      "h": 103,
+      "cx": 74.71026528258362,
+      "cy": 59.246597462514416,
+      "greenPixels": 8670,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 3,
+      "y": 13,
+      "w": 125,
+      "h": 107,
+      "cx": 66.14997442455243,
+      "cy": 60.817186700767266,
+      "greenPixels": 9775,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 1,
+      "y": 13,
+      "w": 127,
+      "h": 108,
+      "cx": 64.81931715177762,
+      "cy": 61.11088729982878,
+      "greenPixels": 9929,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 1,
+      "y": 13,
+      "w": 127,
+      "h": 108,
+      "cx": 64.81993957703928,
+      "cy": 61.1067472306143,
+      "greenPixels": 9930,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 1,
+      "y": 13,
+      "w": 127,
+      "h": 108,
+      "cx": 64.81993957703928,
+      "cy": 61.1067472306143,
+      "greenPixels": 9930,
+      "visible": true,
+      "delayMs": 70
+    }
+  ],
+  "motionPx": 50.3,
+  "areaRatio": 2.12,
+  "layerPixels": 106870,
+  "source": "greenscreen/raw/heart-locket.gif",
+  "animationMode": "per-frame-slot-mask"
+}

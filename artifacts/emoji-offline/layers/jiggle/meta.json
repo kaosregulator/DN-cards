@@ -1,0 +1,132 @@
+{
+  "id": "jiggle",
+  "kind": "transform-slot",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 80,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 161587
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.48105803102404,
+      "cy": 63.952351523391634,
+      "greenPixels": 16181,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.4818496110631,
+      "cy": 63.70743301642178,
+      "greenPixels": 16198,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.57722974225848,
+      "cy": 63.40787440509302,
+      "greenPixels": 16179,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.55128523531603,
+      "cy": 64.19918042965355,
+      "greenPixels": 16106,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.44748915065096,
+      "cy": 63.143645381277125,
+      "greenPixels": 16130,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.47089390658831,
+      "cy": 64.00612434271575,
+      "greenPixels": 16165,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.4959560412422,
+      "cy": 63.68790516762363,
+      "greenPixels": 16197,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.561488073167716,
+      "cy": 63.373130638981586,
+      "greenPixels": 16182,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.561522224981374,
+      "cy": 64.18369754159424,
+      "greenPixels": 16108,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.452760052041384,
+      "cy": 63.240071866674924,
+      "greenPixels": 16141,
+      "visible": true,
+      "delayMs": 80
+    }
+  ],
+  "motionPx": 1.1,
+  "areaRatio": 1,
+  "layerPixels": 0,
+  "source": "greenscreen/raw/jiggle.gif",
+  "animationMode": "per-frame-slot-mask"
+}

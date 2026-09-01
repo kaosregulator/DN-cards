@@ -1,0 +1,132 @@
+{
+  "id": "zoom",
+  "kind": "transform-slot",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 60,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 142660
+  },
+  "perFrame": [
+    {
+      "x": 16,
+      "y": 16,
+      "w": 97,
+      "h": 97,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 9409,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 8,
+      "y": 8,
+      "w": 113,
+      "h": 113,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 12769,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 8,
+      "y": 8,
+      "w": 113,
+      "h": 113,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 12769,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 16,
+      "y": 16,
+      "w": 97,
+      "h": 97,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 9409,
+      "visible": true,
+      "delayMs": 60
+    }
+  ],
+  "motionPx": 0.7,
+  "areaRatio": 1.74,
+  "layerPixels": 0,
+  "source": "greenscreen/raw/zoom.gif",
+  "animationMode": "per-frame-slot-mask"
+}

@@ -1,0 +1,33 @@
+{
+  "id": "peepo-want",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 1,
+    "y": 41,
+    "w": 123,
+    "h": 87,
+    "greenPixels": 7917
+  },
+  "perFrame": [
+    {
+      "x": 1,
+      "y": 41,
+      "w": 123,
+      "h": 87,
+      "cx": 63.25868384489074,
+      "cy": 86.52633573323229,
+      "greenPixels": 7917,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
+  "layerPixels": 1295,
+  "source": "greenscreen/raw/peepo-want.png",
+  "animationMode": "per-frame-slot-mask"
+}

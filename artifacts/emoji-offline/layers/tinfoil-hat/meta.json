@@ -1,0 +1,132 @@
+{
+  "id": "tinfoil-hat",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 60,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 148606
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.453959298811206,
+      "cy": 65.95842568339042,
+      "greenPixels": 14889,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.60389784946236,
+      "cy": 65.98629032258064,
+      "greenPixels": 14880,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.367360644728,
+      "cy": 65.9578912021491,
+      "greenPixels": 14890,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.367360644728,
+      "cy": 65.9578912021491,
+      "greenPixels": 14890,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.60389784946236,
+      "cy": 65.98629032258064,
+      "greenPixels": 14880,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.453959298811206,
+      "cy": 65.95842568339042,
+      "greenPixels": 14889,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 1,
+      "y": 0,
+      "w": 127,
+      "h": 128,
+      "cx": 63.84933920704846,
+      "cy": 65.97987123009149,
+      "greenPixels": 14755,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.54657801061186,
+      "cy": 65.95506749949627,
+      "greenPixels": 14889,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.54657801061186,
+      "cy": 65.95506749949627,
+      "greenPixels": 14889,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 1,
+      "y": 0,
+      "w": 127,
+      "h": 128,
+      "cx": 63.84933920704846,
+      "cy": 65.97987123009149,
+      "greenPixels": 14755,
+      "visible": true,
+      "delayMs": 60
+    }
+  ],
+  "motionPx": 0.5,
+  "areaRatio": 1.01,
+  "layerPixels": 14978,
+  "source": "greenscreen/raw/tinfoil-hat.gif",
+  "animationMode": "per-frame-slot-mask"
+}

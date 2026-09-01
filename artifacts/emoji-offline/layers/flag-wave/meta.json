@@ -1,0 +1,132 @@
+{
+  "id": "flag-wave",
+  "kind": "transform-slot",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 160536
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.50916344595437,
+      "cy": 63.89172173045755,
+      "greenPixels": 16042,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.542079980036185,
+      "cy": 63.7639278807162,
+      "greenPixels": 16029,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.572799800548495,
+      "cy": 63.63494141111942,
+      "greenPixels": 16044,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5518163722319,
+      "cy": 63.51306295098283,
+      "greenPixels": 16076,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.489617010693856,
+      "cy": 63.482964436707285,
+      "greenPixels": 16084,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.42976338729763,
+      "cy": 63.55821917808219,
+      "greenPixels": 16060,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.448609205438444,
+      "cy": 63.69714356991393,
+      "greenPixels": 16034,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.47842085568168,
+      "cy": 63.82243981539229,
+      "greenPixels": 16034,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.50560328726186,
+      "cy": 63.93749221765658,
+      "greenPixels": 16062,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.50594238068571,
+      "cy": 63.96391014871508,
+      "greenPixels": 16071,
+      "visible": true,
+      "delayMs": 70
+    }
+  ],
+  "motionPx": 0.5,
+  "areaRatio": 1,
+  "layerPixels": 0,
+  "source": "greenscreen/raw/flag-wave.gif",
+  "animationMode": "per-frame-slot-mask"
+}

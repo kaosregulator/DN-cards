@@ -1,0 +1,132 @@
+{
+  "id": "mic-drop",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 80,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 157017
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 62.413090401218895,
+      "cy": 64.33443372270187,
+      "greenPixels": 15752,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 62.413090401218895,
+      "cy": 64.33443372270187,
+      "greenPixels": 15752,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 62.41509553735796,
+      "cy": 64.32869929537232,
+      "greenPixels": 15753,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 62.44024119327198,
+      "cy": 64.20863218026024,
+      "greenPixels": 15755,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 62.49632166412988,
+      "cy": 63.73439878234399,
+      "greenPixels": 15768,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 62.51587100050787,
+      "cy": 62.83856018283392,
+      "greenPixels": 15752,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 62.53745080614447,
+      "cy": 62.31363463247429,
+      "greenPixels": 15754,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 62.401050675892115,
+      "cy": 61.58395797296431,
+      "greenPixels": 15609,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 62.128670964381065,
+      "cy": 60.756788435241255,
+      "greenPixels": 15357,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 62.55432921027593,
+      "cy": 62.166000634316525,
+      "greenPixels": 15765,
+      "visible": true,
+      "delayMs": 80
+    }
+  ],
+  "motionPx": 3.6,
+  "areaRatio": 1,
+  "layerPixels": 6275,
+  "source": "greenscreen/raw/mic-drop.gif",
+  "animationMode": "per-frame-slot-mask"
+}

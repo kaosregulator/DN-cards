@@ -1,0 +1,132 @@
+{
+  "id": "jam",
+  "kind": "transform-slot",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 60,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 156160
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 115,
+      "cx": 63.5,
+      "cy": 57,
+      "greenPixels": 14720,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 121,
+      "cx": 63.5,
+      "cy": 60,
+      "greenPixels": 15488,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 127,
+      "cx": 63.5,
+      "cy": 63,
+      "greenPixels": 16256,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 2,
+      "w": 128,
+      "h": 126,
+      "cx": 63.5,
+      "cy": 64.5,
+      "greenPixels": 16128,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 7,
+      "w": 128,
+      "h": 121,
+      "cx": 63.5,
+      "cy": 67,
+      "greenPixels": 15488,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 115,
+      "cx": 63.5,
+      "cy": 57,
+      "greenPixels": 14720,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 121,
+      "cx": 63.5,
+      "cy": 60,
+      "greenPixels": 15488,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 127,
+      "cx": 63.5,
+      "cy": 63,
+      "greenPixels": 16256,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 2,
+      "w": 128,
+      "h": 126,
+      "cx": 63.5,
+      "cy": 64.5,
+      "greenPixels": 16128,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 7,
+      "w": 128,
+      "h": 121,
+      "cx": 63.5,
+      "cy": 67,
+      "greenPixels": 15488,
+      "visible": true,
+      "delayMs": 60
+    }
+  ],
+  "motionPx": 10,
+  "areaRatio": 1.1,
+  "layerPixels": 0,
+  "source": "greenscreen/raw/jam.gif",
+  "animationMode": "per-frame-slot-mask"
+}

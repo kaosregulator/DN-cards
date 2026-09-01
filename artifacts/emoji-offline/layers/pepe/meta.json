@@ -1,0 +1,33 @@
+{
+  "id": "pepe",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 1,
+    "w": 126,
+    "h": 120,
+    "greenPixels": 11825
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 1,
+      "w": 126,
+      "h": 120,
+      "cx": 58.77911205073996,
+      "cy": 61.8169133192389,
+      "greenPixels": 11825,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
+  "layerPixels": 2067,
+  "source": "greenscreen/raw/pepe.png",
+  "animationMode": "per-frame-slot-mask"
+}

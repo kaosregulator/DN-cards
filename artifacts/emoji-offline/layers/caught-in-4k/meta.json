@@ -1,0 +1,132 @@
+{
+  "id": "caught-in-4k",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 60,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 127201
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 65.20253164556962,
+      "cy": 62.90180045601069,
+      "greenPixels": 12719,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 64.93890323085348,
+      "cy": 62.87991864194633,
+      "greenPixels": 12783,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 65.21076874205845,
+      "cy": 62.629764930114355,
+      "greenPixels": 12592,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 64.90932541233487,
+      "cy": 62.744938638317834,
+      "greenPixels": 12793,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 65.20253164556962,
+      "cy": 62.90180045601069,
+      "greenPixels": 12719,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 65.20253164556962,
+      "cy": 62.90180045601069,
+      "greenPixels": 12719,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 65.20253164556962,
+      "cy": 62.90180045601069,
+      "greenPixels": 12719,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 65.20253164556962,
+      "cy": 62.90180045601069,
+      "greenPixels": 12719,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 65.20253164556962,
+      "cy": 62.90180045601069,
+      "greenPixels": 12719,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 65.20253164556962,
+      "cy": 62.90180045601069,
+      "greenPixels": 12719,
+      "visible": true,
+      "delayMs": 60
+    }
+  ],
+  "motionPx": 0.4,
+  "areaRatio": 1,
+  "layerPixels": 36639,
+  "source": "greenscreen/raw/caught-in-4k.gif",
+  "animationMode": "per-frame-slot-mask"
+}

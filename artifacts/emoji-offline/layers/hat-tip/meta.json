@@ -1,0 +1,132 @@
+{
+  "id": "hat-tip",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 116413
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 66.06670096021948,
+      "cy": 76.72402263374485,
+      "greenPixels": 11664,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 50.03407382662435,
+      "cy": 71.59086353766494,
+      "greenPixels": 11974,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 50.03407382662435,
+      "cy": 71.59086353766494,
+      "greenPixels": 11974,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 50.03407382662435,
+      "cy": 71.59086353766494,
+      "greenPixels": 11974,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 50.03407382662435,
+      "cy": 71.59086353766494,
+      "greenPixels": 11974,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 59.00284956273951,
+      "cy": 75.61825685368969,
+      "greenPixels": 10177,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 66.0635872825435,
+      "cy": 76.70683006255892,
+      "greenPixels": 11669,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 66.0635872825435,
+      "cy": 76.70683006255892,
+      "greenPixels": 11669,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 66.0635872825435,
+      "cy": 76.70683006255892,
+      "greenPixels": 11669,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 66.0635872825435,
+      "cy": 76.70683006255892,
+      "greenPixels": 11669,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 16.8,
+  "areaRatio": 1,
+  "layerPixels": 47427,
+  "source": "greenscreen/raw/hat-tip.gif",
+  "animationMode": "per-frame-slot-mask"
+}

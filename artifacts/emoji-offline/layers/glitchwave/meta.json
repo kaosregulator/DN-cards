@@ -1,0 +1,132 @@
+{
+  "id": "glitchwave",
+  "kind": "transform-slot",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 160989
+  },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.60031798446768,
+      "cy": 63.52718155690088,
+      "greenPixels": 16353,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.98263012011087,
+      "cy": 63.37770249461041,
+      "greenPixels": 16235,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 64.44963558213418,
+      "cy": 63.64436553915156,
+      "greenPixels": 16053,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 64.26571285767837,
+      "cy": 63.578907909533925,
+      "greenPixels": 16006,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.900944281158154,
+      "cy": 63.62603964730161,
+      "greenPixels": 15991,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.47043765998627,
+      "cy": 63.724417806081036,
+      "greenPixels": 16017,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.07846076961519,
+      "cy": 63.851074462768615,
+      "greenPixels": 16008,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 62.702042601036915,
+      "cy": 63.801986382659756,
+      "greenPixels": 16009,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 62.54454890729095,
+      "cy": 63.64983500404707,
+      "greenPixels": 16061,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.074803149606296,
+      "cy": 63.79558316929134,
+      "greenPixels": 16256,
+      "visible": true,
+      "delayMs": 70
+    }
+  ],
+  "motionPx": 2,
+  "areaRatio": 1,
+  "layerPixels": 0,
+  "source": "greenscreen/raw/glitchwave.gif",
+  "animationMode": "per-frame-slot-mask"
+}
