@@ -24,6 +24,7 @@
     "color-thief-node": "^1.0.4",
     "dayjs": "^1.11.21",
     "fuse.js": "^7.4.2",
+    "gifuct-js": "^2.1.2",
     "nanoid": "^6.0.0",
     "node-vibrant": "^4.0.4",
     "p-queue": "^9.3.1",
