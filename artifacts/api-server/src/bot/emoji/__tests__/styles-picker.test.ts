@@ -152,16 +152,34 @@ describe("style browser paging", () => {
   });
 
   it("keeps focus on the applied style when opening the browser", () => {
+    // Opening the browser focuses the applied animation (see the `styles`
+    // handler: stylePage 0, styleFocus = animation). Assert that focus is
+    // honoured, independent of the browser's alphabetical style ordering.
     const { session } = createSession({
       image: Buffer.from([1]),
       ownerId: "u1",
       sourceLabel: "t",
       animation: "gen_btn_style-22",
       format: "gif",
-      styleFocus: null,
-      stylePage: 1,
+      styleFocus: "gen_btn_style-22",
+      stylePage: 0,
     });
     expect(ensureStyleFocus(session, "u1")).toBe("gen_btn_style-22");
+  });
+
+  it("falls back to the applied style when it is on the current page", () => {
+    // With no explicit focus, the applied animation is used when it is visible
+    // on the page. style-0 sorts first, so page 0 always contains it.
+    const { session } = createSession({
+      image: Buffer.from([1]),
+      ownerId: "u1",
+      sourceLabel: "t",
+      animation: "gen_btn_style-0",
+      format: "gif",
+      styleFocus: null,
+      stylePage: 0,
+    });
+    expect(ensureStyleFocus(session, "u1")).toBe("gen_btn_style-0");
   });
 });
 
