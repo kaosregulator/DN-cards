@@ -26,8 +26,10 @@ const MAX_SESSIONS = 200;
  *
  * `target` is the opening screen — pick what to animate before anything else.
  * The session exists before an image does, so `image` is null until then.
+ * `finish` is the clean hand-off screen shown after Done: the bare emoji with
+ * Post / Save / Dismiss, instead of the settings panel.
  */
-export type EmojiView = "target" | "controls" | "styles" | "post";
+export type EmojiView = "target" | "controls" | "styles" | "post" | "finish";
 
 /** Last successful generation — lets "Back" restore the panel without re-rendering. */
 export interface EmojiLastResult {

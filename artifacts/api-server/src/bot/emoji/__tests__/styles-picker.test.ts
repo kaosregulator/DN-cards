@@ -122,10 +122,11 @@ describe("style browser paging", () => {
     expect(first.pages).toBe(Math.ceil(55 / STYLES_PAGE_SIZE));
     expect(first.rows).toHaveLength(STYLES_PAGE_SIZE);
 
-    session.stylePage = 2;
+    const lastPage = Math.ceil(55 / STYLES_PAGE_SIZE) - 1;
+    session.stylePage = lastPage;
     const last = pageStyles(session, "u1");
-    expect(last.page).toBe(2);
-    expect(last.rows.length).toBe(55 - STYLES_PAGE_SIZE * 2);
+    expect(last.page).toBe(lastPage);
+    expect(last.rows.length).toBe(55 - STYLES_PAGE_SIZE * lastPage);
   });
 
   it("filters by search and favorites", () => {

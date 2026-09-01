@@ -30,6 +30,12 @@ const PREVIEW_SIZE = "64";
 const PREVIEW_FORMAT: EmojiFormat = "gif";
 
 /**
+ * Thumbnail edge length for the contact-sheet board. Bigger than the animated
+ * preview because several are tiled into one canvas and then read at a glance.
+ */
+const THUMB_SIZE = "96";
+
+/**
  * Bump when the preview pipeline changes in a way that makes stored bytes
  * wrong. It is part of the cache key, so old entries are ignored rather than
  * served.
@@ -134,6 +140,44 @@ export async function renderStylePreview(
     logger.debug(
       { style, err: err instanceof Error ? err.message : String(err) },
       "style preview unavailable; falling back to the CDN thumbnail",
+    );
+    return null;
+  }
+}
+
+/**
+ * Render `style` over `image` as a single still PNG thumbnail for the board.
+ *
+ * The contact sheet needs one representative frame per cell, drawn together in a
+ * canvas. A GIF cannot be tiled without decoding, so the board asks for a still
+ * instead — cheap to render, cheap to `loadImage`. Cached under its own key
+ * namespace so it never collides with the animated preview bytes.
+ *
+ * Returns null when the style cannot be rendered locally; the board then draws a
+ * placeholder cell so browsing never breaks on one unsupported style.
+ */
+export async function renderStyleThumb(
+  image: Buffer, style: string,
+): Promise<Buffer | null> {
+  const key = `thumb:${previewKey(targetHash(image), style)}`;
+
+  const cached = getCached(key);
+  if (cached) return cached;
+
+  try {
+    const result = await renderOffline({
+      image,
+      animation: style,
+      format: "png",
+      size: THUMB_SIZE,
+    });
+    if (!result.buffer.length) return null;
+    putCached(key, result.buffer);
+    return result.buffer;
+  } catch (err) {
+    logger.debug(
+      { style, err: err instanceof Error ? err.message : String(err) },
+      "style thumbnail unavailable; board will draw a placeholder cell",
     );
     return null;
   }

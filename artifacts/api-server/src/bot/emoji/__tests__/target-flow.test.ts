@@ -66,10 +66,21 @@ describe("target → style browser", () => {
     })!;
 
     const picker = await buildStylesPicker(updated, token);
-    // The preview attached is the chosen target rendered with the style — a real
-    // file, not MakeEmoji's CDN cat.
+    // The board renders the page on the chosen target; the focused style's
+    // animated preview rides alongside it. Both are real files rendered here —
+    // not MakeEmoji's CDN cat.
     expect(picker.files.length).toBeGreaterThan(0);
-    expect(picker.files[0]!.name).toMatch(/\.gif$/);
+    expect(picker.files.some(f => /style-board\.png$/.test(f.name ?? ""))).toBe(true);
+    expect(picker.files.some(f => /\.gif$/.test(f.name ?? ""))).toBe(true);
+
+    // The board dashboard sits exactly on Discord's five-row limit (jump select
+    // + two number rows + nav + actions); one over is rejected at send time.
+    const comps = picker.components as unknown as { components: unknown[] }[];
+    expect(comps.length).toBeLessThanOrEqual(5);
+    for (const [i, row] of comps.entries()) {
+      expect(row.components.length, `row ${i}`).toBeGreaterThan(0);
+      expect(row.components.length, `row ${i}`).toBeLessThanOrEqual(5);
+    }
   }, 60_000);
 
   it("shows a different preview for a different target", async () => {
