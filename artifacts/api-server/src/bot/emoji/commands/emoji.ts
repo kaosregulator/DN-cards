@@ -29,6 +29,7 @@ import { toggleFavorite } from "./favorites.js";
 import { defaultAnimation, isManifestOption, isPlaceholder, suggestFor } from "./options.js";
 import {
   buildStylesPicker, buildStyleSearchModal, ensureStyleFocus, findStyle, pageStyles,
+  totalStylePages,
 } from "./styles-picker.js";
 import {
   buildCachedControlsReply, buildControls, buildFinishScreen, buildPostPicker,
@@ -675,23 +676,40 @@ async function handleStylesAction(
   token: string,
   action: string,
 ): Promise<void> {
-  // Search button → modal (must not defer first).
+  // Search button → modal (must not defer first). The modal also offers a
+  // "jump to page" field, so it needs the current page bounds.
   if (action === "styles_search" && interaction.isButton()) {
+    const { page, pages } = pageStyles(session, session.ownerId);
     await interaction.showModal(
-      buildStyleSearchModal(token, session.styleQuery ?? ""),
+      buildStyleSearchModal(token, session.styleQuery ?? "", pages, page),
     ).catch(() => {});
     return;
   }
 
   if (action === "styles_modal" && interaction.isModalSubmit()) {
     const query = interaction.fields.getTextInputValue("query").trim();
+    const pageRaw = interaction.fields.getTextInputValue("page").trim();
     await interaction.deferUpdate().catch(() => {});
-    touchSession(token, {
-      view: "styles",
-      styleQuery: query,
-      stylePage: 0,
-      styleFocus: null,
-    });
+
+    // Apply the search first so the page number is clamped to the filtered set.
+    const queryChanged = query !== (session.styleQuery ?? "");
+    touchSession(token, { view: "styles", styleQuery: query, styleFocus: null });
+    const filtered = getSession(token);
+    if (!filtered) return;
+
+    const requested = Number.parseInt(pageRaw, 10);
+    let stylePage: number;
+    if (pageRaw && Number.isFinite(requested)) {
+      // 1-based in the UI, 0-based internally, clamped to the real range.
+      const maxPage = totalStylePages(filtered, filtered.ownerId) - 1;
+      stylePage = Math.min(Math.max(0, requested - 1), maxPage);
+    } else {
+      // No page typed: a new search jumps to the first page; an unchanged search
+      // stays where the user was.
+      stylePage = queryChanged ? 0 : (session.stylePage ?? 0);
+    }
+    touchSession(token, { stylePage });
+
     const updated = getSession(token);
     if (!updated) return;
     await interaction.editReply(await buildStylesPicker(updated, token));
@@ -753,9 +771,11 @@ async function handleStylesAction(
   await interaction.deferUpdate();
 
   if (action === "styles") {
+    // Returning to the browser (e.g. "Browse styles" from the panel) keeps the
+    // page the user last left off on — not a jarring jump back to page 1 — and
+    // focuses the style currently applied.
     touchSession(token, {
       view: "styles",
-      stylePage: 0,
       styleFocus: session.animation,
     });
   } else if (action === "styles_prev") {

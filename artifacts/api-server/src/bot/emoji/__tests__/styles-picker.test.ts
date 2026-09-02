@@ -11,6 +11,7 @@ import {
 } from "../commands/previews.js";
 import {
   allStyles, pageStyles, ensureStyleFocus, STYLES_PAGE_SIZE,
+  filteredStyles, totalStylePages, buildStyleSearchModal,
 } from "../commands/styles-picker.js";
 import { createSession } from "../commands/session.js";
 import { buildControls, buildUploadModal, parseCid, cid } from "../commands/ui.js";
@@ -127,6 +128,29 @@ describe("style browser paging", () => {
     const last = pageStyles(session, "u1");
     expect(last.page).toBe(lastPage);
     expect(last.rows.length).toBe(55 - STYLES_PAGE_SIZE * lastPage);
+  });
+
+  it("exposes the filtered catalog and total page count for jumps", () => {
+    const { session } = createSession({
+      image: Buffer.from([1]), ownerId: "u1", sourceLabel: "t",
+      animation: "gen_btn_style-0", format: "gif",
+    });
+    expect(filteredStyles(session, "u1")).toHaveLength(55);
+    expect(totalStylePages(session, "u1")).toBe(Math.ceil(55 / STYLES_PAGE_SIZE));
+
+    // pageStyles clamps an out-of-range jump target to the last real page.
+    session.stylePage = 999;
+    const clamped = pageStyles(session, "u1");
+    expect(clamped.page).toBe(totalStylePages(session, "u1") - 1);
+  });
+
+  it("search modal offers both a name query and a page-jump field", () => {
+    const modal = buildStyleSearchModal("tok", "", 7, 2) as unknown as {
+      components: { components: { data: { custom_id?: string } }[] }[];
+    };
+    const ids = modal.components.flatMap(r => r.components.map(c => c.data.custom_id));
+    expect(ids).toContain("query");
+    expect(ids).toContain("page");
   });
 
   it("filters by search and favorites", () => {

@@ -16,7 +16,7 @@ import { fuzzyRank } from "../../search/fuse-service.js";
 import { getManifest } from "../providers/makeemoji/manifest.js";
 import { isFavorite, listFavorites } from "./favorites.js";
 import { resolveStylePreviewUrl } from "./previews.js";
-import { prefetchStylePreviews, renderStylePreview } from "../preview/index.js";
+import { renderStylePreview } from "../preview/index.js";
 import { renderBoard, BOARD_PAGE_SIZE } from "./board.js";
 import type { EmojiSession } from "./session.js";
 import { cid } from "./ui.js";
@@ -67,17 +67,12 @@ export function findStyle(value: string): StyleEntry | undefined {
   return allStyles().find(s => s.value === value);
 }
 
-/** Filter + page the catalog for the current session picker state. */
-export function pageStyles(session: EmojiSession, userId: string): {
-  rows: StyleEntry[];
-  page: number;
-  pages: number;
-  total: number;
-} {
-  const favs = new Set(listFavorites(userId));
+/** The full catalog after the session's favorites filter and name search. */
+export function filteredStyles(session: EmojiSession, userId: string): StyleEntry[] {
   let rows = allStyles();
 
   if (session.styleFilter === "favorites") {
+    const favs = new Set(listFavorites(userId));
     rows = rows.filter(s => favs.has(s.value));
     // Keep the user's favorite order (most recent first).
     const order = listFavorites(userId);
@@ -88,11 +83,26 @@ export function pageStyles(session: EmojiSession, userId: string): {
   if (query) {
     rows = fuzzyRank(rows, query, s => s.label);
   }
+  return rows;
+}
 
+/** Filter + page the catalog for the current session picker state. */
+export function pageStyles(session: EmojiSession, userId: string): {
+  rows: StyleEntry[];
+  page: number;
+  pages: number;
+  total: number;
+} {
+  const rows = filteredStyles(session, userId);
   const pages = Math.max(1, Math.ceil(rows.length / STYLES_PAGE_SIZE));
   const page = Math.min(Math.max(0, session.stylePage ?? 0), pages - 1);
   const slice = rows.slice(page * STYLES_PAGE_SIZE, (page + 1) * STYLES_PAGE_SIZE);
   return { rows: slice, page, pages, total: rows.length };
+}
+
+/** Total pages for the session's current filter/search — for clamping jumps. */
+export function totalStylePages(session: EmojiSession, userId: string): number {
+  return Math.max(1, Math.ceil(filteredStyles(session, userId).length / STYLES_PAGE_SIZE));
 }
 
 /** Ensure the session has a sensible focused style for the current page. */
@@ -106,11 +116,53 @@ export function ensureStyleFocus(session: EmojiSession, userId: string): string 
   return rows[0]?.value ?? session.animation;
 }
 
-/** Modal for name search. */
-export function buildStyleSearchModal(token: string, currentQuery: string): ModalBuilder {
+/** The focus a page's slice resolves to after navigation (applied style if on it). */
+function focusForSlice(slice: StyleEntry[], animation: string): string {
+  if (slice.some(r => r.value === animation)) return animation;
+  return slice[0]?.value ?? animation;
+}
+
+/**
+ * Warm the next page's board in the background.
+ *
+ * Paging felt slow because each page composed eight fresh style GIFs on arrival.
+ * While the user looks at page N we render N+1 into the (bounded, cached) board
+ * store, so clicking Next usually hits the cache instead of a cold compose. The
+ * focus is chosen the same way navigation would, so the warmed key matches.
+ */
+function prefetchNextBoard(
+  session: EmojiSession, userId: string, page: number, pages: number,
+): void {
+  if (!session.image || page + 1 >= pages) return;
+  const all = filteredStyles(session, userId);
+  const start = (page + 1) * STYLES_PAGE_SIZE;
+  const slice = all.slice(start, start + STYLES_PAGE_SIZE);
+  if (slice.length === 0) return;
+  void renderBoard({
+    image: session.image,
+    targetLabel: session.sourceLabel ?? "your image",
+    styles: slice,
+    focusValue: focusForSlice(slice, session.animation),
+    userId,
+    page: page + 1,
+    pages,
+    total: all.length,
+    format: session.format,
+  }).catch(() => {});
+}
+
+/**
+ * Modal to search styles by name and/or jump straight to a page number.
+ *
+ * Both live in one modal because the board is already at Discord's five-row
+ * component limit — there is no room for a separate "go to page" button.
+ */
+export function buildStyleSearchModal(
+  token: string, currentQuery: string, pages: number, currentPage: number,
+): ModalBuilder {
   return new ModalBuilder()
     .setCustomId(cid("styles_modal", token))
-    .setTitle("Search styles by name")
+    .setTitle("Search or jump to a page")
     .addComponents(
       new ActionRowBuilder<TextInputBuilder>().addComponents(
         new TextInputBuilder()
@@ -120,6 +172,15 @@ export function buildStyleSearchModal(token: string, currentQuery: string): Moda
           .setRequired(false)
           .setMaxLength(MAX_STYLE_QUERY)
           .setValue(currentQuery.slice(0, MAX_STYLE_QUERY)),
+      ),
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder()
+          .setCustomId("page")
+          .setLabel(`Jump to page (1–${pages})`)
+          .setStyle(TextInputStyle.Short)
+          .setRequired(false)
+          .setPlaceholder(`Currently on page ${currentPage + 1}`)
+          .setMaxLength(5),
       ),
     );
 }
@@ -149,31 +210,32 @@ export async function buildStylesPicker(
   const targetLabel = session.sourceLabel ?? "your image";
   const focusIndex = rows.findIndex(r => r.value === focusValue);
 
-  // Warm the animated previews for this page so focusing feels instant.
-  if (session.image) prefetchStylePreviews(session.image, rows.map(r => r.value));
-
   // The board (main image) and the focused animated preview (thumbnail) are the
-  // two pictures. Both are rendered on the user's OWN image; the CDN cat is only
-  // a last-resort thumbnail when a style can't be drawn locally.
-  const board = session.image
-    ? await renderBoard({
-        image: session.image,
-        targetLabel,
-        styles: rows,
-        focusValue,
-        userId,
-        page,
-        pages,
-        total,
-        format: session.format,
-      })
-    : null;
-  const livePreview = session.image
-    ? await renderStylePreview(session.image, focusValue)
-    : null;
+  // two pictures. Render them in parallel rather than one after the other — the
+  // small preview then overlaps the board compose instead of adding to it. Both
+  // are on the user's OWN image; the CDN cat is only a last-resort thumbnail.
+  const [board, livePreview] = session.image
+    ? await Promise.all([
+        renderBoard({
+          image: session.image,
+          targetLabel,
+          styles: rows,
+          focusValue,
+          userId,
+          page,
+          pages,
+          total,
+          format: session.format,
+        }),
+        renderStylePreview(session.image, focusValue),
+      ])
+    : [null, null];
   const previewUrl = livePreview
     ? null
     : focused ? await resolveStylePreviewUrl(focused.label) : null;
+
+  // Warm the next page in the background so Next usually hits the board cache.
+  prefetchNextBoard(session, userId, page, pages);
 
   const filters: string[] = [];
   if (session.styleFilter === "favorites") filters.push("★ favorites");
@@ -274,7 +336,7 @@ export async function buildStylesPicker(
         .setDisabled(page >= pages - 1),
       new ButtonBuilder()
         .setCustomId(cid("styles_search", token))
-        .setLabel(session.styleQuery?.trim() ? `Search: ${session.styleQuery.trim()}`.slice(0, 60) : "Search")
+        .setLabel(session.styleQuery?.trim() ? `Search: ${session.styleQuery.trim()}`.slice(0, 60) : "Search / Go to page")
         .setEmoji("🔍")
         .setStyle(ButtonStyle.Primary),
       new ButtonBuilder()
