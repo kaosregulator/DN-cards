@@ -11,7 +11,8 @@ import {
 } from "../commands/previews.js";
 import {
   allStyles, pageStyles, ensureStyleFocus, STYLES_PAGE_SIZE,
-  filteredStyles, totalStylePages, buildStyleSearchModal,
+  filteredStyles, totalStylePages, buildStyleSearchModal, buildGotoPageModal,
+  pageJumpTargets,
 } from "../commands/styles-picker.js";
 import { sceneStyleEntries } from "../providers/offline/scene-pack.js";
 import { createSession } from "../commands/session.js";
@@ -149,13 +150,32 @@ describe("style browser paging", () => {
     expect(clamped.page).toBe(totalStylePages(session, "u1") - 1);
   });
 
-  it("search modal offers both a name query and a page-jump field", () => {
-    const modal = buildStyleSearchModal("tok", "", 7, 2) as unknown as {
+  it("search modal is name-only now that pages live on the dropdown", () => {
+    const modal = buildStyleSearchModal("tok", "") as unknown as {
       components: { components: { data: { custom_id?: string } }[] }[];
     };
     const ids = modal.components.flatMap(r => r.components.map(c => c.data.custom_id));
     expect(ids).toContain("query");
+    expect(ids).not.toContain("page");
+  });
+
+  it("go-to-page modal offers a page-number field", () => {
+    const modal = buildGotoPageModal("tok", 7, 2) as unknown as {
+      components: { components: { data: { custom_id?: string } }[] }[];
+    };
+    const ids = modal.components.flatMap(r => r.components.map(c => c.data.custom_id));
     expect(ids).toContain("page");
+  });
+
+  it("page-jump targets stay within Discord's 25-option cap and include ends", () => {
+    const targets = pageJumpTargets(40, 73);
+    expect(targets.length).toBeLessThanOrEqual(25);
+    expect(targets[0]).toBe(0);
+    expect(targets.at(-1)).toBe(72);
+    expect(targets).toContain(40); // current page is always offered
+    // Sorted, unique, in range.
+    expect(targets).toEqual([...new Set(targets)].sort((a, b) => a - b));
+    expect(targets.every(p => p >= 0 && p < 73)).toBe(true);
   });
 
   it("filters by search and favorites", () => {

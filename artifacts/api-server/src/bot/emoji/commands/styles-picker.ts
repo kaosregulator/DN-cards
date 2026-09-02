@@ -164,17 +164,17 @@ function prefetchNextBoard(
 }
 
 /**
- * Modal to search styles by name and/or jump straight to a page number.
+ * Modal to search styles by name.
  *
- * Both live in one modal because the board is already at Discord's five-row
- * component limit — there is no room for a separate "go to page" button.
+ * Search is its own thing now — page jumps live on the page dropdown and the
+ * "Go to page" button — so this is a single name field. The ranking behind it is
+ * typo-tolerant (exact → substring → acronym → fuzzy), so a rough guess still
+ * surfaces the closest styles.
  */
-export function buildStyleSearchModal(
-  token: string, currentQuery: string, pages: number, currentPage: number,
-): ModalBuilder {
+export function buildStyleSearchModal(token: string, currentQuery: string): ModalBuilder {
   return new ModalBuilder()
     .setCustomId(cid("styles_modal", token))
-    .setTitle("Search or jump to a page")
+    .setTitle("Search styles by name")
     .addComponents(
       new ActionRowBuilder<TextInputBuilder>().addComponents(
         new TextInputBuilder()
@@ -183,18 +183,48 @@ export function buildStyleSearchModal(
           .setStyle(TextInputStyle.Short)
           .setRequired(false)
           .setMaxLength(MAX_STYLE_QUERY)
+          .setPlaceholder("e.g. rainbow, spin, portal — close spellings work")
           .setValue(currentQuery.slice(0, MAX_STYLE_QUERY)),
       ),
+    );
+}
+
+/** Modal to jump straight to a page number (paired with the page dropdown). */
+export function buildGotoPageModal(token: string, pages: number, currentPage: number): ModalBuilder {
+  return new ModalBuilder()
+    .setCustomId(cid("styles_goto_modal", token))
+    .setTitle("Go to page")
+    .addComponents(
       new ActionRowBuilder<TextInputBuilder>().addComponents(
         new TextInputBuilder()
           .setCustomId("page")
-          .setLabel(`Jump to page (1–${pages})`)
+          .setLabel(`Page number (1–${pages})`)
           .setStyle(TextInputStyle.Short)
-          .setRequired(false)
+          .setRequired(true)
           .setPlaceholder(`Currently on page ${currentPage + 1}`)
           .setMaxLength(5),
       ),
     );
+}
+
+/**
+ * Up to 25 page numbers (0-based) to offer in the jump dropdown: the first and
+ * last page, a window around the current one, and evenly-spaced markers between,
+ * so any of many pages is a couple of taps away without exceeding Discord's
+ * 25-option select cap. Exact jumps to anything in between use the Go to page
+ * button.
+ */
+export function pageJumpTargets(current: number, pages: number): number[] {
+  const set = new Set<number>();
+  set.add(0);
+  set.add(pages - 1);
+  for (let d = -2; d <= 2; d++) {
+    const p = current + d;
+    if (p >= 0 && p < pages) set.add(p);
+  }
+  const step = Math.max(1, Math.floor(pages / 12));
+  for (let p = 0; p < pages; p += step) set.add(p);
+  return [...set].filter(p => p >= 0 && p < pages).sort((a, b) => a - b).slice(0, 25);
 }
 
 /**
@@ -253,22 +283,35 @@ export async function buildStylesPicker(
   if (session.styleFilter === "favorites") filters.push("★ favorites");
   if (session.styleQuery?.trim()) filters.push(`search “${session.styleQuery.trim()}”`);
 
+  const favView = session.styleFilter === "favorites";
+  const emptyFavs = favView && total === 0;
+
   const numbered = focusIndex >= 0 ? `#${focusIndex + 1} · ` : "";
+  const description = emptyFavs
+    ? [
+        "You haven't starred any styles yet.",
+        "",
+        "Tap **Show all**, open any style, and hit **⭐ Favorite** — it lands here for one-tap access next time.",
+      ].join("\n")
+    : [
+        `Selected: **${numbered}${label}** ${favorited ? "★" : ""}`.trim(),
+        `\`${focusValue}\` · type \`${session.format.toUpperCase()}\``,
+        "",
+        "Tap a **number** to select — the board rings your pick.",
+        favView
+          ? "**Apply** renders it on your target · **Unfavorite** removes it from this list."
+          : "**Apply** renders it at full quality on your target.",
+      ].join("\n");
+
   const embed = new EmbedBuilder()
-    .setColor(favorited ? 0xf1c40f : 0x5865f2)
+    .setColor(favView ? 0xf1c40f : favorited ? 0xf1c40f : 0x5865f2)
     .setAuthor({ name: `🎯 ${targetLabel}` })
-    .setTitle("🎨 Style Board")
-    .setDescription([
-      `Selected: **${numbered}${label}** ${favorited ? "★" : ""}`.trim(),
-      `\`${focusValue}\` · type \`${session.format.toUpperCase()}\``,
-      "",
-      "Tap a **number** below (or the dropdown) to select — the board rings your pick.",
-      "**Apply** renders it at full quality on your target.",
-    ].join("\n"))
+    .setTitle(favView ? "⭐ Your Favorites" : "🎨 Style Board")
+    .setDescription(description)
     .setFooter({
       text: [
-        `${total} style${total === 1 ? "" : "s"}`,
-        filters.length ? filters.join(" · ") : "all styles",
+        `${total} ${favView ? "favorite" : "style"}${total === 1 ? "" : "s"}`,
+        favView ? "★ your list" : "all styles",
         `page ${page + 1}/${pages}`,
       ].join(" · "),
     });
@@ -297,20 +340,20 @@ export async function buildStylesPicker(
 
   const components: ActionRowBuilder<StringSelectMenuBuilder | ButtonBuilder>[] = [];
 
-  // Row: numbered jump dropdown — labels the same styles the board shows.
-  if (rows.length > 0) {
+  // Row: page-jump dropdown. The number buttons pick a style; this dropdown moves
+  // between pages (with the Go to page button for an exact number). Only shown
+  // when there's more than one page to move between.
+  if (pages > 1) {
     const menu = new StringSelectMenuBuilder()
-      .setCustomId(cid("styles_pick", token))
-      .setPlaceholder(`Page ${page + 1}/${pages} — jump to a style`)
-      .addOptions(rows.map((s, i) => {
-        const star = isFavorite(userId, s.value) ? "★ " : "";
-        const applied = s.value === session.animation ? " · in use" : "";
-        return new StringSelectMenuOptionBuilder()
-          .setLabel(`${i + 1} · ${star}${s.label}`.slice(0, 100))
-          .setDescription(`${s.value}${applied}`.slice(0, 100))
-          .setValue(s.value.slice(0, 100))
-          .setDefault(s.value === focusValue);
-      }));
+      .setCustomId(cid("styles_page", token))
+      .setPlaceholder(`Page ${page + 1} / ${pages} — jump to a page`)
+      .addOptions(pageJumpTargets(page, pages).map(p =>
+        new StringSelectMenuOptionBuilder()
+          .setLabel(`Page ${p + 1}${p === 0 ? " · first" : p === pages - 1 ? " · last" : ""}`)
+          .setDescription(p === page ? "you are here" : `jump to page ${p + 1}`)
+          .setValue(String(p))
+          .setDefault(p === page),
+      ));
     components.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu));
   }
 
@@ -331,7 +374,9 @@ export async function buildStylesPicker(
     components.push(row);
   }
 
-  // Row: navigation + browse filters + change target.
+  // Row: navigation + search + favorites filter. Pages are driven by the dropdown
+  // above, Prev/Next for stepping, and Go to page for an exact number; Search is
+  // now search-only.
   components.push(
     new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder()
@@ -347,8 +392,14 @@ export async function buildStylesPicker(
         .setStyle(ButtonStyle.Secondary)
         .setDisabled(page >= pages - 1),
       new ButtonBuilder()
+        .setCustomId(cid("styles_goto", token))
+        .setLabel("Go to page")
+        .setEmoji("🔢")
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(pages <= 1),
+      new ButtonBuilder()
         .setCustomId(cid("styles_search", token))
-        .setLabel(session.styleQuery?.trim() ? `Search: ${session.styleQuery.trim()}`.slice(0, 60) : "Search / Go to page")
+        .setLabel(session.styleQuery?.trim() ? `Search: ${session.styleQuery.trim()}`.slice(0, 60) : "Search")
         .setEmoji("🔍")
         .setStyle(ButtonStyle.Primary),
       new ButtonBuilder()
@@ -356,15 +407,10 @@ export async function buildStylesPicker(
         .setLabel(session.styleFilter === "favorites" ? "Show all" : "Favorites")
         .setEmoji("⭐")
         .setStyle(session.styleFilter === "favorites" ? ButtonStyle.Success : ButtonStyle.Secondary),
-      new ButtonBuilder()
-        .setCustomId(cid("styles_target", token))
-        .setLabel("Target")
-        .setEmoji("🎯")
-        .setStyle(ButtonStyle.Secondary),
     ),
   );
 
-  // Row: act on the focused style.
+  // Row: act on the focused style + change target.
   components.push(
     new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder()
@@ -379,6 +425,11 @@ export async function buildStylesPicker(
         .setEmoji("✅")
         .setStyle(ButtonStyle.Success)
         .setDisabled(!focused),
+      new ButtonBuilder()
+        .setCustomId(cid("styles_target", token))
+        .setLabel("Target")
+        .setEmoji("🎯")
+        .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId(cid("styles_back", token))
         .setLabel("Back")
