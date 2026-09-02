@@ -46,15 +46,16 @@ interface ScenesFile { scenes: SceneConfig[] }
 export const SCENE_PREFIX = "scene:";
 
 /** Frame ceilings — full quality vs the small board thumbnail. */
-const FULL_MAX_FRAMES = 40;
+const FULL_MAX_FRAMES = 30;
 const THUMB_MAX_FRAMES = 12;
 /**
  * Long edges. The board thumbnail is tiny for responsiveness. The full render is
  * capped too — not to crop (nothing is cropped), but to keep the whole-scene GIF
- * comfortably under Discord's 8 MB attachment limit while staying crisp.
+ * a reasonable size to share. 360px reads crisp at Discord's display size while
+ * keeping files roughly half of a 600px render (worst case ~1.5 MB, most < 1 MB).
  */
 const THUMB_LONG_EDGE = 150;
-const FULL_LONG_EDGE = 600;
+const FULL_LONG_EDGE = 360;
 
 let cache: { list: SceneConfig[]; byId: Map<string, SceneConfig>; dir: string } | null | undefined;
 
@@ -229,7 +230,7 @@ export async function renderScene(
   for (let i = 0; i < smooth.length; i++) { const s = smooth[i]; if (s && !s.absent) { revealAt = i; break; } }
 
   const encoder = new GIFEncoder(W, H2);
-  encoder.start(); encoder.setRepeat(0); encoder.setQuality(opts.size ? 12 : 6);
+  encoder.start(); encoder.setRepeat(0); encoder.setQuality(opts.size ? 12 : 10);
 
   const canvas = mod.createCanvas(W, H2);
   const ctx = canvas.getContext("2d") as unknown as Ctx2D;
