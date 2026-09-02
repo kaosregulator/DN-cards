@@ -18,6 +18,7 @@ import {
   TextInputBuilder, TextInputStyle, UserSelectMenuBuilder,
 } from "discord.js";
 import { getManifest } from "../providers/makeemoji/manifest.js";
+import { isSceneAnimation, sceneLabelOf } from "../providers/offline/scene-pack.js";
 import type { OptionKey } from "../providers/makeemoji/types.js";
 import { FORMATS, extensionFor } from "../utils/options.js";
 import type { EmojiSession } from "./session.js";
@@ -149,8 +150,10 @@ function optionRow(
   return new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu);
 }
 
-/** Friendly label for the currently applied animation. */
+/** Friendly label for the currently applied animation (scene or MakeEmoji style). */
 function animationLabel(session: EmojiSession): string {
+  const scene = sceneLabelOf(session.animation);
+  if (scene) return scene;
   const values = getManifest().manifest?.controls.animation?.values ?? [];
   const hit = values.find(v => v.value === session.animation);
   return (hit?.label && hit.label.trim()) || session.animation;
@@ -345,13 +348,19 @@ export function buildCachedControlsReply(session: EmojiSession, token: string) {
   if (/avatar/i.test(sourceLabel)) {
     lines.push("-# Tip: tap **Upload** to animate your own image, or **Server icon** for this server's picture.");
   }
-  // Point users at MakeEmoji's Colour side-control (image-only animation).
-  const anim = session.animation ?? "";
-  const isNone = /^(gen_btn_)?none$/i.test(anim);
-  if (!session.color || session.color === "Normal") {
-    lines.push("-# Tip: set **Colour** (e.g. Colors / Rainbow / Stripes) to animate the image itself — works with style **none** or any style.");
-  } else if (isNone) {
-    lines.push("-# Colour-only mode (style none) — pick a style anytime to layer motion on top.");
+  if (isSceneAnimation(session.animation)) {
+    // Scenes are full-size shareable clips, not 128px emoji — the MakeEmoji
+    // Colour / size hints don't apply, so point at Post / Save instead.
+    lines.push("-# Full-scene GIF — **Post** it to a channel or tap the image to save it.");
+  } else {
+    // Point users at MakeEmoji's Colour side-control (image-only animation).
+    const anim = session.animation ?? "";
+    const isNone = /^(gen_btn_)?none$/i.test(anim);
+    if (!session.color || session.color === "Normal") {
+      lines.push("-# Tip: set **Colour** (e.g. Colors / Rainbow / Stripes) to animate the image itself — works with style **none** or any style.");
+    } else if (isNone) {
+      lines.push("-# Colour-only mode (style none) — pick a style anytime to layer motion on top.");
+    }
   }
   return {
     content: lines.join("\n"),

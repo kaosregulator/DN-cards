@@ -24,6 +24,7 @@ import { composeLayerPack, hasLayerPack } from "./layer-pack.js";
 import { directionFromRecipe, effectFromPrimitive } from "./primitives.js";
 import { findRecipe } from "./recipes.js";
 import { findOfflineStyle } from "./registry.js";
+import { renderScene, sceneIdOf } from "./scene-pack.js";
 import {
   applyColorFilter,
   colorFrameCount,
@@ -40,6 +41,21 @@ function styleSlug(animation: string, recipeId?: string, styleId?: string): stri
 }
 
 export async function renderOffline(options: GenerateOptions): Promise<GenerateResult> {
+  // Scene packs are whole green/blue-screen clips composited at native size —
+  // a different family from the small MakeEmoji styles, so they short-circuit
+  // the manifest lookup and the emoji format/size rules entirely. They always
+  // emit a GIF; a `size` (the board thumbnail) yields a small, few-frame preview.
+  const sceneId = sceneIdOf(options.animation);
+  if (sceneId) {
+    const startedScene = Date.now();
+    const size = options.size ? parseSize(options.size) : undefined;
+    const buffer = await renderScene(options.image, sceneId, size ? { size } : {});
+    return {
+      buffer, format: "gif", bytes: buffer.length, providerId: "offline",
+      durationMs: Date.now() - startedScene, cached: false,
+    };
+  }
+
   if (!isLocalFormat(options.format) && options.format !== "webp" && options.format !== "apng") {
     throw new EmojiError(
       "unsupported_format",
