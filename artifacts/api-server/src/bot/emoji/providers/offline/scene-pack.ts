@@ -45,17 +45,20 @@ interface ScenesFile { scenes: SceneConfig[] }
 /** Value prefix that marks a style as a scene pack (vs a MakeEmoji style). */
 export const SCENE_PREFIX = "scene:";
 
-/** Frame ceilings — full quality vs the small board thumbnail. */
+/** Default frame ceiling when the caller doesn't ask for a lighter preview. */
 const FULL_MAX_FRAMES = 30;
-const THUMB_MAX_FRAMES = 12;
 /**
- * Long edges. The board thumbnail is tiny for responsiveness. The full render is
- * capped too — not to crop (nothing is cropped), but to keep the whole-scene GIF
- * a reasonable size to share. 360px reads crisp at Discord's display size while
- * keeping files roughly half of a 600px render (worst case ~1.5 MB, most < 1 MB).
+ * Default long edge. Callers can override (the Size control); this is the value
+ * used when none is given. Capped not to crop (nothing is cropped) but to keep
+ * the whole-scene GIF a reasonable size to share — 360px reads crisp at Discord's
+ * display size while keeping files roughly half of a 600px render.
  */
-const THUMB_LONG_EDGE = 150;
 const FULL_LONG_EDGE = 360;
+/** Clamp for a user-requested output long edge (keeps GIFs under Discord's cap). */
+const MIN_LONG_EDGE = 96;
+const MAX_LONG_EDGE = 600;
+/** The whole image is contained at this fraction of the screen — pulled back a bit. */
+const SCENE_ZOOM = 0.9;
 
 let cache: { list: SceneConfig[]; byId: Map<string, SceneConfig>; dir: string } | null | undefined;
 
@@ -144,13 +147,64 @@ function mulberry(seed: number): () => number {
 }
 
 export interface RenderSceneOptions {
-  /** Board thumbnail edge (small preview); omitted = full native quality. */
-  size?: number;
+  /**
+   * Output long edge in px. Clamped to [MIN_LONG_EDGE, MAX_LONG_EDGE]; omitted =
+   * FULL_LONG_EDGE. This is what the user's Size control drives — genuinely a
+   * bigger or smaller final GIF.
+   */
+  longEdge?: number;
+  /** Max frames kept from the source clip; omitted = FULL_MAX_FRAMES. */
+  maxFrames?: number;
+  /** GIF encoder quality (lower = better); omitted = 10. */
+  quality?: number;
+  /**
+   * Playback-delay multiplier from the Speed control. 1 = the clip's own timing,
+   * >1 = truly slower (each frame held longer), <1 = faster. Applied on top of
+   * the duration-preserving subsample correction.
+   */
+  speedFactor?: number;
+}
+
+/** Board thumbnail edge + frame budget for a preview render. */
+const PREVIEW_LONG_EDGE = 150;
+const PREVIEW_MAX_FRAMES = 12;
+
+/**
+ * Translate the /emoji Size + Speed controls (MakeEmoji's own vocabulary, e.g.
+ * `"⬜ 256px"` and `"2x"`) into concrete scene render options.
+ *
+ * - `preview` (board/hover thumbnails) forces a small, few-frame render and
+ *   ignores the user controls — those only shape the final result.
+ * - Size sets the output long edge, so a bigger px choice is a genuinely bigger
+ *   GIF (clamped to keep it shareable).
+ * - Speed scales playback: `"2x"` plays twice as fast (delays × ½), `"0.5x"`
+ *   truly slower (delays × 2), `"Normal"` keeps the clip's own timing.
+ */
+export function sceneRenderOptions(
+  opts: { size?: string; speed?: string; preview?: boolean } = {},
+): RenderSceneOptions {
+  if (opts.preview) {
+    return { longEdge: PREVIEW_LONG_EDGE, maxFrames: PREVIEW_MAX_FRAMES, quality: 12 };
+  }
+  const px = opts.size ? Number(/\d+/.exec(opts.size)?.[0] ?? NaN) : NaN;
+  const longEdge = Number.isFinite(px) ? px : undefined;
+  const rate = parseSpeedRate(opts.speed);
+  const speedFactor = rate > 0 ? 1 / rate : 1;
+  return { ...(longEdge != null ? { longEdge } : {}), speedFactor };
+}
+
+/** Playback rate from a MakeEmoji speed value: `"Normal"`→1, `"2x"`→2, `"0.5x"`→0.5. */
+function parseSpeedRate(speed?: string): number {
+  if (!speed) return 1;
+  if (/^normal$/i.test(speed.trim())) return 1;
+  const n = Number(/(\d+(?:\.\d+)?)/.exec(speed)?.[1] ?? NaN);
+  return Number.isFinite(n) && n > 0 ? n : 1;
 }
 
 /**
  * Composite `image` into scene `id`, returning an animated GIF. Full native size
- * by default; a smaller, fewer-framed preview when `size` is given (the board).
+ * by default; a smaller, fewer-framed preview when a small `longEdge`/`maxFrames`
+ * is given (the board). `speedFactor` scales playback for the Speed control.
  */
 export async function renderScene(
   image: Buffer, id: string, opts: RenderSceneOptions = {},
@@ -174,11 +228,18 @@ export async function renderScene(
   const srcW = src.width ?? 1, srcH = src.pageHeight ?? src.height ?? 1;
   const delays = (src.delay ?? []) as number[];
 
-  const longEdge = opts.size ? THUMB_LONG_EDGE : FULL_LONG_EDGE;
+  const longEdge = Math.max(MIN_LONG_EDGE, Math.min(MAX_LONG_EDGE, opts.longEdge ?? FULL_LONG_EDGE));
   const scale = Math.min(1, longEdge / Math.max(srcW, srcH));
   const W = Math.max(1, Math.round(srcW * scale)), H = Math.max(1, Math.round(srcH * scale));
-  const N = Math.min(pages, opts.size ? THUMB_MAX_FRAMES : FULL_MAX_FRAMES);
+  const N = Math.min(pages, Math.max(1, opts.maxFrames ?? FULL_MAX_FRAMES));
   const pick = Array.from({ length: N }, (_, i) => Math.round(i * (pages - 1) / (Math.max(1, N - 1))));
+  // We keep only N of `pages` frames but must still play for the clip's original
+  // duration, so each kept frame's delay is stretched by pages/N. The Speed
+  // control then scales that: >1 slower, <1 faster. Clamp to a sane GIF range.
+  const durationStretch = pages / N;
+  const speedFactor = opts.speedFactor && opts.speedFactor > 0 ? opts.speedFactor : 1;
+  const frameDelay = (base: number): number =>
+    Math.max(20, Math.min(500, Math.round(base * durationStretch * speedFactor)));
 
   // One decode: the whole animation resized to width W, pages stacked vertically.
   const stacked = await sharp(path, { animated: true })
@@ -188,7 +249,7 @@ export async function renderScene(
     const start = p * pageH * W * 4;
     return {
       data: stacked.data.subarray(start, start + pageH * W * 4) as unknown as Uint8ClampedArray,
-      delay: delays[p] && delays[p]! > 0 ? delays[p]! : 80,
+      delay: frameDelay(delays[p] && delays[p]! > 0 ? delays[p]! : 80),
     };
   });
   const H2 = pageH; // actual per-page height sharp produced
@@ -230,7 +291,7 @@ export async function renderScene(
   for (let i = 0; i < smooth.length; i++) { const s = smooth[i]; if (s && !s.absent) { revealAt = i; break; } }
 
   const encoder = new GIFEncoder(W, H2);
-  encoder.start(); encoder.setRepeat(0); encoder.setQuality(opts.size ? 12 : 10);
+  encoder.start(); encoder.setRepeat(0); encoder.setQuality(opts.quality ?? 10);
 
   const canvas = mod.createCanvas(W, H2);
   const ctx = canvas.getContext("2d") as unknown as Ctx2D;
@@ -273,9 +334,13 @@ function drawTarget(
   explodeStart: number | null, revealAt: number,
 ): void {
   let tw: number, th: number, tx: number, ty: number;
-  if (cfg.fit === "stretch") { tw = box.w; th = box.h; tx = box.x; ty = box.y; }
-  else {
-    const s = Math.max(box.w / target.width, box.h / target.height);
+  if (cfg.fit === "stretch") {
+    tw = box.w; th = box.h; tx = box.x; ty = box.y;
+  } else {
+    // Contain the whole image, pulled back a touch so it doesn't read as a tight
+    // over-cropped zoom. No backdrop — the frame's own black shows around it.
+    const zoom = SCENE_ZOOM;
+    const s = Math.min((box.w * zoom) / target.width, (box.h * zoom) / target.height);
     tw = target.width * s; th = target.height * s;
     tx = box.x + (box.w - tw) / 2; ty = box.y + (box.h - th) / 2;
   }

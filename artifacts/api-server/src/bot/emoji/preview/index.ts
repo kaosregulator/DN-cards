@@ -139,6 +139,7 @@ export async function renderStylePreview(
       animation: style,
       format: PREVIEW_FORMAT,
       size: PREVIEW_SIZE,
+      preview: true,
     });
     if (!result.buffer.length) return null;
     putCached(key, result.buffer);
@@ -177,6 +178,7 @@ export async function renderStyleThumb(
       animation: style,
       format: "png",
       size: THUMB_SIZE,
+      preview: true,
     });
     if (!result.buffer.length) return null;
     putCached(key, result.buffer);
@@ -212,6 +214,7 @@ export async function renderStyleThumbGif(
       animation: style,
       format: "gif",
       size: THUMB_SIZE,
+      preview: true,
     });
     if (!result.buffer.length) return null;
     putCached(key, result.buffer);

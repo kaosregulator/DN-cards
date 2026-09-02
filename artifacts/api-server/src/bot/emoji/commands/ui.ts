@@ -324,7 +324,13 @@ export function buildControls(session: EmojiSession, token: string): ActionRowBu
 
   rows.push(stylesRow(session, token) as unknown as ActionRowBuilder<never>);
 
-  for (const key of PANEL_OPTIONS) {
+  // Scenes are composited clips: only Size (final long edge) and Speed (playback)
+  // change their output. The MakeEmoji-only side-controls don't apply, so the
+  // panel narrows to the two that do rather than showing dead dropdowns.
+  const panelKeys: readonly OptionKey[] = isSceneAnimation(session.animation)
+    ? ["speed", "size"]
+    : PANEL_OPTIONS;
+  for (const key of panelKeys) {
     if (rows.length >= 1 + MAX_OPTION_ROWS) break;
     const row = optionRow(session, token, key);
     if (row) rows.push(row as unknown as ActionRowBuilder<never>);

@@ -97,15 +97,19 @@ function resolveSource(interaction: ChatInputCommandInteraction): Source {
 /** Session settings as a provider request. */
 function toGenerateOptions(session: EmojiSession): GenerateOptions {
   if (!session.image) throw new EmojiError("no_source", "Pick something to animate first.");
-  // Scenes play at their native size — the emoji Size control (and the other
-  // MakeEmoji side-controls) would only shrink or confuse them, so they're
-  // dropped for a full scene render. The board still shrinks via its own path.
+  // Scenes are whole clips, not small MakeEmoji styles. The Size and Speed
+  // controls DO apply — they set the final GIF's long edge and playback speed —
+  // but the MakeEmoji-only side-controls (direction/colour/quality/platform)
+  // don't map onto a composited scene, so those are dropped.
   const scene = isSceneAnimation(session.animation);
   return {
     image: session.image,
     animation: session.animation,
     format: session.format,
-    ...(scene ? {} : {
+    ...(scene ? {
+      ...(session.speed ? { speed: session.speed } : {}),
+      ...(session.size ? { size: session.size } : {}),
+    } : {
       ...(session.speed ? { speed: session.speed } : {}),
       ...(session.direction ? { direction: session.direction } : {}),
       ...(session.size ? { size: session.size } : {}),

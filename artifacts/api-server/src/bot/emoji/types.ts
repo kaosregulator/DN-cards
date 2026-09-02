@@ -194,6 +194,13 @@ export interface GenerateOptions {
   quality?: string;
   /** Platform preset (Discord, Slack, …) — sets MakeEmoji's own size defaults. */
   platform?: string;
+  /**
+   * Render a cheap thumbnail rather than the full result. The style-board and
+   * hover previews set this so a scene pack yields a small, few-frame preview
+   * instead of honouring the user's Size/Speed controls (which only apply to the
+   * final render).
+   */
+  preview?: boolean;
   /** Cancels an in-flight generation. */
   signal?: AbortSignal;
   /**

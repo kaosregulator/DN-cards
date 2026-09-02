@@ -24,7 +24,7 @@ import { composeLayerPack, hasLayerPack } from "./layer-pack.js";
 import { directionFromRecipe, effectFromPrimitive } from "./primitives.js";
 import { findRecipe } from "./recipes.js";
 import { findOfflineStyle } from "./registry.js";
-import { renderScene, sceneIdOf } from "./scene-pack.js";
+import { renderScene, sceneIdOf, sceneRenderOptions } from "./scene-pack.js";
 import {
   applyColorFilter,
   colorFrameCount,
@@ -44,12 +44,15 @@ export async function renderOffline(options: GenerateOptions): Promise<GenerateR
   // Scene packs are whole green/blue-screen clips composited at native size —
   // a different family from the small MakeEmoji styles, so they short-circuit
   // the manifest lookup and the emoji format/size rules entirely. They always
-  // emit a GIF; a `size` (the board thumbnail) yields a small, few-frame preview.
+  // emit a GIF. `preview` (the board/hover thumbnail) yields a small, few-frame
+  // render; otherwise the Size + Speed controls shape the final GIF.
   const sceneId = sceneIdOf(options.animation);
   if (sceneId) {
     const startedScene = Date.now();
-    const size = options.size ? parseSize(options.size) : undefined;
-    const buffer = await renderScene(options.image, sceneId, size ? { size } : {});
+    const buffer = await renderScene(
+      options.image, sceneId,
+      sceneRenderOptions({ size: options.size, speed: options.speed, preview: options.preview }),
+    );
     return {
       buffer, format: "gif", bytes: buffer.length, providerId: "offline",
       durationMs: Date.now() - startedScene, cached: false,
