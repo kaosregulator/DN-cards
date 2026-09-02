@@ -12,6 +12,15 @@
 // image. Canvas + frames are used only for this menu chrome — the emoji output
 // itself still goes through the render engine.
 //
+// Performance notes (see board-bench):
+//   • Cell thumb GIFs go through the shared render queue (concurrency 3). We
+//     load cells with the same concurrency so one board cannot flood the queue.
+//   • Decoded composited frames are cached (bounded) so warm boards skip decode.
+//   • Finished board GIFs are cached (bounded) so identical pages are free.
+//   • Board chrome is painted once and blitted; only thumbnails change per frame.
+//   • Each cell advances on its own delay timeline (not f % length + avg delay).
+//   • Board encode is serialized so concurrent /emoji users cannot stack encodes.
+//
 // If the canvas backend is missing, or nothing on the page actually animates, it
 // degrades to a still PNG contact sheet, so browsing never breaks.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -20,7 +29,9 @@ import GIFEncoder from "gifencoder";
 import { parseGIF, decompressFrames } from "gifuct-js";
 import { getCanvas, type CanvasMod } from "../../animations/engine.js";
 import { logger } from "../../../lib/logger.js";
-import { renderStyleThumb, renderStyleThumbGif } from "../preview/index.js";
+import {
+  previewKey, renderStyleThumb, renderStyleThumbGif, targetHash,
+} from "../preview/index.js";
 import { isFavorite } from "./favorites.js";
 import type { StyleEntry } from "./styles-picker.js";
 
@@ -34,14 +45,21 @@ export const BOARD_FILENAME_STILL = "style-board.png";
 /** Frame ceiling for the tiled board GIF — enough for smooth motion, small file. */
 const BOARD_MAX_FRAMES = 14;
 
-/** NeuQuant sample factor for the board GIF (higher = coarser palette, smaller). */
-const BOARD_QUALITY = 12;
+/**
+ * NeuQuant sample factor. Profiled 12 vs 16 vs 20 on board-sized encodes: 16 is
+ * ~15–20% faster than 12 with nearly identical byte size on this chrome-heavy
+ * image; 20 saves more CPU but starts to dirty gradients. Keep size guard below.
+ */
+const BOARD_QUALITY = 16;
 
 /** Give up on the animated board above this size and fall back to the still PNG. */
 const BOARD_MAX_BYTES = 7_500_000;
 
-// Layout — plain pixels, drawn once per frame. Kept generous so labels and
-// numbers stay legible when Discord scales the embed image.
+/** Match the shared render-queue concurrency so one board does not flood it. */
+const CELL_LOAD_CONCURRENCY = 3;
+
+// Layout — plain pixels. Chrome is painted once; only cell thumbnails change
+// per frame. Kept generous so labels stay legible when Discord scales the image.
 const COLS = 4;
 const CELL_W = 150;
 const CELL_H = 168;
@@ -88,7 +106,7 @@ interface BoardCtx {
   save(): void;
   restore(): void;
   clip(): void;
-  drawImage(img: unknown, dx: number, dy: number, dw: number, dh: number): void;
+  drawImage(img: unknown, dx: number, dy: number, dw?: number, dh?: number): void;
   createLinearGradient(x0: number, y0: number, x1: number, y1: number): {
     addColorStop(offset: number, color: string): void;
   };
@@ -99,6 +117,11 @@ interface FrameCtx {
   createImageData(w: number, h: number): { data: Uint8ClampedArray };
   putImageData(image: { data: Uint8ClampedArray }, dx: number, dy: number): void;
   drawImage(img: unknown, dx: number, dy: number): void;
+  drawImage(
+    img: unknown,
+    sx: number, sy: number, sw: number, sh: number,
+    dx: number, dy: number, dw: number, dh: number,
+  ): void;
   clearRect(x: number, y: number, w: number, h: number): void;
 }
 
@@ -163,9 +186,23 @@ function boardDims(count: number): { width: number; height: number; gridW: numbe
   return { width, height, gridW, rows };
 }
 
+/** Layout: cell origin + thumb origin for cell index `i`. */
+function cellLayout(
+  stylesLen: number, i: number, gridW: number,
+): { x: number; y: number; tx: number; ty: number } {
+  const col = i % COLS;
+  const row = Math.floor(i / COLS);
+  const rowCount = Math.min(COLS, stylesLen - row * COLS);
+  const rowW = rowCount * CELL_W + (rowCount - 1) * GAP;
+  const rowStart = PAD + (gridW - rowW) / 2;
+  const x = rowStart + col * (CELL_W + GAP);
+  const y = HEADER_H + PAD + row * (CELL_H + GAP);
+  return { x, y, tx: x + (CELL_W - THUMB) / 2, ty: y + 16 };
+}
+
 /**
  * Draw the complete board onto `ctx` using `cellImages[i]` for cell i. Shared by
- * the animated path (called once per frame) and the still path (called once).
+ * the still path and (via chrome + overlay) the animated path.
  */
 function drawBoard(
   ctx: BoardCtx,
@@ -223,15 +260,7 @@ function drawBoard(
 
   // Cells.
   styles.forEach((style, i) => {
-    const col = i % COLS;
-    const row = Math.floor(i / COLS);
-    // Center a short final row.
-    const rowCount = Math.min(COLS, styles.length - row * COLS);
-    const rowW = rowCount * CELL_W + (rowCount - 1) * GAP;
-    const rowStart = PAD + (gridW - rowW) / 2;
-    const x = rowStart + col * (CELL_W + GAP);
-    const y = HEADER_H + PAD + row * (CELL_H + GAP);
-
+    const { x, y, tx, ty } = cellLayout(styles.length, i, gridW);
     const selected = style.value === focusValue;
     const fav = isFavorite(userId, style.value);
     const img = cellImages[i];
@@ -248,8 +277,6 @@ function drawBoard(
     }
 
     // Thumbnail (or placeholder).
-    const tx = x + (CELL_W - THUMB) / 2;
-    const ty = y + 16;
     if (img) {
       ctx.save();
       roundRect(ctx, tx, ty, THUMB, THUMB, 10);
@@ -302,6 +329,91 @@ function drawBoard(
 
 interface DecodedGif { frames: Drawable[]; delays: number[] }
 
+// ── Decoded-frame cache (bounded) ────────────────────────────────────────────
+// Preview cache stores GIF *bytes*. Warm boards were still re-decoding those
+// into canvases. Cache composited frames for recent cells only — never all 473.
+const DECODED_MAX_ENTRIES = 24;
+const DECODED_MAX_BYTES = 12 * 1024 * 1024;
+const DECODED_TTL_MS = 15 * 60 * 1000;
+
+interface DecodedCacheEntry {
+  key: string;
+  value: DecodedGif;
+  bytes: number;
+  expiresAt: number;
+  usedAt: number;
+}
+
+const decodedCache = new Map<string, DecodedCacheEntry>();
+let decodedBytes = 0;
+
+function estimateDecodedBytes(gif: DecodedGif): number {
+  let n = 0;
+  for (const f of gif.frames) n += Math.max(1, f.width) * Math.max(1, f.height) * 4;
+  return n;
+}
+
+function dropDecoded(entry: DecodedCacheEntry): void {
+  if (decodedCache.delete(entry.key)) decodedBytes -= entry.bytes;
+}
+
+function enforceDecodedBounds(): void {
+  const now = Date.now();
+  for (const entry of [...decodedCache.values()]) {
+    if (entry.expiresAt <= now) dropDecoded(entry);
+  }
+  if (decodedCache.size <= DECODED_MAX_ENTRIES && decodedBytes <= DECODED_MAX_BYTES) return;
+  for (const entry of [...decodedCache.values()].sort((a, b) => a.usedAt - b.usedAt)) {
+    if (decodedCache.size <= DECODED_MAX_ENTRIES && decodedBytes <= DECODED_MAX_BYTES) break;
+    dropDecoded(entry);
+  }
+}
+
+function getDecoded(key: string): DecodedGif | undefined {
+  const entry = decodedCache.get(key);
+  if (!entry) return undefined;
+  if (entry.expiresAt <= Date.now()) { dropDecoded(entry); return undefined; }
+  entry.usedAt = Date.now();
+  return entry.value;
+}
+
+function putDecoded(key: string, value: DecodedGif): void {
+  const existing = decodedCache.get(key);
+  if (existing) dropDecoded(existing);
+  const bytes = estimateDecodedBytes(value);
+  decodedCache.set(key, {
+    key, value, bytes, expiresAt: Date.now() + DECODED_TTL_MS, usedAt: Date.now(),
+  });
+  decodedBytes += bytes;
+  enforceDecodedBounds();
+}
+
+/** Test/bench helper — does not clear the GIF-buffer preview cache. */
+export function clearBoardDecodedCache(): void {
+  decodedCache.clear();
+  decodedBytes = 0;
+}
+
+/**
+ * Evenly subsample a long GIF down to `maxFrames`, merging delays so the cycle
+ * duration (and therefore playback speed) stays the same.
+ */
+function subsampleFrames(gif: DecodedGif, maxFrames: number): DecodedGif {
+  const n = gif.frames.length;
+  if (n <= maxFrames) return gif;
+  const frames: Drawable[] = [];
+  const delays: number[] = [];
+  for (let i = 0; i < maxFrames; i++) {
+    const start = Math.floor((i * n) / maxFrames);
+    const end = Math.floor(((i + 1) * n) / maxFrames);
+    frames.push(gif.frames[start]!);
+    let d = 0;
+    for (let j = start; j < end; j++) d += gif.delays[j] ?? 90;
+    delays.push(Math.max(20, d));
+  }
+  return { frames, delays };
+}
+
 /**
  * Decode a GIF into fully-composited per-frame canvases.
  *
@@ -310,6 +422,10 @@ interface DecodedGif { frames: Drawable[]; delays: number[] }
  * `drawImage` (source-over) keeps the previous frame where a patch is
  * transparent; a disposal of 2 clears the region first — between them this draws
  * every frame correctly regardless of how the encoder optimised it.
+ *
+ * One reusable patch canvas (max frame dims) replaces a new patch per source
+ * frame. Snapshots remain one canvas per composited frame — those are what the
+ * board draws. Long source GIFs are evenly subsampled to BOARD_MAX_FRAMES.
  */
 function decodeGif(mod: CanvasMod, buffer: Buffer): DecodedGif | null {
   try {
@@ -325,28 +441,38 @@ function decodeGif(mod: CanvasMod, buffer: Buffer): DecodedGif | null {
     const work = mod.createCanvas(W, H);
     const wctx = work.getContext("2d") as unknown as FrameCtx;
 
+    let maxW = 1;
+    let maxH = 1;
+    for (const f of frames) {
+      maxW = Math.max(maxW, f.dims.width);
+      maxH = Math.max(maxH, f.dims.height);
+    }
+    const patch = mod.createCanvas(maxW, maxH);
+    const pctx = patch.getContext("2d") as unknown as FrameCtx;
+
     const out: Drawable[] = [];
     const delays: number[] = [];
     for (const f of frames) {
-      const patch = mod.createCanvas(f.dims.width, f.dims.height);
-      const pctx = patch.getContext("2d") as unknown as FrameCtx;
       const id = pctx.createImageData(f.dims.width, f.dims.height);
       id.data.set(f.patch);
       pctx.putImageData(id, 0, 0);
 
-      wctx.drawImage(patch as unknown, f.dims.left, f.dims.top);
+      wctx.drawImage(
+        patch as unknown,
+        0, 0, f.dims.width, f.dims.height,
+        f.dims.left, f.dims.top, f.dims.width, f.dims.height,
+      );
 
       const snap = mod.createCanvas(W, H);
       (snap.getContext("2d") as unknown as FrameCtx).drawImage(work as unknown, 0, 0);
       out.push(snap as unknown as Drawable);
       delays.push(f.delay && f.delay > 0 ? f.delay : 90);
 
-      // "Restore to background" — clear this region before the next frame.
       if (f.disposalType === 2) {
         wctx.clearRect(f.dims.left, f.dims.top, f.dims.width, f.dims.height);
       }
     }
-    return { frames: out, delays };
+    return subsampleFrames({ frames: out, delays }, BOARD_MAX_FRAMES);
   } catch (err) {
     logger.debug({ err }, "board cell GIF decode failed");
     return null;
@@ -356,11 +482,39 @@ function decodeGif(mod: CanvasMod, buffer: Buffer): DecodedGif | null {
 /** One cell's frames (≥1) plus the delays that produced them. */
 interface Cell { frames: (Drawable | null)[]; delays: number[] }
 
+/** Run `items` through `fn` with at most `limit` in flight. */
+async function mapPool<T, R>(
+  items: readonly T[],
+  limit: number,
+  fn: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const out = new Array<R>(items.length);
+  let next = 0;
+  async function worker(): Promise<void> {
+    for (;;) {
+      const i = next++;
+      if (i >= items.length) return;
+      out[i] = await fn(items[i]!, i);
+    }
+  }
+  const n = Math.min(Math.max(1, limit), Math.max(1, items.length));
+  await Promise.all(Array.from({ length: n }, () => worker()));
+  return out;
+}
+
 /** Fetch a cell as decoded animated frames, falling back to a single still. */
 async function loadCell(mod: CanvasMod, image: Buffer, style: string): Promise<Cell> {
   const gif = await renderStyleThumbGif(image, style).catch(() => null);
   if (gif) {
-    const decoded = decodeGif(mod, gif);
+    // The thumb GIF is uniquely identified by (target image, style) — the same
+    // key the buffer cache uses — so key the decoded cache by identity too. That
+    // is collision-free and avoids fingerprinting bytes on every cell load.
+    const key = `decoded:${previewKey(targetHash(image), style)}`;
+    let decoded = getDecoded(key);
+    if (!decoded) {
+      decoded = decodeGif(mod, gif) ?? undefined;
+      if (decoded) putDecoded(key, decoded);
+    }
     if (decoded && decoded.frames.length > 1) {
       return { frames: decoded.frames, delays: decoded.delays };
     }
@@ -368,6 +522,122 @@ async function loadCell(mod: CanvasMod, image: Buffer, style: string): Promise<C
   const still = await renderStyleThumb(image, style).catch(() => null);
   const img = still ? await mod.loadImage(still).catch(() => null) : null;
   return { frames: [img as unknown as Drawable | null], delays: [90] };
+}
+
+// ── Board result cache (bounded) ─────────────────────────────────────────────
+// Warm path without this still re-decoded + re-encoded (~0.6s). Cache a few
+// recent page GIFs keyed by target + styles + focus + favorites.
+const BOARD_RESULT_MAX_ENTRIES = 8;
+const BOARD_RESULT_MAX_BYTES = 16 * 1024 * 1024;
+const BOARD_RESULT_TTL_MS = 10 * 60 * 1000;
+
+interface BoardCacheEntry {
+  key: string;
+  result: BoardResult;
+  expiresAt: number;
+  usedAt: number;
+}
+
+const boardResultCache = new Map<string, BoardCacheEntry>();
+let boardResultBytes = 0;
+
+function dropBoardResult(entry: BoardCacheEntry): void {
+  if (boardResultCache.delete(entry.key)) boardResultBytes -= entry.result.buffer.length;
+}
+
+function enforceBoardResultBounds(): void {
+  const now = Date.now();
+  for (const entry of [...boardResultCache.values()]) {
+    if (entry.expiresAt <= now) dropBoardResult(entry);
+  }
+  if (
+    boardResultCache.size <= BOARD_RESULT_MAX_ENTRIES
+    && boardResultBytes <= BOARD_RESULT_MAX_BYTES
+  ) return;
+  for (const entry of [...boardResultCache.values()].sort((a, b) => a.usedAt - b.usedAt)) {
+    if (
+      boardResultCache.size <= BOARD_RESULT_MAX_ENTRIES
+      && boardResultBytes <= BOARD_RESULT_MAX_BYTES
+    ) break;
+    dropBoardResult(entry);
+  }
+}
+
+function boardCacheKey(opts: BoardOptions): string {
+  const favs = opts.styles
+    .filter(s => isFavorite(opts.userId, s.value))
+    .map(s => s.value)
+    .join(",");
+  return [
+    "board:v2",
+    targetHash(opts.image),
+    opts.styles.map(s => s.value).join(","),
+    opts.focusValue,
+    String(opts.page),
+    String(opts.pages),
+    String(opts.total),
+    opts.format,
+    opts.targetLabel,
+    favs,
+  ].join("|");
+}
+
+function getBoardCached(key: string): BoardResult | undefined {
+  const entry = boardResultCache.get(key);
+  if (!entry) return undefined;
+  if (entry.expiresAt <= Date.now()) { dropBoardResult(entry); return undefined; }
+  entry.usedAt = Date.now();
+  return {
+    buffer: entry.result.buffer,
+    name: entry.result.name,
+    animated: entry.result.animated,
+  };
+}
+
+function putBoardCached(key: string, result: BoardResult): void {
+  const existing = boardResultCache.get(key);
+  if (existing) dropBoardResult(existing);
+  boardResultCache.set(key, {
+    key, result, expiresAt: Date.now() + BOARD_RESULT_TTL_MS, usedAt: Date.now(),
+  });
+  boardResultBytes += result.buffer.length;
+  enforceBoardResultBounds();
+}
+
+export function clearBoardResultCache(): void {
+  boardResultCache.clear();
+  boardResultBytes = 0;
+}
+
+// Serialize board *encode* work across users. Cell renders already go through
+// the shared render queue; encoding a ~682×490×14 GIF is the other CPU spike.
+// Do NOT wrap this in queueRender — loadCell awaits queued offline renders and
+// would deadlock.
+let boardComposeTail: Promise<unknown> = Promise.resolve();
+function withBoardCompose<T>(fn: () => T | Promise<T>): Promise<T> {
+  const run = boardComposeTail.then(() => fn());
+  boardComposeTail = run.then(() => undefined, () => undefined);
+  return run;
+}
+
+function cellCycleMs(cell: Cell): number {
+  if (cell.frames.length <= 1) return 0;
+  return cell.delays.reduce((a, b) => a + (b > 0 ? b : 90), 0);
+}
+
+/** Pick the frame that should show at time `tMs` into this cell's loop. */
+function frameAt(cell: Cell, tMs: number): Drawable | null {
+  const frames = cell.frames;
+  if (frames.length === 0) return null;
+  if (frames.length === 1) return frames[0] ?? null;
+  const cycle = cellCycleMs(cell) || 90 * frames.length;
+  let t = ((tMs % cycle) + cycle) % cycle;
+  for (let i = 0; i < frames.length; i++) {
+    const d = cell.delays[i] && cell.delays[i]! > 0 ? cell.delays[i]! : 90;
+    t -= d;
+    if (t < 0) return frames[i] ?? null;
+  }
+  return frames[frames.length - 1] ?? null;
 }
 
 /**
@@ -378,46 +648,64 @@ async function loadCell(mod: CanvasMod, image: Buffer, style: string): Promise<C
  * board image and keep the rest of the dashboard.
  */
 export async function renderBoard(opts: BoardOptions): Promise<BoardResult | null> {
+  const cacheKey = boardCacheKey(opts);
+  const cached = getBoardCached(cacheKey);
+  if (cached) return cached;
+
   const mod = await getCanvas();
   if (!mod) return null;
 
   const { image, styles } = opts;
 
+  // Hash once up-front so thumb cache keys reuse the WeakMap-cached digest.
+  targetHash(image);
+
   const [target, cells] = await Promise.all([
     mod.loadImage(image).catch(() => null) as Promise<Drawable | null>,
-    Promise.all(styles.map(s => loadCell(mod, image, s.value))),
+    mapPool(styles, CELL_LOAD_CONCURRENCY, s => loadCell(mod, image, s.value)),
   ]);
-
-  const frameCount = Math.min(
-    BOARD_MAX_FRAMES,
-    Math.max(1, ...cells.map(c => c.frames.length)),
-  );
 
   const { width, height } = boardDims(styles.length);
 
-  // Nothing animates → a single still PNG is smaller and just as clear.
-  if (frameCount <= 1) {
-    return renderStill(mod, opts, target, cells, width, height);
-  }
+  const result = await withBoardCompose(async () => {
+    // Another caller may have finished the same page while we loaded cells.
+    const raced = getBoardCached(cacheKey);
+    if (raced) return raced;
 
-  const animated = renderAnimated(mod, opts, target, cells, frameCount, width, height);
-  if (animated && animated.buffer.length <= BOARD_MAX_BYTES) return animated;
-  if (animated) {
-    logger.debug(
-      { bytes: animated.buffer.length },
-      "animated board over size budget; using still fallback",
-    );
-  }
-  return await renderStill(mod, opts, target, cells, width, height);
+    const animatedCount = cells.filter(c => c.frames.length > 1).length;
+    if (animatedCount === 0) {
+      return renderStill(mod, opts, target, cells, width, height);
+    }
+
+    const animated = renderAnimated(mod, opts, target, cells, width, height);
+    if (animated && animated.buffer.length <= BOARD_MAX_BYTES) return animated;
+    if (animated) {
+      logger.debug(
+        { bytes: animated.buffer.length },
+        "animated board over size budget; using still fallback",
+      );
+    }
+    return await renderStill(mod, opts, target, cells, width, height);
+  });
+
+  if (result) putBoardCached(cacheKey, result);
+  return result;
 }
 
-/** Tile the cells' frames into one looping board GIF. */
+/**
+ * Tile the cells' frames into one looping board GIF.
+ *
+ * Timing: each cell advances on its own delay timeline (not `f % length` with a
+ * global average). Board ticks are uniform; per-tick we sample each cell at the
+ * same wall-clock `t`. Chrome (bg/header/labels/rings) is painted once and
+ * blitted each frame; only thumbnails are redrawn. Badges/stars are redrawn on
+ * top so they stay above the animated thumb.
+ */
 function renderAnimated(
   mod: CanvasMod,
   opts: BoardOptions,
   target: Drawable | null,
   cells: Cell[],
-  frameCount: number,
   width: number,
   height: number,
 ): BoardResult | null {
@@ -425,23 +713,72 @@ function renderAnimated(
     const canvas = mod.createCanvas(width, height);
     const ctx = canvas.getContext("2d") as unknown as BoardCtx;
 
-    // A single delay reads smoothly and keeps the encoder simple; take the
-    // average of the animated cells, clamped to a sane playback range.
-    const animatedDelays = cells.flatMap(c => (c.frames.length > 1 ? c.delays : []));
-    const avg = animatedDelays.length
-      ? animatedDelays.reduce((a, b) => a + b, 0) / animatedDelays.length
-      : 90;
-    const delay = Math.min(140, Math.max(50, Math.round(avg)));
+    const maxCycle = Math.max(1, ...cells.map(cellCycleMs));
+    const frameCount = Math.min(
+      BOARD_MAX_FRAMES,
+      Math.max(2, Math.round(maxCycle / 90)),
+    );
+    const tickMs = Math.min(140, Math.max(50, Math.round(maxCycle / frameCount)));
+
+    // Static chrome once — stand-in thumbs so "no preview" is not baked in for
+    // cells that will receive real frames, while empty cells keep their placeholder.
+    const chrome = mod.createCanvas(width, height);
+    const chromeCtx = chrome.getContext("2d") as unknown as BoardCtx;
+    const standIn = mod.createCanvas(1, 1) as unknown as Drawable;
+    const standIns = cells.map(c => (c.frames[0] ? standIn : null));
+    drawBoard(chromeCtx, opts, target, standIns);
+
+    const { gridW } = boardDims(opts.styles.length);
 
     const encoder = new GIFEncoder(width, height);
     encoder.start();
     encoder.setRepeat(0);
     encoder.setQuality(BOARD_QUALITY);
-    encoder.setDelay(delay);
+    encoder.setDelay(tickMs);
 
     for (let f = 0; f < frameCount; f++) {
-      const cellImages = cells.map(c => c.frames[f % c.frames.length] ?? null);
-      drawBoard(ctx, opts, target, cellImages);
+      const t = f * tickMs;
+      ctx.drawImage(chrome as unknown, 0, 0, width, height);
+
+      for (let i = 0; i < cells.length; i++) {
+        const img = frameAt(cells[i]!, t);
+        if (!img) continue;
+        const { tx, ty } = cellLayout(opts.styles.length, i, gridW);
+        ctx.save();
+        roundRect(ctx, tx, ty, THUMB, THUMB, 10);
+        ctx.clip();
+        drawContain(ctx, img, tx, ty, THUMB);
+        ctx.restore();
+      }
+
+      // Badges + stars above the thumb (same stacking as the still path).
+      for (let i = 0; i < opts.styles.length; i++) {
+        const style = opts.styles[i]!;
+        const { x, y } = cellLayout(opts.styles.length, i, gridW);
+        const selected = style.value === opts.focusValue;
+        const fav = isFavorite(opts.userId, style.value);
+        const bx = x + 16;
+        const by = y + 16;
+        ctx.fillStyle = selected ? RING : BADGE_BG;
+        ctx.beginPath();
+        ctx.arc(bx, by, 15, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = TEXT;
+        ctx.font = `700 15px "Orbitron", sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(String(i + 1), bx, by + 1);
+        ctx.textBaseline = "alphabetic";
+        ctx.textAlign = "left";
+        if (fav) {
+          ctx.fillStyle = STAR;
+          ctx.font = `700 18px sans-serif`;
+          ctx.textAlign = "right";
+          ctx.fillText("★", x + CELL_W - 12, by + 6);
+          ctx.textAlign = "left";
+        }
+      }
+
       encoder.addFrame(ctx as unknown as never);
     }
     encoder.finish();
