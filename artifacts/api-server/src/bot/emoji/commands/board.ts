@@ -30,7 +30,7 @@ import { parseGIF, decompressFrames } from "gifuct-js";
 import { getCanvas, type CanvasMod } from "../../animations/engine.js";
 import { logger } from "../../../lib/logger.js";
 import {
-  renderStyleThumb, renderStyleThumbGif, targetHash,
+  previewKey, renderStyleThumb, renderStyleThumbGif, targetHash,
 } from "../preview/index.js";
 import { isFavorite } from "./favorites.js";
 import type { StyleEntry } from "./styles-picker.js";
@@ -414,14 +414,6 @@ function subsampleFrames(gif: DecodedGif, maxFrames: number): DecodedGif {
   return { frames, delays };
 }
 
-function gifCacheKey(buffer: Buffer): string {
-  // Stable content key without hashing the whole buffer every time: length +
-  // ends. Collisions across distinct thumbs are vanishingly unlikely at thumb size.
-  const head = buffer.subarray(0, Math.min(64, buffer.length)).toString("hex");
-  const tail = buffer.subarray(Math.max(0, buffer.length - 64)).toString("hex");
-  return `dec:${buffer.length}:${head}:${tail}`;
-}
-
 /**
  * Decode a GIF into fully-composited per-frame canvases.
  *
@@ -514,7 +506,10 @@ async function mapPool<T, R>(
 async function loadCell(mod: CanvasMod, image: Buffer, style: string): Promise<Cell> {
   const gif = await renderStyleThumbGif(image, style).catch(() => null);
   if (gif) {
-    const key = gifCacheKey(gif);
+    // The thumb GIF is uniquely identified by (target image, style) — the same
+    // key the buffer cache uses — so key the decoded cache by identity too. That
+    // is collision-free and avoids fingerprinting bytes on every cell load.
+    const key = `decoded:${previewKey(targetHash(image), style)}`;
     let decoded = getDecoded(key);
     if (!decoded) {
       decoded = decodeGif(mod, gif) ?? undefined;
