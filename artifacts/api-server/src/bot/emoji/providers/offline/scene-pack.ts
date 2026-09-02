@@ -45,8 +45,13 @@ interface ScenesFile { scenes: SceneConfig[] }
 /** Value prefix that marks a style as a scene pack (vs a MakeEmoji style). */
 export const SCENE_PREFIX = "scene:";
 
-/** Default frame ceiling when the caller doesn't ask for a lighter preview. */
-const FULL_MAX_FRAMES = 30;
+/**
+ * Default frame ceiling when the caller doesn't ask for a lighter preview.
+ * Kept high so fast, high-detail clips (TV static, explosions) don't visibly
+ * skip — we subsample only when the source has more frames than this, and each
+ * kept frame's delay is stretched to preserve the clip's real duration.
+ */
+const FULL_MAX_FRAMES = 45;
 /**
  * Default long edge. Callers can override (the Size control); this is the value
  * used when none is given. Capped not to crop (nothing is cropped) but to keep
@@ -57,8 +62,6 @@ const FULL_LONG_EDGE = 360;
 /** Clamp for a user-requested output long edge (keeps GIFs under Discord's cap). */
 const MIN_LONG_EDGE = 96;
 const MAX_LONG_EDGE = 600;
-/** The whole image is contained at this fraction of the screen — pulled back a bit. */
-const SCENE_ZOOM = 0.9;
 
 let cache: { list: SceneConfig[]; byId: Map<string, SceneConfig>; dir: string } | null | undefined;
 
@@ -129,6 +132,7 @@ interface Ctx2D {
   drawImage(img: unknown, ...a: number[]): void;
   save(): void; restore(): void;
   beginPath(): void; ellipse(x: number, y: number, rx: number, ry: number, rot: number, s: number, e: number): void; fill(): void;
+  rect(x: number, y: number, w: number, h: number): void; clip(): void;
 }
 
 interface Frame { data: Uint8ClampedArray; delay: number }
@@ -337,10 +341,11 @@ function drawTarget(
   if (cfg.fit === "stretch") {
     tw = box.w; th = box.h; tx = box.x; ty = box.y;
   } else {
-    // Contain the whole image, pulled back a touch so it doesn't read as a tight
-    // over-cropped zoom. No backdrop — the frame's own black shows around it.
-    const zoom = SCENE_ZOOM;
-    const s = Math.min((box.w * zoom) / target.width, (box.h * zoom) / target.height);
+    // Cover: re-cut the upload to the green screen's own shape, filling it edge
+    // to edge and centred — no letterbox bars, no backdrop. The overflow (the
+    // part of the image the screen's aspect can't show) is clipped to the screen
+    // below, so the target reads as if it were always on that screen.
+    const s = Math.max(box.w / target.width, box.h / target.height);
     tw = target.width * s; th = target.height * s;
     tx = box.x + (box.w - tw) / 2; ty = box.y + (box.h - th) / 2;
   }
@@ -354,6 +359,14 @@ function drawTarget(
 
   ctx.save();
   ctx.globalAlpha = alpha;
+  // Keep the target on its screen: clip cover-overflow (and jitter) to the green
+  // region so nothing spills over the scene chrome. Explode is the exception —
+  // it is meant to burst past the frame.
+  if (cfg.effect !== "explode") {
+    ctx.beginPath();
+    ctx.rect(box.x, box.y, box.w, box.h);
+    ctx.clip();
+  }
   const cw = tw * sc, ch = th * sc;
   const dx = tx + ox - (cw - tw) / 2, dy = ty + oy - (ch - th) / 2;
 
