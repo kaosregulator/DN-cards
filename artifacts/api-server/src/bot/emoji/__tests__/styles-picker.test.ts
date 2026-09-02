@@ -13,6 +13,7 @@ import {
   allStyles, pageStyles, ensureStyleFocus, STYLES_PAGE_SIZE,
   filteredStyles, totalStylePages, buildStyleSearchModal,
 } from "../commands/styles-picker.js";
+import { sceneStyleEntries } from "../providers/offline/scene-pack.js";
 import { createSession } from "../commands/session.js";
 import { buildControls, buildUploadModal, parseCid, cid } from "../commands/ui.js";
 import { setManifestForTesting } from "../providers/makeemoji/manifest.js";
@@ -109,7 +110,10 @@ describe("style browser paging", () => {
   });
 
   it("pages through the full catalog instead of truncating at 25", () => {
-    expect(allStyles()).toHaveLength(55);
+    // Featured scene packs are prepended to the manifest styles, so the catalog
+    // is scenes + the 55 test styles.
+    const total = sceneStyleEntries().length + 55;
+    expect(allStyles()).toHaveLength(total);
     const { token: _t, session } = createSession({
       image: Buffer.from([1]),
       ownerId: "u1",
@@ -119,24 +123,25 @@ describe("style browser paging", () => {
     });
 
     const first = pageStyles(session, "u1");
-    expect(first.total).toBe(55);
-    expect(first.pages).toBe(Math.ceil(55 / STYLES_PAGE_SIZE));
+    expect(first.total).toBe(total);
+    expect(first.pages).toBe(Math.ceil(total / STYLES_PAGE_SIZE));
     expect(first.rows).toHaveLength(STYLES_PAGE_SIZE);
 
-    const lastPage = Math.ceil(55 / STYLES_PAGE_SIZE) - 1;
+    const lastPage = Math.ceil(total / STYLES_PAGE_SIZE) - 1;
     session.stylePage = lastPage;
     const last = pageStyles(session, "u1");
     expect(last.page).toBe(lastPage);
-    expect(last.rows.length).toBe(55 - STYLES_PAGE_SIZE * lastPage);
+    expect(last.rows.length).toBe(total - STYLES_PAGE_SIZE * lastPage);
   });
 
   it("exposes the filtered catalog and total page count for jumps", () => {
+    const total = sceneStyleEntries().length + 55;
     const { session } = createSession({
       image: Buffer.from([1]), ownerId: "u1", sourceLabel: "t",
       animation: "gen_btn_style-0", format: "gif",
     });
-    expect(filteredStyles(session, "u1")).toHaveLength(55);
-    expect(totalStylePages(session, "u1")).toBe(Math.ceil(55 / STYLES_PAGE_SIZE));
+    expect(filteredStyles(session, "u1")).toHaveLength(total);
+    expect(totalStylePages(session, "u1")).toBe(Math.ceil(total / STYLES_PAGE_SIZE));
 
     // pageStyles clamps an out-of-range jump target to the last real page.
     session.stylePage = 999;
@@ -194,7 +199,8 @@ describe("style browser paging", () => {
 
   it("falls back to the applied style when it is on the current page", () => {
     // With no explicit focus, the applied animation is used when it is visible
-    // on the page. style-0 sorts first, so page 0 always contains it.
+    // on the page. Scenes lead the catalog, so page to wherever style-0 landed.
+    const idx = allStyles().findIndex(s => s.value === "gen_btn_style-0");
     const { session } = createSession({
       image: Buffer.from([1]),
       ownerId: "u1",
@@ -202,7 +208,7 @@ describe("style browser paging", () => {
       animation: "gen_btn_style-0",
       format: "gif",
       styleFocus: null,
-      stylePage: 0,
+      stylePage: Math.floor(idx / STYLES_PAGE_SIZE),
     });
     expect(ensureStyleFocus(session, "u1")).toBe("gen_btn_style-0");
   });

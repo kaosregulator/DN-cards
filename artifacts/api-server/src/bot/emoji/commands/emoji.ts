@@ -36,6 +36,7 @@ import {
   buildServerModal, buildTargetChooser, buildUploadModal, describe, parseCid,
 } from "./ui.js";
 import { createSession, endSession, getSession, touchSession, type EmojiSession } from "./session.js";
+import { isSceneAnimation } from "../providers/offline/scene-pack.js";
 
 /** Avatars are fetched large so there's detail to work with before downscaling. */
 const AVATAR_SIZE = 512;
@@ -96,16 +97,22 @@ function resolveSource(interaction: ChatInputCommandInteraction): Source {
 /** Session settings as a provider request. */
 function toGenerateOptions(session: EmojiSession): GenerateOptions {
   if (!session.image) throw new EmojiError("no_source", "Pick something to animate first.");
+  // Scenes play at their native size — the emoji Size control (and the other
+  // MakeEmoji side-controls) would only shrink or confuse them, so they're
+  // dropped for a full scene render. The board still shrinks via its own path.
+  const scene = isSceneAnimation(session.animation);
   return {
     image: session.image,
     animation: session.animation,
     format: session.format,
-    ...(session.speed ? { speed: session.speed } : {}),
-    ...(session.direction ? { direction: session.direction } : {}),
-    ...(session.size ? { size: session.size } : {}),
-    ...(session.color ? { color: session.color } : {}),
-    ...(session.quality ? { quality: session.quality } : {}),
-    ...(session.platform ? { platform: session.platform } : {}),
+    ...(scene ? {} : {
+      ...(session.speed ? { speed: session.speed } : {}),
+      ...(session.direction ? { direction: session.direction } : {}),
+      ...(session.size ? { size: session.size } : {}),
+      ...(session.color ? { color: session.color } : {}),
+      ...(session.quality ? { quality: session.quality } : {}),
+      ...(session.platform ? { platform: session.platform } : {}),
+    }),
   };
 }
 
@@ -138,7 +145,9 @@ async function buildReply(session: EmojiSession, token: string) {
     lines.push("-# Tip: tap **Upload image** to animate a Discord attachment instead of an avatar.");
   }
 
-  if (result.bytes > DISCORD_EMOJI_LIMIT) {
+  if (isSceneAnimation(session.animation)) {
+    lines.push("-# Full-scene GIF — **Post** it to a channel or tap the image to save it.");
+  } else if (result.bytes > DISCORD_EMOJI_LIMIT) {
     // Still send it — it's a perfectly good file, just not uploadable as a
     // custom emoji. Say so rather than handing over something that will be
     // rejected at the point of use.

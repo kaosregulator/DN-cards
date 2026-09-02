@@ -18,6 +18,7 @@ import { isFavorite, listFavorites } from "./favorites.js";
 import { resolveStylePreviewUrl } from "./previews.js";
 import { renderStylePreview } from "../preview/index.js";
 import { renderBoard, BOARD_PAGE_SIZE } from "./board.js";
+import { sceneStyleEntries } from "../providers/offline/scene-pack.js";
 import type { EmojiSession } from "./session.js";
 import { cid } from "./ui.js";
 
@@ -46,21 +47,32 @@ export interface StylesPickerReply {
   files: AttachmentBuilder[];
 }
 
-/** Every animation the live manifest currently offers. */
+/**
+ * Styles that do nothing useful on the board (plain tiling / passthrough), hidden
+ * from the picker at the user's request. They stay in the manifest — just not
+ * offered as options.
+ */
+const HIDDEN_STYLES = new Set([
+  "gen_btn_none",
+  "gen_btn_3d-flip",
+  "gen_btn_2x-wide-1", "gen_btn_2x-wide-2",
+  "gen_btn_3x-wide-1", "gen_btn_3x-wide-2", "gen_btn_3x-wide-3",
+  "gen_btn_4x-wide-1", "gen_btn_4x-wide-2", "gen_btn_4x-wide-3", "gen_btn_4x-wide-4",
+]);
+
+/**
+ * Every style the picker offers: the featured green/blue-screen scene packs
+ * first (in their curated order), then the MakeEmoji catalog alphabetically,
+ * minus the hidden tiling styles.
+ */
 export function allStyles(): StyleEntry[] {
+  const scenes = sceneStyleEntries();
   const values = getManifest().manifest?.controls.animation?.values ?? [];
-  const rows = values.map(v => ({
-    value: v.value,
-    label: (v.label && v.label.trim()) || v.value,
-  }));
-  // MakeEmoji opens on `none` so Colour can animate the image alone — keep it first.
-  rows.sort((a, b) => {
-    const aNone = /^(gen_btn_)?none$/i.test(a.value) || /^none$/i.test(a.label) ? 0 : 1;
-    const bNone = /^(gen_btn_)?none$/i.test(b.value) || /^none$/i.test(b.label) ? 0 : 1;
-    if (aNone !== bNone) return aNone - bNone;
-    return a.label.localeCompare(b.label);
-  });
-  return rows;
+  const rows = values
+    .map(v => ({ value: v.value, label: (v.label && v.label.trim()) || v.value }))
+    .filter(r => !HIDDEN_STYLES.has(r.value));
+  rows.sort((a, b) => a.label.localeCompare(b.label));
+  return [...scenes, ...rows];
 }
 
 export function findStyle(value: string): StyleEntry | undefined {
