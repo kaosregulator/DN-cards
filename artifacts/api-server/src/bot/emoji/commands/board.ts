@@ -1,30 +1,46 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Style Board — the visual heart of the /emoji dashboard.
 //
-// After a target is chosen, the browser is no longer a single-style preview with
-// a dropdown. It is a *contact sheet*: the page's styles are each rendered on the
-// user's own image and tiled into one canvas, numbered, so the whole page can be
-// judged at a glance. The chosen style is ringed; favorites carry a star; the
-// target itself is shown in the header so switching it is obvious.
+// After a target is chosen, the browser is a *contact sheet*: the page's styles
+// are each rendered on the user's own image and tiled into one canvas, numbered,
+// so the whole page can be judged at a glance. The chosen style is ringed;
+// favorites carry a star; the target itself is shown in the header.
 //
-// The board is a still PNG. The animated preview of the *focused* style rides
-// alongside it as the embed thumbnail (see styles-picker.ts), so the dashboard
-// shows both "all of them at once" and "this one, moving".
+// The board is fully ANIMATED. Each cell's style is rendered as a small GIF, the
+// frames are decoded with gifuct-js, and they are tiled per frame into one
+// looping board GIF (gifencoder). So every cell moves at once, on the user's own
+// image. Canvas + frames are used only for this menu chrome — the emoji output
+// itself still goes through the render engine.
+//
+// If the canvas backend is missing, or nothing on the page actually animates, it
+// degrades to a still PNG contact sheet, so browsing never breaks.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { getCanvas } from "../../animations/engine.js";
+import GIFEncoder from "gifencoder";
+import { parseGIF, decompressFrames } from "gifuct-js";
+import { getCanvas, type CanvasMod } from "../../animations/engine.js";
 import { logger } from "../../../lib/logger.js";
-import { renderStyleThumb } from "../preview/index.js";
+import { renderStyleThumb, renderStyleThumbGif } from "../preview/index.js";
 import { isFavorite } from "./favorites.js";
 import type { StyleEntry } from "./styles-picker.js";
 
 /** Styles shown on one board page. Eight fills a tidy 4×2 grid of live previews. */
 export const BOARD_PAGE_SIZE = 8;
 
-/** Attachment name the embed's main image points at. */
-export const BOARD_FILENAME = "style-board.png";
+/** Attachment names — the extension follows whether the board animated. */
+export const BOARD_FILENAME = "style-board.gif";
+export const BOARD_FILENAME_STILL = "style-board.png";
 
-// Layout — plain pixels, drawn once per page turn. Kept generous so labels and
+/** Frame ceiling for the tiled board GIF — enough for smooth motion, small file. */
+const BOARD_MAX_FRAMES = 14;
+
+/** NeuQuant sample factor for the board GIF (higher = coarser palette, smaller). */
+const BOARD_QUALITY = 12;
+
+/** Give up on the animated board above this size and fall back to the still PNG. */
+const BOARD_MAX_BYTES = 7_500_000;
+
+// Layout — plain pixels, drawn once per frame. Kept generous so labels and
 // numbers stay legible when Discord scales the embed image.
 const COLS = 4;
 const CELL_W = 150;
@@ -45,6 +61,9 @@ const STAR = "#f1c40f";
 const TEXT = "#eceef5";
 const SUBTLE = "#aab0c4";
 const BADGE_BG = "#12131c";
+
+/** Anything with a width/height that a 2D context can draw — an Image or Canvas. */
+type Drawable = { width: number; height: number };
 
 /** Minimal 2D context surface the board uses — avoids pulling in the DOM lib. */
 interface BoardCtx {
@@ -75,6 +94,14 @@ interface BoardCtx {
   };
 }
 
+/** Context surface used while decoding GIF frames onto working canvases. */
+interface FrameCtx {
+  createImageData(w: number, h: number): { data: Uint8ClampedArray };
+  putImageData(image: { data: Uint8ClampedArray }, dx: number, dy: number): void;
+  drawImage(img: unknown, dx: number, dy: number): void;
+  clearRect(x: number, y: number, w: number, h: number): void;
+}
+
 function roundRect(
   ctx: BoardCtx, x: number, y: number, w: number, h: number, r: number,
 ): void {
@@ -100,7 +127,7 @@ function fitText(ctx: BoardCtx, text: string, maxWidth: number): string {
 
 /** Draw an image centered and contained inside a square box. */
 function drawContain(
-  ctx: BoardCtx, img: { width: number; height: number }, x: number, y: number, box: number,
+  ctx: BoardCtx, img: Drawable, x: number, y: number, box: number,
 ): void {
   const scale = Math.min(box / img.width, box / img.height);
   const w = img.width * scale;
@@ -120,35 +147,34 @@ export interface BoardOptions {
   format: string;
 }
 
-/**
- * Render the contact-sheet board for one page of styles.
- *
- * Returns null when the canvas backend is unavailable — the caller then falls
- * back to the single-preview embed, so the browser degrades instead of breaking.
- */
-export async function renderBoard(opts: BoardOptions): Promise<Buffer | null> {
-  const mod = await getCanvas();
-  if (!mod) return null;
+/** What renderBoard hands back: the encoded image and the attachment name to use. */
+export interface BoardResult {
+  buffer: Buffer;
+  name: string;
+  animated: boolean;
+}
 
-  const { image, styles, focusValue, userId } = opts;
-
-  // Render (or read from cache) each cell's thumbnail plus the target itself.
-  const [target, thumbs] = await Promise.all([
-    mod.loadImage(image).catch(() => null),
-    Promise.all(styles.map(async (s) => {
-      const buf = await renderStyleThumb(image, s.value).catch(() => null);
-      if (!buf) return null;
-      return mod.loadImage(buf).catch(() => null);
-    })),
-  ]);
-
-  const rows = Math.max(1, Math.ceil(BOARD_PAGE_SIZE / COLS));
+/** Board canvas dimensions for a page of `count` cells. */
+function boardDims(count: number): { width: number; height: number; gridW: number; rows: number } {
+  const rows = Math.max(1, Math.ceil(count / COLS));
   const gridW = COLS * CELL_W + (COLS - 1) * GAP;
   const width = PAD * 2 + gridW;
   const height = HEADER_H + PAD + rows * CELL_H + (rows - 1) * GAP + PAD;
+  return { width, height, gridW, rows };
+}
 
-  const canvas = mod.createCanvas(width, height);
-  const ctx = canvas.getContext("2d") as unknown as BoardCtx;
+/**
+ * Draw the complete board onto `ctx` using `cellImages[i]` for cell i. Shared by
+ * the animated path (called once per frame) and the still path (called once).
+ */
+function drawBoard(
+  ctx: BoardCtx,
+  opts: BoardOptions,
+  target: Drawable | null,
+  cellImages: (Drawable | null)[],
+): void {
+  const { styles, focusValue, userId } = opts;
+  const { width, height, gridW } = boardDims(styles.length);
 
   // Card background.
   const bg = ctx.createLinearGradient(0, 0, 0, height);
@@ -208,7 +234,7 @@ export async function renderBoard(opts: BoardOptions): Promise<Buffer | null> {
 
     const selected = style.value === focusValue;
     const fav = isFavorite(userId, style.value);
-    const img = thumbs[i];
+    const img = cellImages[i];
 
     // Cell background + selection ring.
     ctx.fillStyle = selected ? CELL_BG_SEL : CELL_BG;
@@ -272,11 +298,178 @@ export async function renderBoard(opts: BoardOptions): Promise<Buffer | null> {
     ctx.fillText(fitText(ctx, style.label, CELL_W - 24), x + CELL_W / 2, y + CELL_H - 16);
     ctx.textAlign = "left";
   });
+}
 
+interface DecodedGif { frames: Drawable[]; delays: number[] }
+
+/**
+ * Decode a GIF into fully-composited per-frame canvases.
+ *
+ * Our thumbnails come from the emoji encoder, which writes full frames with a
+ * transparent key and "restore to background" disposal. Compositing with
+ * `drawImage` (source-over) keeps the previous frame where a patch is
+ * transparent; a disposal of 2 clears the region first — between them this draws
+ * every frame correctly regardless of how the encoder optimised it.
+ */
+function decodeGif(mod: CanvasMod, buffer: Buffer): DecodedGif | null {
   try {
-    return await canvas.encode("png");
+    const ab = buffer.buffer.slice(
+      buffer.byteOffset, buffer.byteOffset + buffer.byteLength,
+    ) as ArrayBuffer;
+    const gif = parseGIF(ab);
+    const frames = decompressFrames(gif, true);
+    if (frames.length === 0) return null;
+
+    const W = gif.lsd.width;
+    const H = gif.lsd.height;
+    const work = mod.createCanvas(W, H);
+    const wctx = work.getContext("2d") as unknown as FrameCtx;
+
+    const out: Drawable[] = [];
+    const delays: number[] = [];
+    for (const f of frames) {
+      const patch = mod.createCanvas(f.dims.width, f.dims.height);
+      const pctx = patch.getContext("2d") as unknown as FrameCtx;
+      const id = pctx.createImageData(f.dims.width, f.dims.height);
+      id.data.set(f.patch);
+      pctx.putImageData(id, 0, 0);
+
+      wctx.drawImage(patch as unknown, f.dims.left, f.dims.top);
+
+      const snap = mod.createCanvas(W, H);
+      (snap.getContext("2d") as unknown as FrameCtx).drawImage(work as unknown, 0, 0);
+      out.push(snap as unknown as Drawable);
+      delays.push(f.delay && f.delay > 0 ? f.delay : 90);
+
+      // "Restore to background" — clear this region before the next frame.
+      if (f.disposalType === 2) {
+        wctx.clearRect(f.dims.left, f.dims.top, f.dims.width, f.dims.height);
+      }
+    }
+    return { frames: out, delays };
   } catch (err) {
-    logger.debug({ err }, "style board encode failed");
+    logger.debug({ err }, "board cell GIF decode failed");
+    return null;
+  }
+}
+
+/** One cell's frames (≥1) plus the delays that produced them. */
+interface Cell { frames: (Drawable | null)[]; delays: number[] }
+
+/** Fetch a cell as decoded animated frames, falling back to a single still. */
+async function loadCell(mod: CanvasMod, image: Buffer, style: string): Promise<Cell> {
+  const gif = await renderStyleThumbGif(image, style).catch(() => null);
+  if (gif) {
+    const decoded = decodeGif(mod, gif);
+    if (decoded && decoded.frames.length > 1) {
+      return { frames: decoded.frames, delays: decoded.delays };
+    }
+  }
+  const still = await renderStyleThumb(image, style).catch(() => null);
+  const img = still ? await mod.loadImage(still).catch(() => null) : null;
+  return { frames: [img as unknown as Drawable | null], delays: [90] };
+}
+
+/**
+ * Render the contact-sheet board for one page of styles — animated when the page
+ * has motion, a still PNG otherwise.
+ *
+ * Returns null when the canvas backend is unavailable, so the caller can drop the
+ * board image and keep the rest of the dashboard.
+ */
+export async function renderBoard(opts: BoardOptions): Promise<BoardResult | null> {
+  const mod = await getCanvas();
+  if (!mod) return null;
+
+  const { image, styles } = opts;
+
+  const [target, cells] = await Promise.all([
+    mod.loadImage(image).catch(() => null) as Promise<Drawable | null>,
+    Promise.all(styles.map(s => loadCell(mod, image, s.value))),
+  ]);
+
+  const frameCount = Math.min(
+    BOARD_MAX_FRAMES,
+    Math.max(1, ...cells.map(c => c.frames.length)),
+  );
+
+  const { width, height } = boardDims(styles.length);
+
+  // Nothing animates → a single still PNG is smaller and just as clear.
+  if (frameCount <= 1) {
+    return renderStill(mod, opts, target, cells, width, height);
+  }
+
+  const animated = renderAnimated(mod, opts, target, cells, frameCount, width, height);
+  if (animated && animated.buffer.length <= BOARD_MAX_BYTES) return animated;
+  if (animated) {
+    logger.debug(
+      { bytes: animated.buffer.length },
+      "animated board over size budget; using still fallback",
+    );
+  }
+  return await renderStill(mod, opts, target, cells, width, height);
+}
+
+/** Tile the cells' frames into one looping board GIF. */
+function renderAnimated(
+  mod: CanvasMod,
+  opts: BoardOptions,
+  target: Drawable | null,
+  cells: Cell[],
+  frameCount: number,
+  width: number,
+  height: number,
+): BoardResult | null {
+  try {
+    const canvas = mod.createCanvas(width, height);
+    const ctx = canvas.getContext("2d") as unknown as BoardCtx;
+
+    // A single delay reads smoothly and keeps the encoder simple; take the
+    // average of the animated cells, clamped to a sane playback range.
+    const animatedDelays = cells.flatMap(c => (c.frames.length > 1 ? c.delays : []));
+    const avg = animatedDelays.length
+      ? animatedDelays.reduce((a, b) => a + b, 0) / animatedDelays.length
+      : 90;
+    const delay = Math.min(140, Math.max(50, Math.round(avg)));
+
+    const encoder = new GIFEncoder(width, height);
+    encoder.start();
+    encoder.setRepeat(0);
+    encoder.setQuality(BOARD_QUALITY);
+    encoder.setDelay(delay);
+
+    for (let f = 0; f < frameCount; f++) {
+      const cellImages = cells.map(c => c.frames[f % c.frames.length] ?? null);
+      drawBoard(ctx, opts, target, cellImages);
+      encoder.addFrame(ctx as unknown as never);
+    }
+    encoder.finish();
+
+    return { buffer: encoder.out.getData(), name: BOARD_FILENAME, animated: true };
+  } catch (err) {
+    logger.debug({ err }, "animated board encode failed");
+    return null;
+  }
+}
+
+/** Draw a one-frame board and encode it as a PNG. */
+async function renderStill(
+  mod: CanvasMod,
+  opts: BoardOptions,
+  target: Drawable | null,
+  cells: Cell[],
+  width: number,
+  height: number,
+): Promise<BoardResult | null> {
+  try {
+    const canvas = mod.createCanvas(width, height);
+    const ctx = canvas.getContext("2d") as unknown as BoardCtx;
+    drawBoard(ctx, opts, target, cells.map(c => c.frames[0] ?? null));
+    const buffer = await canvas.encode("png");
+    return { buffer, name: BOARD_FILENAME_STILL, animated: false };
+  } catch (err) {
+    logger.debug({ err }, "still board encode failed");
     return null;
   }
 }

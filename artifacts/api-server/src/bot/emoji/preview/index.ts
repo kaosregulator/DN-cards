@@ -184,6 +184,41 @@ export async function renderStyleThumb(
 }
 
 /**
+ * Render `style` over `image` as an animated GIF sized for a board cell.
+ *
+ * The fully-animated board decodes these back into frames and tiles them, so it
+ * needs motion at a larger size than the tiny hover preview. Cached under its own
+ * key namespace; returns null when the style can't be rendered locally (the board
+ * then falls back to a still thumbnail for that cell).
+ */
+export async function renderStyleThumbGif(
+  image: Buffer, style: string,
+): Promise<Buffer | null> {
+  const key = `thumbgif:${previewKey(targetHash(image), style)}`;
+
+  const cached = getCached(key);
+  if (cached) return cached;
+
+  try {
+    const result = await renderOffline({
+      image,
+      animation: style,
+      format: "gif",
+      size: THUMB_SIZE,
+    });
+    if (!result.buffer.length) return null;
+    putCached(key, result.buffer);
+    return result.buffer;
+  } catch (err) {
+    logger.debug(
+      { style, err: err instanceof Error ? err.message : String(err) },
+      "animated style thumbnail unavailable; board cell falls back to a still",
+    );
+    return null;
+  }
+}
+
+/**
  * Warm previews for styles the user is about to see.
  *
  * Fire-and-forget: browsing must not wait on it, and a failure is already

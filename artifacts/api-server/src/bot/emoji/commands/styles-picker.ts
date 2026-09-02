@@ -17,7 +17,7 @@ import { getManifest } from "../providers/makeemoji/manifest.js";
 import { isFavorite, listFavorites } from "./favorites.js";
 import { resolveStylePreviewUrl } from "./previews.js";
 import { prefetchStylePreviews, renderStylePreview } from "../preview/index.js";
-import { renderBoard, BOARD_PAGE_SIZE, BOARD_FILENAME } from "./board.js";
+import { renderBoard, BOARD_PAGE_SIZE } from "./board.js";
 import type { EmojiSession } from "./session.js";
 import { cid } from "./ui.js";
 
@@ -202,8 +202,8 @@ export async function buildStylesPicker(
   const files: AttachmentBuilder[] = [];
 
   if (board) {
-    files.push(new AttachmentBuilder(board, { name: BOARD_FILENAME }));
-    embed.setImage(`attachment://${BOARD_FILENAME}`);
+    files.push(new AttachmentBuilder(board.buffer, { name: board.name }));
+    embed.setImage(`attachment://${board.name}`);
   }
 
   if (livePreview) {
