@@ -135,32 +135,75 @@ function focusForSlice(slice: StyleEntry[], animation: string): string {
 }
 
 /**
- * Warm the next page's board in the background.
+ * Warm the neighbouring pages' boards in the background.
  *
  * Paging felt slow because each page composed eight fresh style GIFs on arrival.
- * While the user looks at page N we render N+1 into the (bounded, cached) board
- * store, so clicking Next usually hits the cache instead of a cold compose. The
- * focus is chosen the same way navigation would, so the warmed key matches.
+ * While the user looks at page N we render N+1 *and* N−1 into the (bounded,
+ * cached) board store, so Next and Prev usually hit the cache instead of a cold
+ * compose. The focus is chosen the same way navigation would, so the warmed key
+ * matches. Warms are best-effort and yield to on-demand renders in the queue.
  */
-function prefetchNextBoard(
+function prefetchNeighborBoards(
   session: EmojiSession, userId: string, page: number, pages: number,
 ): void {
-  if (!session.image || page + 1 >= pages) return;
+  if (!session.image) return;
   const all = filteredStyles(session, userId);
-  const start = (page + 1) * STYLES_PAGE_SIZE;
-  const slice = all.slice(start, start + STYLES_PAGE_SIZE);
-  if (slice.length === 0) return;
-  void renderBoard({
-    image: session.image,
-    targetLabel: session.sourceLabel ?? "your image",
-    styles: slice,
-    focusValue: focusForSlice(slice, session.animation),
-    userId,
-    page: page + 1,
-    pages,
-    total: all.length,
-    format: session.format,
-  }).catch(() => {});
+  const image = session.image;
+  const warm = (p: number): void => {
+    if (p < 0 || p >= pages) return;
+    const start = p * STYLES_PAGE_SIZE;
+    const slice = all.slice(start, start + STYLES_PAGE_SIZE);
+    if (slice.length === 0) return;
+    void renderBoard({
+      image,
+      targetLabel: session.sourceLabel ?? "your image",
+      styles: slice,
+      focusValue: focusForSlice(slice, session.animation),
+      userId,
+      page: p,
+      pages,
+      total: all.length,
+      format: session.format,
+      background: true,
+    }).catch(() => {});
+  };
+  warm(page + 1);
+  warm(page - 1);
+}
+
+/**
+ * Pre-warm the boards a user is most likely to open next, on `image`.
+ *
+ * Called in the background the moment the opening chooser is shown (on the
+ * caller's avatar) so tapping **My avatar** or **⭐ Favorites** paints from cache
+ * instead of a cold eight-cell compose. Warms page 1 of all styles, page 1 of
+ * favorites (when any), and the focused live preview. Entirely best-effort — it
+ * runs at preview priority and yields to on-demand renders, and every path
+ * swallows its own errors.
+ */
+export function warmTargetBoards(
+  image: Buffer, userId: string, sourceLabel: string, animation: string, format: string,
+): void {
+  const all = allStyles();
+  const warm = (styles: StyleEntry[], total: number, pageCount: number): void => {
+    if (styles.length === 0) return;
+    void renderBoard({
+      image, targetLabel: sourceLabel, styles,
+      focusValue: focusForSlice(styles, animation),
+      userId, page: 0, pages: pageCount, total, format, background: true,
+    }).catch(() => {});
+  };
+
+  const page1 = all.slice(0, STYLES_PAGE_SIZE);
+  warm(page1, all.length, Math.max(1, Math.ceil(all.length / STYLES_PAGE_SIZE)));
+
+  const favVals = new Set(listFavorites(userId));
+  if (favVals.size > 0) {
+    const favs = all.filter(s => favVals.has(s.value));
+    warm(favs.slice(0, STYLES_PAGE_SIZE), favs.length, Math.max(1, Math.ceil(favs.length / STYLES_PAGE_SIZE)));
+  }
+
+  void renderStylePreview(image, focusForSlice(page1, animation)).catch(() => {});
 }
 
 /**
@@ -276,8 +319,8 @@ export async function buildStylesPicker(
     ? null
     : focused ? await resolveStylePreviewUrl(focused.label) : null;
 
-  // Warm the next page in the background so Next usually hits the board cache.
-  prefetchNextBoard(session, userId, page, pages);
+  // Warm the neighbouring pages so Next/Prev usually hit the board cache.
+  prefetchNeighborBoards(session, userId, page, pages);
 
   const filters: string[] = [];
   if (session.styleFilter === "favorites") filters.push("★ favorites");

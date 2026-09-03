@@ -29,7 +29,7 @@ import { toggleFavorite } from "./favorites.js";
 import { defaultAnimation, isManifestOption, isPlaceholder, suggestFor } from "./options.js";
 import {
   buildStylesPicker, buildStyleSearchModal, buildGotoPageModal, ensureStyleFocus,
-  findStyle, pageStyles, totalStylePages,
+  findStyle, pageStyles, totalStylePages, warmTargetBoards,
 } from "./styles-picker.js";
 import {
   buildCachedControlsReply, buildControls, buildFinishScreen, buildPostPicker,
@@ -250,6 +250,9 @@ export async function handleEmojiCommand(interaction: ChatInputCommandInteractio
         view: "target",
       });
       await interaction.editReply(buildTargetChooser(created.token));
+      // Speculatively warm the caller's avatar boards so "My avatar" / "⭐
+      // Favorites" paint from cache. Background, best-effort, yields to real work.
+      warmOpeningAvatar(interaction, animation ?? "", parseFormat(interaction.options.getString("format")));
       return;
     }
 
@@ -571,6 +574,21 @@ async function handleTargetAction(
   } catch (err) {
     await interaction.editReply(failureReply(err, token));
   }
+}
+
+/**
+ * Fire-and-forget: load the caller's avatar and warm its likely boards, so the
+ * first target pick (or the Favorites shortcut) is a cache hit. Never awaited and
+ * never surfaces an error — a failed warm just means the board renders on demand.
+ */
+function warmOpeningAvatar(
+  interaction: ChatInputCommandInteraction, animation: string, format: string,
+): void {
+  const url = interaction.user.displayAvatarURL({ extension: "png", size: AVATAR_SIZE });
+  void (async () => {
+    const image = await loadSource(url).catch(() => null);
+    if (image) warmTargetBoards(image, interaction.user.id, "your avatar", animation, format);
+  })();
 }
 
 /** Send the finished emoji to a channel the user picks. */

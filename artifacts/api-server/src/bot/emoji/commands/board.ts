@@ -168,6 +168,8 @@ export interface BoardOptions {
   pages: number;
   total: number;
   format: string;
+  /** Speculative warm/prefetch — encodes only when no on-demand board is waiting. */
+  background?: boolean;
 }
 
 /** What renderBoard hands back: the encoded image and the attachment name to use. */
@@ -612,12 +614,35 @@ export function clearBoardResultCache(): void {
 // Serialize board *encode* work across users. Cell renders already go through
 // the shared render queue; encoding a ~682×490×14 GIF is the other CPU spike.
 // Do NOT wrap this in queueRender — loadCell awaits queued offline renders and
-// would deadlock.
-let boardComposeTail: Promise<unknown> = Promise.resolve();
-function withBoardCompose<T>(fn: () => T | Promise<T>): Promise<T> {
-  const run = boardComposeTail.then(() => fn());
-  boardComposeTail = run.then(() => undefined, () => undefined);
-  return run;
+// would deadlock (cells are loaded before the encode, so this lane never nests).
+//
+// Two lanes: a foreground job (a board the user is waiting on) always runs
+// before any queued background job (a speculative warm or neighbour prefetch),
+// so speculative encodes can never delay an on-demand one. Still one at a time,
+// so concurrent users can't stack encodes.
+const composeFg: (() => void)[] = [];
+const composeBg: (() => void)[] = [];
+let composing = false;
+
+function pumpCompose(): void {
+  if (composing) return;
+  const job = composeFg.shift() ?? composeBg.shift();
+  if (!job) return;
+  composing = true;
+  job();
+}
+
+function withBoardCompose<T>(fn: () => T | Promise<T>, background = false): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const job = (): void => {
+      Promise.resolve().then(fn).then(resolve, reject).finally(() => {
+        composing = false;
+        pumpCompose();
+      });
+    };
+    (background ? composeBg : composeFg).push(job);
+    pumpCompose();
+  });
 }
 
 function cellCycleMs(cell: Cell): number {
@@ -686,7 +711,7 @@ export async function renderBoard(opts: BoardOptions): Promise<BoardResult | nul
       );
     }
     return await renderStill(mod, opts, target, cells, width, height);
-  });
+  }, opts.background ?? false);
 
   if (result) putBoardCached(cacheKey, result);
   return result;

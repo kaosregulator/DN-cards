@@ -50,7 +50,7 @@ describe("scene size + speed mapping", () => {
 
   it("forces a small, few-frame render for board previews", () => {
     const p = sceneRenderOptions({ size: "512", speed: "2x", preview: true });
-    expect(p.maxFrames).toBe(12);
+    expect(p.maxFrames).toBe(10);
     expect(p.longEdge).toBeLessThanOrEqual(150);
     // Preview ignores the user Size/Speed controls entirely.
     expect(p.longEdge).not.toBe(512);

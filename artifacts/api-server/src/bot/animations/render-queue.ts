@@ -25,10 +25,28 @@ const queue = new PQueue({ concurrency: CONCURRENCY });
 let warnedDepth = 0;
 
 /**
+ * Priority bands for the shared queue. Higher runs first (p-queue semantics).
+ * A user waiting on their final emoji should never sit behind speculative
+ * preview/board work, so on-demand output outranks previews, which outrank
+ * background prefetch/warm jobs.
+ */
+export const RENDER_PRIORITY = {
+  /** The final emoji the user explicitly asked for (Apply / generate). */
+  output: 10,
+  /** A preview/board the user is actively looking at. */
+  preview: 0,
+  /** Speculative warm-ups (next page, avatar pre-warm) — always yield. */
+  background: -10,
+} as const;
+
+/**
  * Run a heavy canvas render through the shared queue. Returns exactly what `fn`
  * returns (including null on best-effort renderers). `label` is for logging only.
+ * `priority` orders jobs when the queue is saturated (see RENDER_PRIORITY).
  */
-export function queueRender<T>(label: string, fn: () => Promise<T>): Promise<T> {
+export function queueRender<T>(
+  label: string, fn: () => Promise<T>, priority: number = RENDER_PRIORITY.preview,
+): Promise<T> {
   // Light backpressure visibility: log once when the backlog gets deep so a
   // render storm is diagnosable, without spamming.
   const depth = queue.size + queue.pending;
@@ -38,7 +56,7 @@ export function queueRender<T>(label: string, fn: () => Promise<T>): Promise<T> 
   } else if (depth < CONCURRENCY) {
     warnedDepth = 0;
   }
-  return queue.add(fn) as Promise<T>;
+  return queue.add(fn, { priority }) as Promise<T>;
 }
 
 /** Current backlog (queued + in-flight) — handy for health/metrics. */

@@ -176,9 +176,13 @@ export interface RenderSceneOptions {
   speedFactor?: number;
 }
 
-/** Board thumbnail edge + frame budget for a preview render. */
-const PREVIEW_LONG_EDGE = 150;
-const PREVIEW_MAX_FRAMES = 12;
+/**
+ * Board thumbnail edge + frame budget for a preview render. Kept small: the board
+ * cell draws these at ~104px and subsamples to ~14 frames, so a 120px / 10-frame
+ * scene thumb looks identical there while decoding markedly faster.
+ */
+const PREVIEW_LONG_EDGE = 120;
+const PREVIEW_MAX_FRAMES = 10;
 
 /**
  * Translate the /emoji Size + Speed controls (MakeEmoji's own vocabulary, e.g.
