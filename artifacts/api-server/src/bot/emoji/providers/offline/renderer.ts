@@ -9,7 +9,7 @@
 // Unready styles throw rather than silently substituting another look.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { queueRender } from "../../../animations/render-queue.js";
+import { queueRender, RENDER_PRIORITY } from "../../../animations/render-queue.js";
 import { getCanvas } from "../../../animations/engine.js";
 import { encodeGif, encodePng } from "../../encoders/index.js";
 import { compose } from "../../renderer/compositor.js";
@@ -24,7 +24,7 @@ import { composeLayerPack, hasLayerPack } from "./layer-pack.js";
 import { directionFromRecipe, effectFromPrimitive } from "./primitives.js";
 import { findRecipe } from "./recipes.js";
 import { findOfflineStyle } from "./registry.js";
-import { renderScene, sceneIdOf } from "./scene-pack.js";
+import { renderScene, sceneIdOf, sceneRenderOptions } from "./scene-pack.js";
 import {
   applyColorFilter,
   colorFrameCount,
@@ -44,12 +44,23 @@ export async function renderOffline(options: GenerateOptions): Promise<GenerateR
   // Scene packs are whole green/blue-screen clips composited at native size —
   // a different family from the small MakeEmoji styles, so they short-circuit
   // the manifest lookup and the emoji format/size rules entirely. They always
-  // emit a GIF; a `size` (the board thumbnail) yields a small, few-frame preview.
+  // emit a GIF. `preview` (the board/hover thumbnail) yields a small, few-frame
+  // render; otherwise the Size + Speed controls shape the final GIF.
   const sceneId = sceneIdOf(options.animation);
   if (sceneId) {
     const startedScene = Date.now();
-    const size = options.size ? parseSize(options.size) : undefined;
-    const buffer = await renderScene(options.image, sceneId, size ? { size } : {});
+    // Scene composites are the heaviest offline render (a native sharp decode per
+    // frame), so route them through the shared queue — bounded concurrency keeps
+    // several simultaneous users from spiking CPU — and let a final render outrank
+    // a preview thumbnail.
+    const buffer = await queueRender(
+      `emoji-scene:${sceneId}`,
+      () => renderScene(
+        options.image, sceneId,
+        sceneRenderOptions({ size: options.size, speed: options.speed, preview: options.preview }),
+      ),
+      options.preview ? RENDER_PRIORITY.preview : RENDER_PRIORITY.output,
+    );
     return {
       buffer, format: "gif", bytes: buffer.length, providerId: "offline",
       durationMs: Date.now() - startedScene, cached: false,
@@ -104,6 +115,7 @@ export async function renderOffline(options: GenerateOptions): Promise<GenerateR
   const color = normalizeColor(options.color);
 
   const buffer = await withTimeout(queueRender(`emoji-offline:${recipe?.id ?? style?.id ?? slug}`, async () => {
+    // Previews/board cells yield to on-demand output under load (see below).
     // Gold path: real MakeEmoji GIF harvested with a green subject, chroma-keyed.
     if (layerReady) {
       const pack = await composeLayerPack({ image: options.image, slug, size });
@@ -221,7 +233,7 @@ export async function renderOffline(options: GenerateOptions): Promise<GenerateR
       "unknown_effect",
       `Offline family \`${family}\` is not renderable yet for \`${recipe?.id}\`.`,
     );
-  }), RENDER_TIMEOUT_MS);
+  }, options.preview ? RENDER_PRIORITY.preview : RENDER_PRIORITY.output), RENDER_TIMEOUT_MS);
 
   return {
     buffer,

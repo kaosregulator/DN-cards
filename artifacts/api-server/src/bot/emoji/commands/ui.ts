@@ -17,11 +17,30 @@ import {
   StringSelectMenuBuilder, StringSelectMenuOptionBuilder,
   TextInputBuilder, TextInputStyle, UserSelectMenuBuilder,
 } from "discord.js";
+import { createHash } from "node:crypto";
 import { getManifest } from "../providers/makeemoji/manifest.js";
 import { isSceneAnimation, sceneLabelOf } from "../providers/offline/scene-pack.js";
 import type { OptionKey } from "../providers/makeemoji/types.js";
+import type { EmojiFormat } from "../types.js";
 import { FORMATS, extensionFor } from "../utils/options.js";
 import type { EmojiSession } from "./session.js";
+
+/**
+ * Attachment name for a generated result, tagged with a short content hash.
+ *
+ * Discord caches an attachment by filename within an edited message, so a
+ * constant `emoji.gif` made a re-render (a new target, a new style) keep showing
+ * the *previous* image. Varying the name by content forces the client to fetch
+ * the new bytes, while identical bytes reuse the same name (and cache) harmlessly.
+ */
+export function resultFileName(buffer: Buffer, format: EmojiFormat): string {
+  const tag = createHash("sha1").update(buffer).digest("hex").slice(0, 10);
+  return `emoji-${tag}.${extensionFor(format)}`;
+}
+
+/** One-line hint on how to save or share the result — shown on the preview. */
+export const RESULT_HINT =
+  "-# Tap the preview to open it · press-and-hold (mobile) or right-click (desktop) to save · **Post** drops it into a channel.";
 
 /**
  * Opening screen: what do you want to animate?
@@ -60,6 +79,11 @@ export function buildTargetChooser(token: string) {
       .setLabel("Server icon")
       .setEmoji("🏠")
       .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId(cid("pick_fav", token))
+      .setLabel("Favorites")
+      .setEmoji("⭐")
+      .setStyle(ButtonStyle.Secondary),
   );
 
   return {
@@ -67,6 +91,7 @@ export function buildTargetChooser(token: string) {
       "## 🎨 Make an emoji",
       "**What do you want to animate?**",
       "-# Pick a member below, or use your own avatar, an uploaded image, or this server's icon.",
+      "-# ⭐ **Favorites** jumps straight to your starred styles on your avatar — tap **Target** there to switch subject.",
     ].join("\n"),
     embeds: [],
     files: [],
@@ -324,7 +349,13 @@ export function buildControls(session: EmojiSession, token: string): ActionRowBu
 
   rows.push(stylesRow(session, token) as unknown as ActionRowBuilder<never>);
 
-  for (const key of PANEL_OPTIONS) {
+  // Scenes are composited clips: only Size (final long edge) and Speed (playback)
+  // change their output. The MakeEmoji-only side-controls don't apply, so the
+  // panel narrows to the two that do rather than showing dead dropdowns.
+  const panelKeys: readonly OptionKey[] = isSceneAnimation(session.animation)
+    ? ["speed", "size"]
+    : PANEL_OPTIONS;
+  for (const key of panelKeys) {
     if (rows.length >= 1 + MAX_OPTION_ROWS) break;
     const row = optionRow(session, token, key);
     if (row) rows.push(row as unknown as ActionRowBuilder<never>);
@@ -339,21 +370,19 @@ export function buildCachedControlsReply(session: EmojiSession, token: string) {
   const result = session.lastResult;
   if (!result) return null;
 
-  const file = new AttachmentBuilder(result.buffer, { name: `emoji.${extensionFor(result.format)}` });
+  const file = new AttachmentBuilder(result.buffer, { name: resultFileName(result.buffer, result.format) });
   const sourceLabel = session.sourceLabel ?? "your image";
   const lines = [
     describe(session, result.bytes, result.providerId, result.cached),
     `-# from ${sourceLabel}`,
+    RESULT_HINT,
   ];
   if (/avatar/i.test(sourceLabel)) {
     lines.push("-# Tip: tap **Upload** to animate your own image, or **Server icon** for this server's picture.");
   }
-  if (isSceneAnimation(session.animation)) {
-    // Scenes are full-size shareable clips, not 128px emoji — the MakeEmoji
-    // Colour / size hints don't apply, so point at Post / Save instead.
-    lines.push("-# Full-scene GIF — **Post** it to a channel or tap the image to save it.");
-  } else {
-    // Point users at MakeEmoji's Colour side-control (image-only animation).
+  // Scenes are full-size shareable clips — the MakeEmoji Colour hint doesn't
+  // apply to them, so it's only shown for the small-emoji styles.
+  if (!isSceneAnimation(session.animation)) {
     const anim = session.animation ?? "";
     const isNone = /^(gen_btn_)?none$/i.test(anim);
     if (!session.color || session.color === "Normal") {

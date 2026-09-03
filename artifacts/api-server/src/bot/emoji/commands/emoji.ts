@@ -28,12 +28,13 @@ import { loadSource } from "../utils/source.js";
 import { toggleFavorite } from "./favorites.js";
 import { defaultAnimation, isManifestOption, isPlaceholder, suggestFor } from "./options.js";
 import {
-  buildStylesPicker, buildStyleSearchModal, ensureStyleFocus, findStyle, pageStyles,
-  totalStylePages,
+  buildStylesPicker, buildStyleSearchModal, buildGotoPageModal, ensureStyleFocus,
+  findStyle, pageStyles, totalStylePages, warmTargetBoards,
 } from "./styles-picker.js";
 import {
   buildCachedControlsReply, buildControls, buildFinishScreen, buildPostPicker,
   buildServerModal, buildTargetChooser, buildUploadModal, describe, parseCid,
+  resultFileName, RESULT_HINT,
 } from "./ui.js";
 import { createSession, endSession, getSession, touchSession, type EmojiSession } from "./session.js";
 import { isSceneAnimation } from "../providers/offline/scene-pack.js";
@@ -97,15 +98,19 @@ function resolveSource(interaction: ChatInputCommandInteraction): Source {
 /** Session settings as a provider request. */
 function toGenerateOptions(session: EmojiSession): GenerateOptions {
   if (!session.image) throw new EmojiError("no_source", "Pick something to animate first.");
-  // Scenes play at their native size — the emoji Size control (and the other
-  // MakeEmoji side-controls) would only shrink or confuse them, so they're
-  // dropped for a full scene render. The board still shrinks via its own path.
+  // Scenes are whole clips, not small MakeEmoji styles. The Size and Speed
+  // controls DO apply — they set the final GIF's long edge and playback speed —
+  // but the MakeEmoji-only side-controls (direction/colour/quality/platform)
+  // don't map onto a composited scene, so those are dropped.
   const scene = isSceneAnimation(session.animation);
   return {
     image: session.image,
     animation: session.animation,
     format: session.format,
-    ...(scene ? {} : {
+    ...(scene ? {
+      ...(session.speed ? { speed: session.speed } : {}),
+      ...(session.size ? { size: session.size } : {}),
+    } : {
       ...(session.speed ? { speed: session.speed } : {}),
       ...(session.direction ? { direction: session.direction } : {}),
       ...(session.size ? { size: session.size } : {}),
@@ -134,20 +139,19 @@ async function buildReply(session: EmojiSession, token: string) {
   };
   session.view = "controls";
 
-  const file = new AttachmentBuilder(result.buffer, { name: `emoji.${extensionFor(result.format)}` });
+  const file = new AttachmentBuilder(result.buffer, { name: resultFileName(result.buffer, result.format) });
   const sourceLabel = session.sourceLabel ?? "your image";
   const lines = [
     describe(session, result.bytes, result.providerId, result.cached),
     `-# from ${sourceLabel}`,
+    RESULT_HINT,
   ];
 
   if (/avatar/i.test(sourceLabel)) {
     lines.push("-# Tip: tap **Upload image** to animate a Discord attachment instead of an avatar.");
   }
 
-  if (isSceneAnimation(session.animation)) {
-    lines.push("-# Full-scene GIF — **Post** it to a channel or tap the image to save it.");
-  } else if (result.bytes > DISCORD_EMOJI_LIMIT) {
+  if (!isSceneAnimation(session.animation) && result.bytes > DISCORD_EMOJI_LIMIT) {
     // Still send it — it's a perfectly good file, just not uploadable as a
     // custom emoji. Say so rather than handing over something that will be
     // rejected at the point of use.
@@ -246,6 +250,9 @@ export async function handleEmojiCommand(interaction: ChatInputCommandInteractio
         view: "target",
       });
       await interaction.editReply(buildTargetChooser(created.token));
+      // Speculatively warm the caller's avatar boards so "My avatar" / "⭐
+      // Favorites" paint from cache. Background, best-effort, yields to real work.
+      warmOpeningAvatar(interaction, animation ?? "", parseFormat(interaction.options.getString("format")));
       return;
     }
 
@@ -363,6 +370,13 @@ export async function handleEmojiInteraction(interaction: Interaction): Promise<
     return;
   }
   if (action === "pick_me" && interaction.isButton()) {
+    await handleTargetPick(interaction, token, "me");
+    return;
+  }
+  // Favorites shortcut: jump straight to the starred styles on the caller's own
+  // avatar. Target (on the board) lets them switch subject from there.
+  if (action === "pick_fav" && interaction.isButton()) {
+    touchSession(token, { styleFilter: "favorites", stylePage: 0, styleFocus: null });
     await handleTargetPick(interaction, token, "me");
     return;
   }
@@ -562,6 +576,21 @@ async function handleTargetAction(
   }
 }
 
+/**
+ * Fire-and-forget: load the caller's avatar and warm its likely boards, so the
+ * first target pick (or the Favorites shortcut) is a cache hit. Never awaited and
+ * never surfaces an error — a failed warm just means the board renders on demand.
+ */
+function warmOpeningAvatar(
+  interaction: ChatInputCommandInteraction, animation: string, format: string,
+): void {
+  const url = interaction.user.displayAvatarURL({ extension: "png", size: AVATAR_SIZE });
+  void (async () => {
+    const image = await loadSource(url).catch(() => null);
+    if (image) warmTargetBoards(image, interaction.user.id, "your avatar", animation, format);
+  })();
+}
+
 /** Send the finished emoji to a channel the user picks. */
 async function handlePostAction(
   interaction: MessageComponentInteraction,
@@ -685,40 +714,50 @@ async function handleStylesAction(
   token: string,
   action: string,
 ): Promise<void> {
-  // Search button → modal (must not defer first). The modal also offers a
-  // "jump to page" field, so it needs the current page bounds.
+  // Search button → search-only modal (must not defer first).
   if (action === "styles_search" && interaction.isButton()) {
-    const { page, pages } = pageStyles(session, session.ownerId);
     await interaction.showModal(
-      buildStyleSearchModal(token, session.styleQuery ?? "", pages, page),
+      buildStyleSearchModal(token, session.styleQuery ?? ""),
     ).catch(() => {});
+    return;
+  }
+
+  // Go to page button → a page-number-only modal.
+  if (action === "styles_goto" && interaction.isButton()) {
+    const { page, pages } = pageStyles(session, session.ownerId);
+    await interaction.showModal(buildGotoPageModal(token, pages, page)).catch(() => {});
     return;
   }
 
   if (action === "styles_modal" && interaction.isModalSubmit()) {
     const query = interaction.fields.getTextInputValue("query").trim();
-    const pageRaw = interaction.fields.getTextInputValue("page").trim();
     await interaction.deferUpdate().catch(() => {});
 
-    // Apply the search first so the page number is clamped to the filtered set.
+    // A changed search jumps to the first page of the new results; an unchanged
+    // one leaves the user where they were.
     const queryChanged = query !== (session.styleQuery ?? "");
-    touchSession(token, { view: "styles", styleQuery: query, styleFocus: null });
-    const filtered = getSession(token);
-    if (!filtered) return;
+    touchSession(token, {
+      view: "styles", styleQuery: query, styleFocus: null,
+      ...(queryChanged ? { stylePage: 0 } : {}),
+    });
+    const updated = getSession(token);
+    if (!updated) return;
+    await interaction.editReply(await buildStylesPicker(updated, token));
+    return;
+  }
 
+  if (action === "styles_goto_modal" && interaction.isModalSubmit()) {
+    const pageRaw = interaction.fields.getTextInputValue("page").trim();
+    await interaction.deferUpdate().catch(() => {});
     const requested = Number.parseInt(pageRaw, 10);
-    let stylePage: number;
     if (pageRaw && Number.isFinite(requested)) {
       // 1-based in the UI, 0-based internally, clamped to the real range.
-      const maxPage = totalStylePages(filtered, filtered.ownerId) - 1;
-      stylePage = Math.min(Math.max(0, requested - 1), maxPage);
-    } else {
-      // No page typed: a new search jumps to the first page; an unchanged search
-      // stays where the user was.
-      stylePage = queryChanged ? 0 : (session.stylePage ?? 0);
+      const maxPage = totalStylePages(session, session.ownerId) - 1;
+      touchSession(token, {
+        stylePage: Math.min(Math.max(0, requested - 1), maxPage),
+        styleFocus: null,
+      });
     }
-    touchSession(token, { stylePage });
-
     const updated = getSession(token);
     if (!updated) return;
     await interaction.editReply(await buildStylesPicker(updated, token));
@@ -813,10 +852,15 @@ async function handleStylesAction(
     const { rows } = pageStyles(session, session.ownerId);
     const pick = Number.isInteger(index) ? rows[index] : undefined;
     if (pick) touchSession(token, { styleFocus: pick.value });
-  } else if (action === "styles_pick" && interaction.isStringSelectMenu()) {
-    const value = interaction.values[0];
-    if (value && findStyle(value)) {
-      touchSession(token, { styleFocus: value });
+  } else if (action === "styles_page" && interaction.isStringSelectMenu()) {
+    // Page-jump dropdown: value is the 0-based page index.
+    const target = Number.parseInt(interaction.values[0] ?? "", 10);
+    if (Number.isInteger(target)) {
+      const maxPage = totalStylePages(session, session.ownerId) - 1;
+      touchSession(token, {
+        stylePage: Math.min(Math.max(0, target), maxPage),
+        styleFocus: null,
+      });
     }
   } else {
     return;

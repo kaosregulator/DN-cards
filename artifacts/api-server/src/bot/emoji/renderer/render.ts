@@ -12,7 +12,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { MAX_ANIMATION_BYTES } from "../../animations/engine.js";
-import { queueRender } from "../../animations/render-queue.js";
+import { queueRender, RENDER_PRIORITY } from "../../animations/render-queue.js";
 import { logger } from "../../../lib/logger.js";
 import { getEffect } from "../registry/index.js";
 import { encodeGif, encodePng } from "../encoders/index.js";
@@ -55,7 +55,7 @@ export async function renderEmoji(image: Buffer, options: RenderOptions): Promis
       return isAnimated
         ? encodeGif(frames, options.size, delayFor(effect.delayMs, options.speed))
         : await encodePng(frames, options.size);
-    }),
+    }, RENDER_PRIORITY.output),
     RENDER_TIMEOUT_MS,
   );
 

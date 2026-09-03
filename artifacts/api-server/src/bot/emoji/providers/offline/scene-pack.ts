@@ -45,16 +45,23 @@ interface ScenesFile { scenes: SceneConfig[] }
 /** Value prefix that marks a style as a scene pack (vs a MakeEmoji style). */
 export const SCENE_PREFIX = "scene:";
 
-/** Frame ceilings — full quality vs the small board thumbnail. */
-const FULL_MAX_FRAMES = 40;
-const THUMB_MAX_FRAMES = 12;
 /**
- * Long edges. The board thumbnail is tiny for responsiveness. The full render is
- * capped too — not to crop (nothing is cropped), but to keep the whole-scene GIF
- * comfortably under Discord's 8 MB attachment limit while staying crisp.
+ * Default frame ceiling when the caller doesn't ask for a lighter preview.
+ * Kept high so fast, high-detail clips (TV static, explosions) don't visibly
+ * skip — we subsample only when the source has more frames than this, and each
+ * kept frame's delay is stretched to preserve the clip's real duration.
  */
-const THUMB_LONG_EDGE = 150;
-const FULL_LONG_EDGE = 600;
+const FULL_MAX_FRAMES = 45;
+/**
+ * Default long edge. Callers can override (the Size control); this is the value
+ * used when none is given. Capped not to crop (nothing is cropped) but to keep
+ * the whole-scene GIF a reasonable size to share — 360px reads crisp at Discord's
+ * display size while keeping files roughly half of a 600px render.
+ */
+const FULL_LONG_EDGE = 360;
+/** Clamp for a user-requested output long edge (keeps GIFs under Discord's cap). */
+const MIN_LONG_EDGE = 96;
+const MAX_LONG_EDGE = 600;
 
 let cache: { list: SceneConfig[]; byId: Map<string, SceneConfig>; dir: string } | null | undefined;
 
@@ -125,7 +132,15 @@ interface Ctx2D {
   drawImage(img: unknown, ...a: number[]): void;
   save(): void; restore(): void;
   beginPath(): void; ellipse(x: number, y: number, rx: number, ry: number, rot: number, s: number, e: number): void; fill(): void;
+  rect(x: number, y: number, w: number, h: number): void; clip(): void;
+  moveTo(x: number, y: number): void; lineTo(x: number, y: number): void; closePath(): void;
+  setTransform(a: number, b: number, c: number, d: number, e: number, f: number): void;
+  resetTransform(): void;
 }
+
+interface Pt { x: number; y: number }
+/** Four tracked corners of the chroma region (clockwise from top-left). */
+interface Quad { tl: Pt; tr: Pt; br: Pt; bl: Pt; absent: boolean }
 
 interface Frame { data: Uint8ClampedArray; delay: number }
 
@@ -143,13 +158,68 @@ function mulberry(seed: number): () => number {
 }
 
 export interface RenderSceneOptions {
-  /** Board thumbnail edge (small preview); omitted = full native quality. */
-  size?: number;
+  /**
+   * Output long edge in px. Clamped to [MIN_LONG_EDGE, MAX_LONG_EDGE]; omitted =
+   * FULL_LONG_EDGE. This is what the user's Size control drives — genuinely a
+   * bigger or smaller final GIF.
+   */
+  longEdge?: number;
+  /** Max frames kept from the source clip; omitted = FULL_MAX_FRAMES. */
+  maxFrames?: number;
+  /** GIF encoder quality (lower = better); omitted = 10. */
+  quality?: number;
+  /**
+   * Playback-delay multiplier from the Speed control. 1 = the clip's own timing,
+   * >1 = truly slower (each frame held longer), <1 = faster. Applied on top of
+   * the duration-preserving subsample correction.
+   */
+  speedFactor?: number;
+}
+
+/**
+ * Board thumbnail edge + frame budget for a preview render. Kept small: the board
+ * cell draws these at ~104px and subsamples to ~14 frames, so a 120px / 10-frame
+ * scene thumb looks identical there while decoding markedly faster.
+ */
+const PREVIEW_LONG_EDGE = 120;
+const PREVIEW_MAX_FRAMES = 10;
+
+/**
+ * Translate the /emoji Size + Speed controls (MakeEmoji's own vocabulary, e.g.
+ * `"⬜ 256px"` and `"2x"`) into concrete scene render options.
+ *
+ * - `preview` (board/hover thumbnails) forces a small, few-frame render and
+ *   ignores the user controls — those only shape the final result.
+ * - Size sets the output long edge, so a bigger px choice is a genuinely bigger
+ *   GIF (clamped to keep it shareable).
+ * - Speed scales playback: `"2x"` plays twice as fast (delays × ½), `"0.5x"`
+ *   truly slower (delays × 2), `"Normal"` keeps the clip's own timing.
+ */
+export function sceneRenderOptions(
+  opts: { size?: string; speed?: string; preview?: boolean } = {},
+): RenderSceneOptions {
+  if (opts.preview) {
+    return { longEdge: PREVIEW_LONG_EDGE, maxFrames: PREVIEW_MAX_FRAMES, quality: 12 };
+  }
+  const px = opts.size ? Number(/\d+/.exec(opts.size)?.[0] ?? NaN) : NaN;
+  const longEdge = Number.isFinite(px) ? px : undefined;
+  const rate = parseSpeedRate(opts.speed);
+  const speedFactor = rate > 0 ? 1 / rate : 1;
+  return { ...(longEdge != null ? { longEdge } : {}), speedFactor };
+}
+
+/** Playback rate from a MakeEmoji speed value: `"Normal"`→1, `"2x"`→2, `"0.5x"`→0.5. */
+function parseSpeedRate(speed?: string): number {
+  if (!speed) return 1;
+  if (/^normal$/i.test(speed.trim())) return 1;
+  const n = Number(/(\d+(?:\.\d+)?)/.exec(speed)?.[1] ?? NaN);
+  return Number.isFinite(n) && n > 0 ? n : 1;
 }
 
 /**
  * Composite `image` into scene `id`, returning an animated GIF. Full native size
- * by default; a smaller, fewer-framed preview when `size` is given (the board).
+ * by default; a smaller, fewer-framed preview when a small `longEdge`/`maxFrames`
+ * is given (the board). `speedFactor` scales playback for the Speed control.
  */
 export async function renderScene(
   image: Buffer, id: string, opts: RenderSceneOptions = {},
@@ -173,11 +243,18 @@ export async function renderScene(
   const srcW = src.width ?? 1, srcH = src.pageHeight ?? src.height ?? 1;
   const delays = (src.delay ?? []) as number[];
 
-  const longEdge = opts.size ? THUMB_LONG_EDGE : FULL_LONG_EDGE;
+  const longEdge = Math.max(MIN_LONG_EDGE, Math.min(MAX_LONG_EDGE, opts.longEdge ?? FULL_LONG_EDGE));
   const scale = Math.min(1, longEdge / Math.max(srcW, srcH));
   const W = Math.max(1, Math.round(srcW * scale)), H = Math.max(1, Math.round(srcH * scale));
-  const N = Math.min(pages, opts.size ? THUMB_MAX_FRAMES : FULL_MAX_FRAMES);
+  const N = Math.min(pages, Math.max(1, opts.maxFrames ?? FULL_MAX_FRAMES));
   const pick = Array.from({ length: N }, (_, i) => Math.round(i * (pages - 1) / (Math.max(1, N - 1))));
+  // We keep only N of `pages` frames but must still play for the clip's original
+  // duration, so each kept frame's delay is stretched by pages/N. The Speed
+  // control then scales that: >1 slower, <1 faster. Clamp to a sane GIF range.
+  const durationStretch = pages / N;
+  const speedFactor = opts.speedFactor && opts.speedFactor > 0 ? opts.speedFactor : 1;
+  const frameDelay = (base: number): number =>
+    Math.max(20, Math.min(500, Math.round(base * durationStretch * speedFactor)));
 
   // One decode: the whole animation resized to width W, pages stacked vertically.
   const stacked = await sharp(path, { animated: true })
@@ -187,23 +264,38 @@ export async function renderScene(
     const start = p * pageH * W * 4;
     return {
       data: stacked.data.subarray(start, start + pageH * W * 4) as unknown as Uint8ClampedArray,
-      delay: delays[p] && delays[p]! > 0 ? delays[p]! : 80,
+      delay: frameDelay(delays[p] && delays[p]! > 0 ? delays[p]! : 80),
     };
   });
   const H2 = pageH; // actual per-page height sharp produced
 
-  // Per-frame chroma bbox (on the picked frames), EMA-smoothed.
-  const boxes: (Box | null)[] = frames.map(f => {
-    const d = f.data; let minX = W, minY = H2, maxX = -1, maxY = -1, cnt = 0;
+  // Per-frame chroma bbox AND the four extreme corners of the region. The green
+  // screen is directly detectable every frame (it is literally coloured), so we
+  // read its exact quad rather than tracking it with a template — no drift, no
+  // lag. The corners let a flat/tilted screen carry the image in perspective.
+  const boxes: (Box | null)[] = [];
+  const quads: (Quad | null)[] = [];
+  for (const f of frames) {
+    const d = f.data;
+    let minX = W, minY = H2, maxX = -1, maxY = -1, cnt = 0;
+    // Extreme points: tl=min(x+y), br=max(x+y), tr=max(x-y), bl=min(x-y).
+    let tlS = Infinity, brS = -Infinity, trS = -Infinity, blS = Infinity;
+    let tl: Pt = { x: 0, y: 0 }, tr: Pt = { x: 0, y: 0 }, br: Pt = { x: 0, y: 0 }, bl: Pt = { x: 0, y: 0 };
     for (let y = 0; y < H2; y++) for (let x = 0; x < W; x++) {
       const i = (y * W + x) * 4;
-      if (key(d[i]!, d[i + 1]!, d[i + 2]!)) {
-        cnt++; if (x < minX) minX = x; if (x > maxX) maxX = x; if (y < minY) minY = y; if (y > maxY) maxY = y;
-      }
+      if (!key(d[i]!, d[i + 1]!, d[i + 2]!)) continue;
+      cnt++;
+      if (x < minX) minX = x; if (x > maxX) maxX = x; if (y < minY) minY = y; if (y > maxY) maxY = y;
+      const sum = x + y, diff = x - y;
+      if (sum < tlS) { tlS = sum; tl = { x, y }; }
+      if (sum > brS) { brS = sum; br = { x, y }; }
+      if (diff > trS) { trS = diff; tr = { x, y }; }
+      if (diff < blS) { blS = diff; bl = { x, y }; }
     }
-    if (cnt < W * H2 * 0.004) return null;
-    return { x: minX, y: minY, w: maxX - minX, h: maxY - minY, absent: false };
-  });
+    if (cnt < W * H2 * 0.004) { boxes.push(null); quads.push(null); continue; }
+    boxes.push({ x: minX, y: minY, w: maxX - minX, h: maxY - minY, absent: false });
+    quads.push({ tl, tr, br, bl, absent: false });
+  }
   const smooth: (Box | null)[] = [];
   let last: Box | null = null;
   for (const b of boxes) {
@@ -217,6 +309,32 @@ export async function renderScene(
     smooth.push({ ...last });
   }
 
+  // Smooth the corner quad the same way, and decide whether this scene's chroma
+  // region is rectangular enough to carry a perspective warp. A real screen or
+  // card fills most of its bounding box (ratio → 1); a round portal or an
+  // irregular splat leaves a low ratio, and warping a rectangle onto that looks
+  // worse than a plain centred fill — so those fall back to the box cover.
+  const smoothQuads: (Quad | null)[] = [];
+  let lastQ: Quad | null = null;
+  let fillSum = 0, fillCnt = 0;
+  for (let i = 0; i < quads.length; i++) {
+    const q = quads[i];
+    if (!q) { smoothQuads.push(lastQ ? { ...lastQ, absent: true } : null); continue; }
+    if (!lastQ) lastQ = q;
+    const a = 0.5;
+    lastQ = {
+      tl: lerpPt(lastQ.tl, q.tl, a), tr: lerpPt(lastQ.tr, q.tr, a),
+      br: lerpPt(lastQ.br, q.br, a), bl: lerpPt(lastQ.bl, q.bl, a), absent: false,
+    };
+    smoothQuads.push({ ...lastQ });
+    const box = boxes[i];
+    if (box && box.w > 2 && box.h > 2) { fillSum += quadArea(q) / (box.w * box.h); fillCnt++; }
+  }
+  const rectangular = fillCnt > 0 && fillSum / fillCnt >= 0.72;
+  // Perspective is only meaningful on a static screen/card. Effects move or scale
+  // the target off its box, so those keep the axis-aligned cover path.
+  const useWarp = rectangular && cfg.effect === "none" && cfg.fit !== "stretch";
+
   let explodeStart: number | null = null;
   if (cfg.effect === "explode") {
     for (let k = 0; k < frames.length; k++) {
@@ -229,7 +347,7 @@ export async function renderScene(
   for (let i = 0; i < smooth.length; i++) { const s = smooth[i]; if (s && !s.absent) { revealAt = i; break; } }
 
   const encoder = new GIFEncoder(W, H2);
-  encoder.start(); encoder.setRepeat(0); encoder.setQuality(opts.size ? 12 : 6);
+  encoder.start(); encoder.setRepeat(0); encoder.setQuality(opts.quality ?? 10);
 
   const canvas = mod.createCanvas(W, H2);
   const ctx = canvas.getContext("2d") as unknown as Ctx2D;
@@ -250,7 +368,12 @@ export async function renderScene(
     ctx.fillStyle = "#000"; ctx.fillRect(0, 0, W, H2);
 
     const box = smooth[f];
-    if (box && !box.absent) drawTarget(mod, ctx, target, box, cfg, f, frames.length, explodeStart, revealAt);
+    const quad = smoothQuads[f];
+    if (useWarp && quad && !quad.absent) {
+      warpTargetToQuad(ctx, target, quad);
+    } else if (box && !box.absent) {
+      drawTarget(mod, ctx, target, box, cfg, f, frames.length, explodeStart, revealAt);
+    }
 
     const fgId = fgctx.createImageData(W, H2);
     fgId.data.set(fg);
@@ -265,6 +388,74 @@ export async function renderScene(
   return encoder.out.getData();
 }
 
+function lerpPt(a: Pt, b: Pt, t: number): Pt {
+  return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+}
+
+/** Shoelace area of a quad (corner order tl→tr→br→bl). */
+function quadArea(q: Quad): number {
+  const p = [q.tl, q.tr, q.br, q.bl];
+  let s = 0;
+  for (let i = 0; i < 4; i++) {
+    const a = p[i]!, b = p[(i + 1) % 4]!;
+    s += a.x * b.y - b.x * a.y;
+  }
+  return Math.abs(s) / 2;
+}
+
+/** Affine that maps source triangle `s` onto destination triangle `d`. */
+function affineFromTri(s: Pt[], d: Pt[]): [number, number, number, number, number, number] {
+  const [s0, s1, s2] = s as [Pt, Pt, Pt];
+  const [d0, d1, d2] = d as [Pt, Pt, Pt];
+  const det = (s1.x - s0.x) * (s2.y - s0.y) - (s2.x - s0.x) * (s1.y - s0.y);
+  if (Math.abs(det) < 1e-6) return [1, 0, 0, 1, 0, 0];
+  const a = ((d1.x - d0.x) * (s2.y - s0.y) - (d2.x - d0.x) * (s1.y - s0.y)) / det;
+  const c = ((s1.x - s0.x) * (d2.x - d0.x) - (s2.x - s0.x) * (d1.x - d0.x)) / det;
+  const b = ((d1.y - d0.y) * (s2.y - s0.y) - (d2.y - d0.y) * (s1.y - s0.y)) / det;
+  const dd = ((s1.x - s0.x) * (d2.y - d0.y) - (s2.x - s0.x) * (d1.y - d0.y)) / det;
+  const e = d0.x - a * s0.x - c * s0.y;
+  const f = d0.y - b * s0.x - dd * s0.y;
+  return [a, b, c, dd, e, f];
+}
+
+/**
+ * Draw the target onto the tracked chroma quad in perspective, so it sits on the
+ * screen/card like it belongs there. The upload is cover-cropped to the quad's
+ * aspect (no distortion, no bars) and the crop is mapped onto the quad as two
+ * clipped affine triangles — a piecewise-affine perspective that reads true for
+ * the moderate tilts these clips have, with no native dependency.
+ */
+function warpTargetToQuad(ctx: Ctx2D, target: { width: number; height: number }, q: Quad): void {
+  const topW = Math.hypot(q.tr.x - q.tl.x, q.tr.y - q.tl.y);
+  const botW = Math.hypot(q.br.x - q.bl.x, q.br.y - q.bl.y);
+  const leftH = Math.hypot(q.bl.x - q.tl.x, q.bl.y - q.tl.y);
+  const rightH = Math.hypot(q.br.x - q.tr.x, q.br.y - q.tr.y);
+  const quadAspect = ((topW + botW) / 2) / Math.max(1, (leftH + rightH) / 2);
+
+  // Cover-crop the source to the quad's aspect, centred.
+  const iw = target.width, ih = target.height;
+  let sw = iw, sh = ih;
+  if (iw / ih > quadAspect) sw = ih * quadAspect; else sh = iw / quadAspect;
+  const sx = (iw - sw) / 2, sy = (ih - sh) / 2;
+  const s: Pt[] = [
+    { x: sx, y: sy }, { x: sx + sw, y: sy }, { x: sx + sw, y: sy + sh }, { x: sx, y: sy + sh },
+  ];
+  const d = [q.tl, q.tr, q.br, q.bl];
+
+  // Two triangles: (tl,tr,br) and (tl,br,bl).
+  for (const [i, j, k] of [[0, 1, 2], [0, 2, 3]] as const) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(d[i]!.x, d[i]!.y); ctx.lineTo(d[j]!.x, d[j]!.y); ctx.lineTo(d[k]!.x, d[k]!.y); ctx.closePath();
+    ctx.clip();
+    const [a, b, c, dd, e, ff] = affineFromTri([s[i]!, s[j]!, s[k]!], [d[i]!, d[j]!, d[k]!]);
+    ctx.setTransform(a, b, c, dd, e, ff);
+    ctx.drawImage(target as unknown, 0, 0);
+    ctx.resetTransform();
+    ctx.restore();
+  }
+}
+
 /** Draw the target into the chroma box with the scene's fit + effect. */
 function drawTarget(
   mod: CanvasMod, ctx: Ctx2D, target: { width: number; height: number },
@@ -272,8 +463,13 @@ function drawTarget(
   explodeStart: number | null, revealAt: number,
 ): void {
   let tw: number, th: number, tx: number, ty: number;
-  if (cfg.fit === "stretch") { tw = box.w; th = box.h; tx = box.x; ty = box.y; }
-  else {
+  if (cfg.fit === "stretch") {
+    tw = box.w; th = box.h; tx = box.x; ty = box.y;
+  } else {
+    // Cover: re-cut the upload to the green screen's own shape, filling it edge
+    // to edge and centred — no letterbox bars, no backdrop. The overflow (the
+    // part of the image the screen's aspect can't show) is clipped to the screen
+    // below, so the target reads as if it were always on that screen.
     const s = Math.max(box.w / target.width, box.h / target.height);
     tw = target.width * s; th = target.height * s;
     tx = box.x + (box.w - tw) / 2; ty = box.y + (box.h - th) / 2;
@@ -288,6 +484,14 @@ function drawTarget(
 
   ctx.save();
   ctx.globalAlpha = alpha;
+  // Keep the target on its screen: clip cover-overflow (and jitter) to the green
+  // region so nothing spills over the scene chrome. Explode is the exception —
+  // it is meant to burst past the frame.
+  if (cfg.effect !== "explode") {
+    ctx.beginPath();
+    ctx.rect(box.x, box.y, box.w, box.h);
+    ctx.clip();
+  }
   const cw = tw * sc, ch = th * sc;
   const dx = tx + ox - (cw - tw) / 2, dy = ty + oy - (ch - th) / 2;
 

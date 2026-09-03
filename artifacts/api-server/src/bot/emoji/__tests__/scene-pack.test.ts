@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import sharp from "sharp";
 import {
   loadScenes, sceneStyleEntries, sceneIdOf, isSceneAnimation, sceneLabelOf,
-  renderScene, SCENE_PREFIX,
+  renderScene, sceneRenderOptions, SCENE_PREFIX,
 } from "../providers/offline/scene-pack.js";
 import { renderOffline } from "../providers/offline/renderer.js";
 
@@ -33,6 +33,30 @@ describe("scene catalog", () => {
   });
 });
 
+describe("scene size + speed mapping", () => {
+  it("maps the Size control to a genuine output long edge", () => {
+    expect(sceneRenderOptions({ size: "⬜ 512px" }).longEdge).toBe(512);
+    expect(sceneRenderOptions({ size: "128" }).longEdge).toBe(128);
+    // No size chosen leaves the full default in place.
+    expect(sceneRenderOptions({}).longEdge).toBeUndefined();
+  });
+
+  it("turns the Speed control into a playback-delay multiplier", () => {
+    // Normal keeps the clip's timing; 2x plays faster (shorter delays); 0.5x slower.
+    expect(sceneRenderOptions({ speed: "Normal" }).speedFactor).toBe(1);
+    expect(sceneRenderOptions({ speed: "2x" }).speedFactor).toBeCloseTo(0.5);
+    expect(sceneRenderOptions({ speed: "0.5x" }).speedFactor).toBeCloseTo(2);
+  });
+
+  it("forces a small, few-frame render for board previews", () => {
+    const p = sceneRenderOptions({ size: "512", speed: "2x", preview: true });
+    expect(p.maxFrames).toBe(10);
+    expect(p.longEdge).toBeLessThanOrEqual(150);
+    // Preview ignores the user Size/Speed controls entirely.
+    expect(p.longEdge).not.toBe(512);
+  });
+});
+
 describe("scene compositor", () => {
   it("composites the target into the green screen and keeps the foreground", async () => {
     // Bright red target so we can find it; the source green must be gone.
@@ -57,7 +81,9 @@ describe("scene compositor", () => {
 
   it("renders a smaller, fewer-framed preview for the board size", async () => {
     const full = await renderScene(await solid({ r: 0, g: 0, b: 255 }), "mission-passed");
-    const thumb = await renderScene(await solid({ r: 0, g: 0, b: 255 }), "mission-passed", { size: 96 });
+    const thumb = await renderScene(
+      await solid({ r: 0, g: 0, b: 255 }), "mission-passed", { longEdge: 96, maxFrames: 12 },
+    );
     const fm = await sharp(full, { animated: true }).metadata();
     const tm = await sharp(thumb, { animated: true }).metadata();
     expect((tm.width ?? 0)).toBeLessThan(fm.width ?? 0);
