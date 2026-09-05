@@ -139,11 +139,23 @@ async function copyDataFiles() {
       from: path.resolve(artifactDir, "src/bot/emoji/providers/makeemoji/manifest.json"),
       to: path.resolve(distDir, "manifest.json"),
     },
+    // The harvested /animate motion library, read at runtime next to the bundle.
+    // Optional: the engine falls back to its builtin tracks if it's absent.
+    {
+      from: path.resolve(artifactDir, "data/noto-motion-library.json"),
+      to: path.resolve(distDir, "noto-motion-library.json"),
+      optional: true,
+    },
   ];
 
   await mkdir(distDir, { recursive: true });
   for (const file of files) {
-    await cp(file.from, file.to);
+    try {
+      await cp(file.from, file.to);
+    } catch (err) {
+      if (!file.optional) throw err;
+      console.warn(`[build] optional data file missing, skipped: ${file.from}`);
+    }
   }
 }
 

@@ -5,6 +5,7 @@ import {
 } from "discord.js";
 import { buildAfkCommandJson, buildAfkSetupCommandJson } from "../afk/commands.js";
 import { buildEmojiCommandJson } from "../emoji/commands/definition.js";
+import { buildAnimateCommandJson } from "../emoji/animate/commands/definition.js";
 import { getRaidFrames } from "../cards/frames.js";
 import {
   buildMaterialChoices, buildWallpaperChoices, buildCanvasChoices, BUILD_LIMITS,
@@ -50,6 +51,8 @@ function buildLegacyCommands() {
       .addUserOption(o => o.setName("user").setDescription("View another member's rank"))),
 
     buildEmojiCommandJson(),
+
+    buildAnimateCommandJson(),
 
     cmd("info", "Details, worth, and drop chance", s => s
       .addStringOption(o => o.setName("name").setDescription("Name to look up").setRequired(true).setAutocomplete(true))),

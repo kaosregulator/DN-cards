@@ -241,6 +241,18 @@ export async function startBot() {
         return;
       }
 
+      // ── /animate controls (animate:* selects/buttons/modals) ──────────────
+      // The motion-composition panel: target chooser, gesture/intensity picks,
+      // describe modal, candidate gallery, custom piece-picker, debug, post.
+      if (
+        (interaction.isMessageComponent() || interaction.isModalSubmit()) &&
+        interaction.customId.startsWith("animate:")
+      ) {
+        const { handleAnimateInteraction } = await import("./emoji/animate/commands/animate.js");
+        await handleAnimateInteraction(interaction);
+        return;
+      }
+
       // ── Wild Mini-Game gameplay buttons (mg:* customIds) ───────────────────
       // Routed early so the encounter owns its own buttons. `mg:` is distinct
       // from the `minigames:` admin panel prefix below.
@@ -891,6 +903,9 @@ export async function startBot() {
       } else if (cmd === "emoji") {
         const { handleEmojiCommand } = await import("./emoji/commands/emoji.js");
         await handleEmojiCommand(interaction);
+      } else if (cmd === "animate") {
+        const { handleAnimateCommand } = await import("./emoji/animate/commands/animate.js");
+        await handleAnimateCommand(interaction);
       } else if (cmd === "afk") {
         await handleAfkCommand(interaction);
       } else if (cmd === "afksetup") {
@@ -946,7 +961,7 @@ export async function startBot() {
     "whisper", "adminsecret", "echo", "afk", "afksetup", "begin", "show_shiny",
     "collection_hub", "hq", "hqadmin", "hqbuild",
     "valuehelp", "valuelist", "info_mttv", "giveall", "editpack", "postcalculator",
-    "massrole", "emoji",
+    "massrole", "emoji", "animate",
   ]);
   const unmapped = buildCommands()
     .map(c => internalCommandName(c.name))

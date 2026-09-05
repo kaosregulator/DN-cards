@@ -10,6 +10,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "emoji:install-browser": "playwright install chromium",
+    "animate:harvest-noto": "node ./scripts/animate-harvest-noto.mjs",
     "postinstall": "node ./scripts/install-browser.mjs"
   },
   "dependencies": {
