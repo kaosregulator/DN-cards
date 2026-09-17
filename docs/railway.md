@@ -57,13 +57,22 @@ Postgres database and your usual secrets (bot token, guild id, session secret).
 1. Link Postgres → confirm `DATABASE_URL` is present on the **bot service**.
 2. Set `DISCORD_BOT_TOKEN`, `HOME_GUILD_ID`, `SESSION_SECRET`, `NODE_ENV=production`.
 3. Set `PUBLIC_BASE_URL` to the Railway public HTTPS URL.
-4. Deploy. On a **fresh** database the start script runs `drizzle-kit push` once, then boots.
+4. Deploy. On a **fresh** database the start path runs `drizzle-kit push-force` once, then boots.
 5. Confirm logs show:
+   - `Applying database schema` / `Base schema is present` (first boot only)
    - `Bot startup banner` with `processType: "deployment"` and `willLogin: true`
    - `Dex N Cards bot ready` (or your `BRAND_NAME`) with a guild count
    - `Boot migrations applied` (not failed)
    - `Session store: Postgres`
 6. **Turn off** any other process that uses the **same** bot token (old Replit deployment, local `FORCE_DISCORD_LOGIN=1`, etc.). One token = one gateway.
+
+If you still see `relation "guild_settings" does not exist`, the service is not picking up the new start script — set the Railway start command to:
+
+```bash
+node artifacts/api-server/scripts/start-production.mjs
+```
+
+or set `AUTO_DB_PUSH=1` and redeploy.
 
 ## Migrating data from Replit / local
 

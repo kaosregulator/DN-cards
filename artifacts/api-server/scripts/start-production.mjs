@@ -2,13 +2,16 @@
 /**
  * Production start wrapper for Railway (and similar hosts).
  *
- * 1. Optionally applies the Drizzle schema when the DB is empty / AUTO_DB_PUSH=1
+ * 1. Applies the Drizzle schema when the DB is empty / AUTO_DB_PUSH=1
  * 2. Starts the bundled API + Discord bot
  *
  * Env:
  *   AUTO_DB_PUSH=1  — always run `drizzle-kit push` before start (first deploy)
  *   AUTO_DB_PUSH=0  — never push; only start
  *   (unset)         — push only when `guild_settings` is missing
+ *
+ * This is the default `pnpm start` for @workspace/api-server so Railway
+ * custom start commands that call package start still bootstrap schema.
  */
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
@@ -19,6 +22,7 @@ import pg from "pg";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(__dirname, "../../..");
 const serverEntry = resolve(repoRoot, "artifacts/api-server/dist/index.mjs");
+const localEntry = resolve(__dirname, "../dist/index.mjs");
 
 function buildPoolConfig(connectionString) {
   const sslMode = (process.env.DATABASE_SSL ?? "").trim().toLowerCase();
@@ -52,7 +56,6 @@ async function baseSchemaMissing() {
     return false;
   } catch (err) {
     if (err && typeof err === "object" && err.code === "42P01") return true;
-    // Connection / SSL / auth errors should surface clearly before start.
     console.error("Database check failed:", err?.message ?? err);
     process.exit(1);
   } finally {
@@ -61,11 +64,15 @@ async function baseSchemaMissing() {
 }
 
 function runDbPush() {
-  console.log("Applying database schema (drizzle-kit push)…");
+  console.log("Applying database schema (drizzle-kit push-force)…");
   const result = spawnSync(
     "pnpm",
-    ["--filter", "@workspace/db", "run", "push"],
-    { cwd: repoRoot, stdio: "inherit", env: process.env },
+    ["--filter", "@workspace/db", "run", "push-force"],
+    {
+      cwd: repoRoot,
+      stdio: "inherit",
+      env: { ...process.env, CI: "true" },
+    },
   );
   if (result.status !== 0) {
     console.error("Schema push failed — aborting start");
@@ -74,8 +81,15 @@ function runDbPush() {
 }
 
 async function main() {
-  if (!existsSync(serverEntry)) {
-    console.error(`Built server not found at ${serverEntry}. Run the Railway build first.`);
+  const entry = existsSync(serverEntry)
+    ? serverEntry
+    : existsSync(localEntry)
+      ? localEntry
+      : null;
+  if (!entry) {
+    console.error(
+      `Built server not found at ${serverEntry} (or ${localEntry}). Run the Railway build first.`,
+    );
     process.exit(1);
   }
 
@@ -89,8 +103,7 @@ async function main() {
     }
   }
 
-  const nodeArgs = ["--enable-source-maps", serverEntry];
-  const child = spawnSync(process.execPath, nodeArgs, {
+  const child = spawnSync(process.execPath, ["--enable-source-maps", entry], {
     cwd: repoRoot,
     stdio: "inherit",
     env: process.env,
