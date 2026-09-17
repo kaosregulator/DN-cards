@@ -89,6 +89,12 @@ export interface MapDef {
   spawnTile?: { tx: number; ty: number };
   /** Map picture for the minimap (HM maps reuse their background). */
   mapImage?: string;
+  /** Collision .tmj for image-backed maps (defaults to HM path). */
+  collisionMap?: string;
+  /** 1×1 collide stamp image for image-backed maps. */
+  collideImage?: string;
+  /** When true, force Harvest Moon Jack avatar / HM NPC systems. */
+  harvestMoon?: boolean;
   /**
    * World Builder blank map — no shipped .tmj; Phaser builds Floor + Collision
    * layers procedurally. Overlay JSON supplies tiles/objects/doors.
@@ -152,6 +158,7 @@ export const MAPS: Record<MapKey, MapDef> = {
     portals: [
       { id: "cardshop", label: "Card Shop", glyph: "🃏", color: 0xffb020, action: { kind: "shop" } },
       { id: "village", label: "The Village", glyph: "🏘️", color: 0x2dd4bf, action: { kind: "map", to: "village" } },
+      { id: "modern", label: "Limezu City", glyph: "🌆", color: 0x22c55e, action: { kind: "map", to: "modern-city" } },
       { id: "duelhall", label: "Duel Hall", glyph: "🏟️", color: 0x8b5cf6, action: { kind: "map", to: "duel-hall" } },
       { id: "arena", label: "Duel Arena", glyph: "⚔️", color: 0xff4d6d, action: { kind: "duel" } },
       { id: "pvp", label: "Online PvP", glyph: "🌐", color: 0x38bdf8, action: { kind: "pvp" } },
@@ -256,8 +263,40 @@ for (const m of HM_MAPS) {
     avatarScale: 0.85,
     spawnTile: m.spawn,
     hmExits: exits,
+    harvestMoon: true,
   };
 }
+
+// Modern Exteriors city — image-backed showcase world (LimeZu assets).
+// Kept separate from the legacy WA `world` map and the Harvest Moon maps.
+MAPS["modern-city"] = {
+  key: "modern-city",
+  name: "Limezu City",
+  subtitle: "Modern Exteriors · Districts",
+  spawn: "start",
+  ambient: true,
+  portals: [
+    { id: "legacy", label: "Legacy Plaza", glyph: "🏙️", color: 0x9aa4b2, action: { kind: "map", to: "world" } },
+    { id: "cardshop", label: "Card Shop", glyph: "🃏", color: 0xffb020, action: { kind: "shop" } },
+    { id: "arena", label: "Duel Arena", glyph: "⚔️", color: 0xff4d6d, action: { kind: "duel" } },
+    { id: "pvp", label: "Online PvP", glyph: "🌐", color: 0x38bdf8, action: { kind: "pvp" } },
+    { id: "menu", label: "Main Menu", glyph: "🏠", color: 0x9aa4b2, action: { kind: "menu" } },
+  ],
+  encounters: [
+    { id: "mc-scout", name: "Park Scout", glyph: "🧢", color: 0x2dd4bf },
+    { id: "mc-rider", name: "Metro Rider", glyph: "🚇", color: 0x38bdf8 },
+    { id: "mc-vendor", name: "Market Vendor", glyph: "🛒", color: 0xf59e0b },
+  ],
+  tile: 32,
+  gridW: 100,
+  gridH: 100,
+  bgImage: "world/modern-city/bg.png",
+  mapImage: "world/modern-city/minimap.jpg",
+  collisionMap: "world/maps/modern-city.tmj",
+  collideImage: "world/modern-city/collide-tile.png",
+  avatarScale: 1,
+  spawnTile: { tx: 45, ty: 42 },
+};
 
 export const START_MAP: MapKey = "world";
 
