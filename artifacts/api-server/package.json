@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "export NODE_ENV=development && pnpm run build && pnpm run start",
     "build": "node ./scripts/install-browser.mjs && node ./build.mjs",
-    "start": "node --enable-source-maps ./dist/index.mjs",
+    "start": "node ./scripts/start-production.mjs",
+    "start:raw": "node --enable-source-maps ./dist/index.mjs",
     "start:production": "node ./scripts/start-production.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",

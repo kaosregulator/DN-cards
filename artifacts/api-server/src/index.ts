@@ -1042,11 +1042,27 @@ async function main() {
     logger.error({ err }, "Failed to attach duel PvP socket — server continues");
   }
 
+  // Fresh Railway Postgres has no tables — push the Drizzle schema before
+  // boot migrations / Discord guild init query guild_settings.
+  try {
+    const { ensureBaseSchema } = await import("./lib/ensure-base-schema.js");
+    await ensureBaseSchema();
+  } catch (err) {
+    logger.error(
+      { err },
+      "Failed to ensure base schema — Discord bot will not start until tables exist. " +
+        "Set AUTO_DB_PUSH=1 or run: pnpm --filter @workspace/db run push-force",
+    );
+    return;
+  }
+
   // Run idempotent boot migrations after the server is accepting traffic.
   // Failures are logged but non-fatal: every statement uses IF NOT EXISTS /
   // conditional guards, so a lock-timeout on a contested table just means the
   // column was already added by a prior deployment.
-  runBootMigrations().catch((err) => {
+  try {
+    await runBootMigrations();
+  } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     const code =
       err && typeof err === "object" && "code" in err
@@ -1056,10 +1072,9 @@ async function main() {
     if (missingRelation) {
       logger.error(
         { err },
-        "Boot migrations failed — base tables are missing. Link DATABASE_URL, then run once: " +
-          "`pnpm --filter @workspace/db run push` (or set AUTO_DB_PUSH=1 on the start command). " +
-          "Server continues.",
+        "Boot migrations failed — base tables are still missing after schema ensure. Server continues without Discord.",
       );
+      return;
     } else if (/HOME_GUILD_ID/i.test(message)) {
       logger.error(
         { err },
@@ -1068,7 +1083,7 @@ async function main() {
     } else {
       logger.error({ err }, "Boot migrations failed — server continues");
     }
-  });
+  }
 
   // Start Discord bot alongside the API server
   startBot().catch((err) => {
