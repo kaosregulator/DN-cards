@@ -58,15 +58,19 @@ function runDrizzlePush(): void {
     }
   }
 
-  const env = {
-    ...process.env,
-    CI: "true", // drizzle-kit: non-interactive
-  };
-
   const result = spawnSync(
     "pnpm",
     ["--filter", "@workspace/db", "run", "push-force"],
-    { cwd: repoRoot, stdio: "inherit", env },
+    {
+      cwd: repoRoot,
+      stdio: "inherit",
+      env: {
+        ...process.env,
+        CI: "true",
+        NODE_TLS_REJECT_UNAUTHORIZED:
+          process.env.NODE_TLS_REJECT_UNAUTHORIZED ?? "0",
+      },
+    },
   );
 
   if (result.error) {
