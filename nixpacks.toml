@@ -1,0 +1,3 @@
+# Pin Node for Nixpacks / Railway (matches local nvm 24.x requirement).
+[variables]
+NIXPACKS_NODE_VERSION = "24"

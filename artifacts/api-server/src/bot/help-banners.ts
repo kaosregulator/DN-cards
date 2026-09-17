@@ -1,6 +1,7 @@
 import { readFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
+import { publicBaseUrl } from "../lib/runtime-env.js";
 
 // Shared animated banner + section palette for the unified /help hub (and other
 // intro embeds). The banner is a free, direct-hotlink animated GIF — a full-
@@ -48,10 +49,9 @@ export const SECTION_COLOR = {
 
 export type HelpSection = keyof typeof SECTION_COLOR;
 
-// The public site URL, resolved from the Replit domain when available.
+// The public site URL — PUBLIC_BASE_URL, Railway domain, Replit domain, or fallback.
 export function siteUrl(): string {
-  const domain = process.env["REPLIT_DOMAINS"]?.split(",")[0]?.trim();
-  return domain ? `https://${domain}` : "https://dncards.com";
+  return publicBaseUrl("https://dncards.com");
 }
 
 // ── Bundled brand art (assets/brand/) ────────────────────────────────────────

@@ -1047,7 +1047,27 @@ async function main() {
   // conditional guards, so a lock-timeout on a contested table just means the
   // column was already added by a prior deployment.
   runBootMigrations().catch((err) => {
-    logger.error({ err }, "Boot migrations failed — server continues");
+    const message = err instanceof Error ? err.message : String(err);
+    const code =
+      err && typeof err === "object" && "code" in err
+        ? String((err as { code?: unknown }).code ?? "")
+        : "";
+    const missingRelation = code === "42P01" || /relation .* does not exist/i.test(message);
+    if (missingRelation) {
+      logger.error(
+        { err },
+        "Boot migrations failed — base tables are missing. Link DATABASE_URL, then run once: " +
+          "`pnpm --filter @workspace/db run push` (or set AUTO_DB_PUSH=1 on the start command). " +
+          "Server continues.",
+      );
+    } else if (/HOME_GUILD_ID/i.test(message)) {
+      logger.error(
+        { err },
+        "Boot migrations failed — set HOME_GUILD_ID to your Discord server ID. Server continues.",
+      );
+    } else {
+      logger.error({ err }, "Boot migrations failed — server continues");
+    }
   });
 
   // Start Discord bot alongside the API server
