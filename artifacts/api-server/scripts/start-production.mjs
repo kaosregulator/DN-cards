@@ -71,11 +71,22 @@ function runDbPush() {
     {
       cwd: repoRoot,
       stdio: "inherit",
-      env: { ...process.env, CI: "true" },
+      env: {
+        ...process.env,
+        CI: "true",
+        // Match runtime Pool: never hard-fail on managed Postgres certs.
+        NODE_TLS_REJECT_UNAUTHORIZED:
+          process.env.NODE_TLS_REJECT_UNAUTHORIZED ?? "0",
+      },
     },
   );
   if (result.status !== 0) {
-    console.error("Schema push failed — aborting start");
+    console.error(
+      "Schema push failed — aborting start.\n" +
+        "This usually means DATABASE_URL cannot be reached with TLS. " +
+        "Confirm the Postgres plugin is linked, then redeploy. " +
+        "You can also set DATABASE_SSL=disable for railway.internal URLs.",
+    );
     process.exit(result.status ?? 1);
   }
 }

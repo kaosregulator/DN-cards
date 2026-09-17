@@ -34,4 +34,12 @@ describe("buildPoolConfig", () => {
     const cfg = buildPoolConfig("postgresql://u:p@127.0.0.1:5432/db");
     expect(cfg.ssl).toEqual({ rejectUnauthorized: false });
   });
+
+  it("strips sslmode from the connection string when enabling ssl", () => {
+    const cfg = buildPoolConfig(
+      "postgresql://u:p@maglev.proxy.rlwy.net:1234/railway?sslmode=require",
+    );
+    expect(cfg.ssl).toEqual({ rejectUnauthorized: false });
+    expect(String(cfg.connectionString)).not.toMatch(/sslmode=/i);
+  });
 });

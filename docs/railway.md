@@ -48,8 +48,8 @@ Postgres database and your usual secrets (bot token, guild id, session secret).
 | `ANTHROPIC_API_KEY` | Bob AI talk |
 | `ADMIN_TOKEN` | Break-glass dashboard admin header |
 | `AFK_PRESENCE_INTENT` | `1` only if Presence Intent is enabled in the Developer Portal |
+| `DATABASE_SSL` | Force `require` / `disable` if auto TLS detection is wrong. Prefer leaving unset — the app uses `rejectUnauthorized: false` for managed hosts (needed for Railway). |
 | `AUTO_DB_PUSH` | Unset = push schema only when tables are missing. `1` = always push on start. `0` = never. |
-| `DATABASE_SSL` | Force `require` / `disable` if auto TLS detection is wrong |
 | `DN_DEPLOYMENT` | `1` if you host somewhere that is not Replit/Railway |
 
 ## First deploy checklist
@@ -73,6 +73,8 @@ node artifacts/api-server/scripts/start-production.mjs
 ```
 
 or set `AUTO_DB_PUSH=1` and redeploy.
+
+If schema push fails at `Pulling schema from database…` with an SSL / `verify-full` warning, redeploy this SSL fix (host credentials + `rejectUnauthorized: false`). As a temporary workaround you can set `DATABASE_SSL=disable` when using the private `*.railway.internal` URL.
 
 ## Migrating data from Replit / local
 
