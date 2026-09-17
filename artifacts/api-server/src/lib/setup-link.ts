@@ -1,6 +1,7 @@
 import { db, setupTokensTable } from "@workspace/db";
 import { randomBytes } from "node:crypto";
 import { isHomeGuild } from "../bot/home-guild.js";
+import { publicBaseUrl } from "./runtime-env.js";
 
 // Generates a one-time setup URL the recipient can open in a browser to claim
 // (or reset) a dashboard login. Used by the bot when joining a guild and by
@@ -22,8 +23,7 @@ export async function createSetupLink(opts: {
     guildId: opts.guildId ?? null,
     expiresAt,
   });
-  const domain = process.env["REPLIT_DOMAINS"]?.split(",")[0]?.trim();
-  const base = domain ? `https://${domain}` : "http://localhost";
+  const base = publicBaseUrl("http://localhost");
   // Dashboard is served at /dashboard; the setup route lives under that prefix.
   return { token, url: `${base}/dashboard/setup/${token}`, expiresAt };
 }

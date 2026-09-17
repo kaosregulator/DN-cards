@@ -78,11 +78,18 @@ The bot will start on **port 5000** with the API and Discord connection active.
 # Required
 DATABASE_URL=postgresql://user:password@host:5432/database
 DISCORD_BOT_TOKEN=your_bot_token
+HOME_GUILD_ID=your_discord_server_id
+SESSION_SECRET=long-random-string
 
 # Optional
 NODE_ENV=development
+PUBLIC_BASE_URL=https://your-public-host.example
 ANTHROPIC_API_KEY=for_claude_ai_features  # optional, enables /bob_talk AI
 ```
+
+### Deploy on Railway
+
+See [`docs/railway.md`](./docs/railway.md). Link Railway Postgres (`DATABASE_URL`), set `DISCORD_BOT_TOKEN`, `HOME_GUILD_ID`, and `SESSION_SECRET`, then deploy — Discord login and schema bootstrap are handled automatically on Railway.
 
 ---
 

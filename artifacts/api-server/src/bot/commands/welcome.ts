@@ -4,6 +4,7 @@ import { applyEmbedOverride } from "../embed-overrides.js";
 import { getOrCreateGuildSettings, isAdmin } from "../db.js";
 import { getShinyName } from "../cards-data.js";
 import { BRAND_NAME, brandAsset, BRAND_BANNER_FILE, BRAND_LOGO_FILE } from "../help-banners.js";
+import { publicBaseUrl } from "../../lib/runtime-env.js";
 
 // Thin animated divider GIF used as the separator image at the bottom of each
 // embed. The rainbow-glow line (4 KB, GitHub user-images CDN) renders as a
@@ -34,11 +35,10 @@ export async function isGuildAdmin(interaction: ChatInputCommandInteraction): Pr
   return isAdmin(interaction.guild.id, interaction.user.id);
 }
 
-// ── Helper — build the Replit-hosted admin-dashboard URL ─────────────────────
+// ── Helper — build the hosted admin-dashboard URL ────────────────────────────
 function dashboardAdminUrl(): string {
-  const domain = process.env["REPLIT_DOMAINS"]?.split(",")[0]?.trim();
-  // Dashboard is now served at /dashboard (Activity owns the root for Discord).
-  return domain ? `https://${domain}/dashboard/admin` : SITE_ADMIN;
+  // Dashboard is served at /dashboard (Activity owns the root for Discord).
+  return `${publicBaseUrl(SITE_URL)}/dashboard/admin`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

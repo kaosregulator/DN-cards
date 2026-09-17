@@ -1,0 +1,14 @@
+# Railway — build & run the API + Discord bot from the monorepo root.
+# Link a Railway Postgres plugin (DATABASE_URL) and set the secrets listed in
+# docs/railway.md. PORT is injected by Railway automatically.
+
+[build]
+builder = "NIXPACKS"
+buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @workspace/api-server run build"
+
+[deploy]
+startCommand = "node artifacts/api-server/scripts/start-production.mjs"
+healthcheckPath = "/api/healthz"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10

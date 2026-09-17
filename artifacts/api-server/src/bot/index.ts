@@ -83,17 +83,16 @@ export async function startBot() {
   // Discord allows only one gateway connection per token. If both the dev
   // workflow and the published deployment connect with the same token they
   // race and slash commands route to whichever is currently winning the
-  // gateway lease. Default behaviour: only the published deployment connects.
+  // gateway lease. Default behaviour: only the published deployment connects
+  // (Replit REPLIT_DEPLOYMENT=1, Railway RAILWAY_*, or DN_DEPLOYMENT=1).
   // Override in dev with FORCE_DISCORD_LOGIN=1 (use a separate dev token!).
-  const isDeployment = process.env["REPLIT_DEPLOYMENT"] === "1";
+  const { isPublishedDeployment, deploymentBuildId, deploymentProcessType, databaseHost } =
+    await import("../lib/runtime-env.js");
+  const isDeployment = isPublishedDeployment();
   const force = process.env["FORCE_DISCORD_LOGIN"] === "1";
-  const processType = isDeployment ? "deployment" : "dev";
-  const buildId = process.env["REPLIT_DEPLOYMENT_ID"] ?? process.env["REPL_SLUG"] ?? "local";
-  const dbHost = (() => {
-    const url = process.env["DATABASE_URL"] ?? "";
-    const m = url.match(/@([^/:]+)/);
-    return m ? m[1] : "unknown";
-  })();
+  const processType = deploymentProcessType();
+  const buildId = deploymentBuildId();
+  const dbHost = databaseHost();
   logger.info(
     { processType, buildId, dbHost, isDeployment, willLogin: isDeployment || force },
     "Bot startup banner",
@@ -101,7 +100,8 @@ export async function startBot() {
   if (!isDeployment && !force) {
     logger.warn(
       "Skipping Discord login: this is a dev process and FORCE_DISCORD_LOGIN!=1. " +
-      "The published deployment owns the bot token. Set FORCE_DISCORD_LOGIN=1 with a SEPARATE dev token to override.",
+      "The published deployment owns the bot token. On Railway this should auto-detect; " +
+      "otherwise set DN_DEPLOYMENT=1. For local Discord E2E set FORCE_DISCORD_LOGIN=1 with a SEPARATE dev token.",
     );
     return;
   }
@@ -136,8 +136,8 @@ export async function startBot() {
         tag: c.user.tag,
         guildCount: c.guilds.cache.size,
         guildIds: [...c.guilds.cache.keys()],
-        processType: process.env["REPLIT_DEPLOYMENT"] === "1" ? "deployment" : "dev",
-        buildId: process.env["REPLIT_DEPLOYMENT_ID"] ?? "local",
+        processType: deploymentProcessType(),
+        buildId: deploymentBuildId(),
         pid: process.pid,
       },
       `${BRAND_NAME} bot ready`,
