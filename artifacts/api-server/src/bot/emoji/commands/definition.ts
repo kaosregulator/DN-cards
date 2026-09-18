@@ -33,5 +33,13 @@ export function buildPostboardCommandJson() {
       .setDescription("Channel to post the emoji board in")
       .setRequired(true)
       .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
+    .addRoleOption(o => o
+      .setName("allow_role")
+      .setDescription("Optional: only this role may use the live board (admins always can)")
+      .setRequired(false))
+    .addRoleOption(o => o
+      .setName("block_role")
+      .setDescription("Optional: this role may not use the live board")
+      .setRequired(false))
     .toJSON();
 }

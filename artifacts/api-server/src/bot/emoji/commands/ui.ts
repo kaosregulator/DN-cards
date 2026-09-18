@@ -113,16 +113,96 @@ export function buildTargetChooser(token: string) {
 }
 
 /**
- * Sentinel token on the persistent `/postboard` message.
+ * Sentinel / encoded token on the persistent `/postboard` message.
  *
  * Not a real session key — interacting with these components spins up a fresh
  * per-user session and replies ephemerally so the public board never changes.
+ *
+ * Legacy posts use plain `board`. New posts encode optional role gates as
+ * `b`, `b.w{roleId}`, `b.x{roleId}`, or `b.w{roleId}.x{roleId}` so access
+ * rules survive bot restarts without a database row.
  */
 export const BOARD_TOKEN = "board";
 
-/** Public channel board — same chooser as `/emoji`, keyed with {@link BOARD_TOKEN}. */
-export function buildPublicBoard() {
-  return buildTargetChooser(BOARD_TOKEN);
+export interface BoardAccess {
+  allowRoleIds: string[];
+  blockRoleIds: string[];
+}
+
+/** True when a customId token belongs to the shared channel board (not a session). */
+export function isBoardToken(token: string): boolean {
+  return token === BOARD_TOKEN || token === "b" || token.startsWith("b.");
+}
+
+/** Encode optional allow/block role ids into a board customId token. */
+export function encodeBoardToken(access: BoardAccess = { allowRoleIds: [], blockRoleIds: [] }): string {
+  const parts = ["b"];
+  for (const id of access.allowRoleIds) {
+    if (/^\d{1,25}$/.test(id)) parts.push(`w${id}`);
+  }
+  for (const id of access.blockRoleIds) {
+    if (/^\d{1,25}$/.test(id)) parts.push(`x${id}`);
+  }
+  const token = parts.length === 1 ? "b" : parts.join(".");
+  // Discord custom_id max is 100; longest action prefix here is `emoji:pick_server:`.
+  if (`emoji:pick_server:${token}`.length > 100) {
+    throw new Error("Board access token too long for Discord customIds");
+  }
+  return token;
+}
+
+/** Parse allow/block role ids from a board token (including legacy `board`). */
+export function parseBoardAccess(token: string): BoardAccess {
+  if (token === BOARD_TOKEN || token === "b") {
+    return { allowRoleIds: [], blockRoleIds: [] };
+  }
+  if (!token.startsWith("b.")) return { allowRoleIds: [], blockRoleIds: [] };
+  const allowRoleIds: string[] = [];
+  const blockRoleIds: string[] = [];
+  for (const part of token.split(".").slice(1)) {
+    if (part.startsWith("w") && /^\d{1,25}$/.test(part.slice(1))) {
+      allowRoleIds.push(part.slice(1));
+    } else if (part.startsWith("x") && /^\d{1,25}$/.test(part.slice(1))) {
+      blockRoleIds.push(part.slice(1));
+    }
+  }
+  return { allowRoleIds, blockRoleIds };
+}
+
+/**
+ * Public channel board — same controls as `/emoji`, with how-to copy for a
+ * live shared board. Pass {@link BoardAccess} to gate who may tap it.
+ */
+export function buildPublicBoard(access: BoardAccess = { allowRoleIds: [], blockRoleIds: [] }) {
+  const token = encodeBoardToken(access);
+  const chooser = buildTargetChooser(token);
+
+  const accessLines: string[] = [];
+  if (access.allowRoleIds.length > 0) {
+    accessLines.push(`-# **Who can use it:** ${access.allowRoleIds.map(id => `<@&${id}>`).join(", ")} (plus admins)`);
+  }
+  if (access.blockRoleIds.length > 0) {
+    accessLines.push(`-# **Blocked:** ${access.blockRoleIds.map(id => `<@&${id}>`).join(", ")}`);
+  }
+
+  return {
+    ...chooser,
+    content: [
+      "## 🎨 Live emoji board",
+      "Make an animated emoji right here — everyone can use this board at the same time.",
+      "",
+      "**How to use**",
+      "1. Pick **who/what** to animate (member, your avatar, upload, or server icon).",
+      "2. Browse styles on the private board that opens just for you.",
+      "3. Apply a style, tweak settings if you want, then **Done**.",
+      "4. **Save:** press-and-hold (mobile) or right-click (desktop) the image to download.",
+      "",
+      "-# Your session is private — other people won't see your picks. There's no Post-to-channel on this board.",
+      "-# A short cooldown starts **after** your emoji is generated, so browsing stays free.",
+      "-# ⭐ **Favorites** jumps to your starred styles on your avatar — tap **Target** there to switch subject.",
+      ...accessLines,
+    ].join("\n"),
+  };
 }
 
 /** customId namespace. One router owns every id starting with this. */

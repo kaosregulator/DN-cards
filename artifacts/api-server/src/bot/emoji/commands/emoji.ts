@@ -34,11 +34,11 @@ import {
 import {
   buildCachedControlsReply, buildControls, buildFinishScreen, buildPostPicker,
   buildServerModal, buildTargetChooser, buildUploadModal, describe, parseCid,
-  resultFileName, resultHint, BOARD_TOKEN,
+  resultFileName, resultHint, isBoardToken, parseBoardAccess,
 } from "./ui.js";
 import { createSession, endSession, getSession, touchSession, type EmojiSession } from "./session.js";
 import { isSceneAnimation } from "../providers/offline/scene-pack.js";
-import { consumeBoardCooldown } from "./postboard.js";
+import { armBoardCooldown, checkBoardCooldown, memberMayUseBoard } from "./postboard.js";
 
 /** Avatars are fetched large so there's detail to work with before downscaling. */
 const AVATAR_SIZE = 512;
@@ -300,8 +300,8 @@ export async function handleEmojiInteraction(interaction: Interaction): Promise<
 
   // Persistent `/postboard` message — spin up a private per-user session instead
   // of mutating the shared channel board.
-  if (token === BOARD_TOKEN) {
-    await handleBoardEntry(interaction, action);
+  if (isBoardToken(token)) {
+    await handleBoardEntry(interaction, action, token);
     return;
   }
 
@@ -355,8 +355,17 @@ export async function handleEmojiInteraction(interaction: Interaction): Promise<
     await interaction.deferUpdate();
     const updated = touchSession(token, { view: "controls" });
     if (!updated) return;
-    const reply = buildCachedControlsReply(updated, token) ?? await buildReply(updated, token);
-    await interaction.editReply(reply);
+    const cached = buildCachedControlsReply(updated, token);
+    if (cached) {
+      await interaction.editReply(cached);
+      return;
+    }
+    try {
+      await interaction.editReply(await buildReply(updated, token));
+      noteBoardGenerate(updated, interaction.guildId);
+    } catch (err) {
+      await interaction.editReply(failureReply(err, token));
+    }
     return;
   }
 
@@ -430,6 +439,7 @@ export async function handleEmojiInteraction(interaction: Interaction): Promise<
 
   try {
     await interaction.editReply(await buildReply(updated, token));
+    noteBoardGenerate(updated, interaction.guildId);
   } catch (err) {
     await interaction.editReply(failureReply(err, token));
   }
@@ -444,6 +454,7 @@ export async function handleEmojiInteraction(interaction: Interaction): Promise<
 async function handleBoardEntry(
   interaction: MessageComponentInteraction | ModalSubmitInteraction,
   action: string,
+  boardToken: string,
 ): Promise<void> {
   if (!interaction.isMessageComponent()) return;
 
@@ -456,7 +467,21 @@ async function handleBoardEntry(
     return;
   }
 
-  const cd = consumeBoardCooldown(guildId, interaction.user.id);
+  const access = parseBoardAccess(boardToken);
+  const member = interaction.member && "roles" in interaction.member
+    ? interaction.member as import("discord.js").GuildMember
+    : null;
+  const gate = memberMayUseBoard(member, access, {
+    isGuildOwner: interaction.guild?.ownerId === interaction.user.id,
+    isAdministrator: interaction.memberPermissions?.has("Administrator") ?? false,
+  });
+  if (!gate.ok) {
+    await interaction.reply({ content: gate.message, flags: MessageFlags.Ephemeral }).catch(() => {});
+    return;
+  }
+
+  // Cooldown is armed after generate — browsing / picking a target stays free.
+  const cd = checkBoardCooldown(guildId, interaction.user.id);
   if (!cd.ok) {
     await interaction.reply({
       content: cd.message ?? "⏳ You're on cooldown.",
@@ -513,6 +538,16 @@ async function handleBoardEntry(
 
   // Unknown board action — drop the unused session and ignore.
   endSession(token);
+}
+
+/**
+ * Arm the postboard per-user cooldown after a successful generate.
+ * Browsing never arms it; only a finished emoji does.
+ */
+function noteBoardGenerate(session: EmojiSession, guildId: string | null): void {
+  if (session.allowPost === false && guildId) {
+    armBoardCooldown(guildId, session.ownerId);
+  }
 }
 
 type PickKind = "member" | "me" | "server";
@@ -687,6 +722,7 @@ async function handleTargetAction(
     });
     if (!updated) return;
     await interaction.editReply(await buildReply(updated, token));
+    noteBoardGenerate(updated, interaction.guildId);
   } catch (err) {
     await interaction.editReply(failureReply(err, token));
   }
@@ -898,6 +934,7 @@ async function handleStylesAction(
     if (!updated) return;
     try {
       await interaction.editReply(await buildReply(updated, token));
+      noteBoardGenerate(updated, interaction.guildId);
     } catch (err) {
       await interaction.editReply(failureReply(err, token));
     }
@@ -926,6 +963,7 @@ async function handleStylesAction(
     }
     try {
       await interaction.editReply(await buildReply(updated, token));
+      noteBoardGenerate(updated, interaction.guildId);
     } catch (err) {
       await interaction.editReply(failureReply(err, token));
     }
