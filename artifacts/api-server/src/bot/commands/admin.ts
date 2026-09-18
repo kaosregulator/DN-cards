@@ -286,6 +286,11 @@ export async function handleAdminCommand(
     await handlePostCalculator(interaction);
     return;
   }
+  if (cmd === "postboard") {
+    const { handlePostboardCommand } = await import("../emoji/commands/postboard.js");
+    await handlePostboardCommand(interaction);
+    return;
+  }
 
   const guildId = interaction.guild.id;
   const opts = interaction.options;

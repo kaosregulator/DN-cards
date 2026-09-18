@@ -66,6 +66,16 @@ export interface EmojiSession {
   styleFilter: "all" | "favorites";
   /** Style value currently previewed in the browser (`gen_btn_…`). */
   styleFocus: string | null;
+  /**
+   * When false, Post-to-channel is hidden. Used by the shared `/postboard`
+   * channel board: users save via hold/right-click download only.
+   */
+  allowPost: boolean;
+  /**
+   * True for brand-new postboard sessions until their first private (ephemeral)
+   * reply is sent. While set, handlers must not update the public board message.
+   */
+  needsEphemeralStart: boolean;
   /** Cached output of the last successful generate for this session. */
   lastResult?: EmojiLastResult;
   expiresAt: number;
@@ -83,8 +93,26 @@ function sweep(): void {
 
 type SessionInit = Omit<
   EmojiSession,
-  "expiresAt" | "view" | "stylePage" | "styleQuery" | "styleFilter" | "styleFocus" | "lastResult"
-> & Partial<Pick<EmojiSession, "view" | "stylePage" | "styleQuery" | "styleFilter" | "styleFocus" | "lastResult">>;
+  | "expiresAt"
+  | "view"
+  | "stylePage"
+  | "styleQuery"
+  | "styleFilter"
+  | "styleFocus"
+  | "lastResult"
+  | "allowPost"
+  | "needsEphemeralStart"
+> & Partial<Pick<
+  EmojiSession,
+  | "view"
+  | "stylePage"
+  | "styleQuery"
+  | "styleFilter"
+  | "styleFocus"
+  | "lastResult"
+  | "allowPost"
+  | "needsEphemeralStart"
+>>;
 
 /** Store a session, returning its token and the stored record. */
 export function createSession(
@@ -106,6 +134,8 @@ export function createSession(
     styleQuery: "",
     styleFilter: "all",
     styleFocus: null,
+    allowPost: true,
+    needsEphemeralStart: false,
     ...init,
     expiresAt: Date.now() + TTL_MS,
   };

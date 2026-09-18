@@ -42,6 +42,15 @@ export function resultFileName(buffer: Buffer, format: EmojiFormat): string {
 export const RESULT_HINT =
   "-# Tap the preview to open it · press-and-hold (mobile) or right-click (desktop) to save · **Post** drops it into a channel.";
 
+/** Same as RESULT_HINT but without Post — used by the shared channel postboard. */
+export const RESULT_HINT_SAVE_ONLY =
+  "-# Tap the preview to open it · press-and-hold (mobile) or right-click (desktop) to save.";
+
+/** Hint line for the current session (Post only when the flow allows it). */
+export function resultHint(session: EmojiSession): string {
+  return session.allowPost !== false ? RESULT_HINT : RESULT_HINT_SAVE_ONLY;
+}
+
 /**
  * Opening screen: what do you want to animate?
  *
@@ -53,6 +62,10 @@ export const RESULT_HINT =
  * Picking any of them loads the source and drops straight into the style
  * browser, so the whole flow is target → styles → generate with no menus in
  * between.
+ *
+ * The same layout is posted publicly by `/postboard` with {@link BOARD_TOKEN}:
+ * each clicker gets their own private session so many people can use one board
+ * at once without stealing each other's controls.
  */
 export function buildTargetChooser(token: string) {
   const memberRow = new ActionRowBuilder<UserSelectMenuBuilder>().addComponents(
@@ -97,6 +110,19 @@ export function buildTargetChooser(token: string) {
     files: [],
     components: [memberRow, otherRow] as unknown as ActionRowBuilder<never>[],
   };
+}
+
+/**
+ * Sentinel token on the persistent `/postboard` message.
+ *
+ * Not a real session key — interacting with these components spins up a fresh
+ * per-user session and replies ephemerally so the public board never changes.
+ */
+export const BOARD_TOKEN = "board";
+
+/** Public channel board — same chooser as `/emoji`, keyed with {@link BOARD_TOKEN}. */
+export function buildPublicBoard() {
+  return buildTargetChooser(BOARD_TOKEN);
 }
 
 /** customId namespace. One router owns every id starting with this. */
@@ -239,21 +265,27 @@ function actionsRow(session: EmojiSession, token: string): ActionRowBuilder<Butt
       .setStyle(f === session.format ? ButtonStyle.Primary : ButtonStyle.Secondary),
   );
 
-  return new ActionRowBuilder<ButtonBuilder>().addComponents(
-    ...formatButtons,
-    new ButtonBuilder()
-      .setCustomId(cid("post", token))
-      .setLabel("Post")
-      .setEmoji("📤")
-      // Nothing to post until a generation has succeeded.
-      .setDisabled(!session.lastResult)
-      .setStyle(ButtonStyle.Secondary),
+  const buttons = [...formatButtons];
+  if (session.allowPost !== false) {
+    buttons.push(
+      new ButtonBuilder()
+        .setCustomId(cid("post", token))
+        .setLabel("Post")
+        .setEmoji("📤")
+        // Nothing to post until a generation has succeeded.
+        .setDisabled(!session.lastResult)
+        .setStyle(ButtonStyle.Secondary),
+    );
+  }
+  buttons.push(
     new ButtonBuilder()
       .setCustomId(cid("done", token))
       .setLabel("Done")
       .setEmoji("✅")
       .setStyle(ButtonStyle.Success),
   );
+
+  return new ActionRowBuilder<ButtonBuilder>().addComponents(...buttons);
 }
 
 /**
@@ -311,18 +343,25 @@ export function buildFinishScreen(session: EmojiSession, token: string) {
   const lines = [
     "## ✅ Your emoji is ready",
     `**${animationLabel(session)}** · \`${session.format.toUpperCase()}\` · ${size}`,
-    "-# **Save it:** tap the image, then Save. · **Share it:** Post it to a channel below.",
+    session.allowPost !== false
+      ? "-# **Save it:** tap the image, then Save. · **Share it:** Post it to a channel below."
+      : "-# **Save it:** press-and-hold (mobile) or right-click (desktop) the image to download.",
   ];
   if (over) {
     lines.push("-# ⚠️ Over Discord's 256 KB custom-emoji limit — reopen editing and try a smaller size.");
   }
 
-  const actions = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder()
-      .setCustomId(cid("post", token))
-      .setLabel("Post to channel")
-      .setEmoji("📤")
-      .setStyle(ButtonStyle.Primary),
+  const actions = new ActionRowBuilder<ButtonBuilder>();
+  if (session.allowPost !== false) {
+    actions.addComponents(
+      new ButtonBuilder()
+        .setCustomId(cid("post", token))
+        .setLabel("Post to channel")
+        .setEmoji("📤")
+        .setStyle(ButtonStyle.Primary),
+    );
+  }
+  actions.addComponents(
     new ButtonBuilder()
       .setCustomId(cid("keep_editing", token))
       .setLabel("Keep editing")
@@ -375,7 +414,7 @@ export function buildCachedControlsReply(session: EmojiSession, token: string) {
   const lines = [
     describe(session, result.bytes, result.providerId, result.cached),
     `-# from ${sourceLabel}`,
-    RESULT_HINT,
+    resultHint(session),
   ];
   if (/avatar/i.test(sourceLabel)) {
     lines.push("-# Tip: tap **Upload** to animate your own image, or **Server icon** for this server's picture.");
