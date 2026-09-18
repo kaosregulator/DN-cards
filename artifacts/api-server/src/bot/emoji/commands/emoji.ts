@@ -34,10 +34,11 @@ import {
 import {
   buildCachedControlsReply, buildControls, buildFinishScreen, buildPostPicker,
   buildServerModal, buildTargetChooser, buildUploadModal, describe, parseCid,
-  resultFileName, RESULT_HINT,
+  resultFileName, resultHint, isBoardToken, parseBoardAccess,
 } from "./ui.js";
 import { createSession, endSession, getSession, touchSession, type EmojiSession } from "./session.js";
 import { isSceneAnimation } from "../providers/offline/scene-pack.js";
+import { armBoardCooldown, checkBoardCooldown, memberMayUseBoard } from "./postboard.js";
 
 /** Avatars are fetched large so there's detail to work with before downscaling. */
 const AVATAR_SIZE = 512;
@@ -144,7 +145,7 @@ async function buildReply(session: EmojiSession, token: string) {
   const lines = [
     describe(session, result.bytes, result.providerId, result.cached),
     `-# from ${sourceLabel}`,
-    RESULT_HINT,
+    resultHint(session),
   ];
 
   if (/avatar/i.test(sourceLabel)) {
@@ -296,11 +297,19 @@ export async function handleEmojiInteraction(interaction: Interaction): Promise<
   if (!parsed) return;
 
   const { action, token } = parsed;
+
+  // Persistent `/postboard` message — spin up a private per-user session instead
+  // of mutating the shared channel board.
+  if (isBoardToken(token)) {
+    await handleBoardEntry(interaction, action, token);
+    return;
+  }
+
   const session = getSession(token);
 
   if (!session) {
     await interaction.reply({
-      content: "⌛ That emoji session has expired. Run `/emoji` again to start a new one.",
+      content: "⌛ That emoji session has expired. Run `/emoji` again (or tap the channel board) to start a new one.",
       flags: MessageFlags.Ephemeral,
     });
     return;
@@ -310,7 +319,7 @@ export async function handleEmojiInteraction(interaction: Interaction): Promise<
   // nudge rather than silently hijacking the render.
   if (interaction.user.id !== session.ownerId) {
     await interaction.reply({
-      content: "🔒 These controls belong to whoever ran `/emoji`. Run your own to get a set!",
+      content: "🔒 These controls belong to whoever started this emoji session. Run `/emoji` or tap the channel board to get your own!",
       flags: MessageFlags.Ephemeral,
     });
     return;
@@ -346,8 +355,17 @@ export async function handleEmojiInteraction(interaction: Interaction): Promise<
     await interaction.deferUpdate();
     const updated = touchSession(token, { view: "controls" });
     if (!updated) return;
-    const reply = buildCachedControlsReply(updated, token) ?? await buildReply(updated, token);
-    await interaction.editReply(reply);
+    const cached = buildCachedControlsReply(updated, token);
+    if (cached) {
+      await interaction.editReply(cached);
+      return;
+    }
+    try {
+      await interaction.editReply(await buildReply(updated, token));
+      noteBoardGenerate(updated, interaction.guildId);
+    } catch (err) {
+      await interaction.editReply(failureReply(err, token));
+    }
     return;
   }
 
@@ -397,6 +415,13 @@ export async function handleEmojiInteraction(interaction: Interaction): Promise<
   }
 
   if (action.startsWith("post") && interaction.isMessageComponent()) {
+    if (session.allowPost === false) {
+      await interaction.reply({
+        content: "💾 This board is save-only — press-and-hold or right-click the image to download.",
+        flags: MessageFlags.Ephemeral,
+      }).catch(() => {});
+      return;
+    }
     await handlePostAction(interaction, session, token, action);
     return;
   }
@@ -414,8 +439,114 @@ export async function handleEmojiInteraction(interaction: Interaction): Promise<
 
   try {
     await interaction.editReply(await buildReply(updated, token));
+    noteBoardGenerate(updated, interaction.guildId);
   } catch (err) {
     await interaction.editReply(failureReply(err, token));
+  }
+}
+
+/**
+ * Someone tapped the persistent `/postboard` message.
+ *
+ * Create a fresh private session for them (Post disabled), then either open a
+ * modal or reply ephemerally with the next step — never edit the public board.
+ */
+async function handleBoardEntry(
+  interaction: MessageComponentInteraction | ModalSubmitInteraction,
+  action: string,
+  boardToken: string,
+): Promise<void> {
+  if (!interaction.isMessageComponent()) return;
+
+  const guildId = interaction.guildId;
+  if (!guildId) {
+    await interaction.reply({
+      content: "❌ The emoji board only works inside a server.",
+      flags: MessageFlags.Ephemeral,
+    }).catch(() => {});
+    return;
+  }
+
+  const access = parseBoardAccess(boardToken);
+  const member = interaction.member && "roles" in interaction.member
+    ? interaction.member as import("discord.js").GuildMember
+    : null;
+  const gate = memberMayUseBoard(member, access, {
+    isGuildOwner: interaction.guild?.ownerId === interaction.user.id,
+    isAdministrator: interaction.memberPermissions?.has("Administrator") ?? false,
+  });
+  if (!gate.ok) {
+    await interaction.reply({ content: gate.message, flags: MessageFlags.Ephemeral }).catch(() => {});
+    return;
+  }
+
+  // Cooldown is armed after generate — browsing / picking a target stays free.
+  const cd = checkBoardCooldown(guildId, interaction.user.id);
+  if (!cd.ok) {
+    await interaction.reply({
+      content: cd.message ?? "⏳ You're on cooldown.",
+      flags: MessageFlags.Ephemeral,
+    }).catch(() => {});
+    return;
+  }
+
+  const animation = defaultAnimation();
+  if (!animation) {
+    await interaction.reply({
+      content: "🛠️ The emoji generator isn't set up on this server yet. An admin needs to run MakeEmoji discovery first.",
+      flags: MessageFlags.Ephemeral,
+    }).catch(() => {});
+    return;
+  }
+
+  const created = createSession({
+    image: null,
+    ownerId: interaction.user.id,
+    sourceLabel: null,
+    animation,
+    format: "gif",
+    view: "target",
+    allowPost: false,
+    needsEphemeralStart: true,
+  });
+  const token = created.token;
+
+  // Upload / server need a modal first — the modal customId carries the new
+  // session token, and needsEphemeralStart makes the submit reply privately.
+  if (action === "upload" && interaction.isButton()) {
+    await interaction.showModal(buildUploadModal(token)).catch(() => {});
+    return;
+  }
+  if (action === "pick_server" && interaction.isButton()) {
+    await interaction.showModal(buildServerModal(token)).catch(() => {});
+    return;
+  }
+
+  if (action === "pick_fav" && interaction.isButton()) {
+    touchSession(token, { styleFilter: "favorites", stylePage: 0, styleFocus: null });
+    await handleTargetPick(interaction, token, "me");
+    return;
+  }
+  if (action === "pick_me" && interaction.isButton()) {
+    await handleTargetPick(interaction, token, "me");
+    return;
+  }
+  if (action === "pick_user" && interaction.isUserSelectMenu()) {
+    await handleTargetPick(interaction, token, "member");
+    return;
+  }
+
+  // Unknown board action — drop the unused session and ignore.
+  endSession(token);
+}
+
+/**
+ * Arm the postboard per-user cooldown after a successful generate.
+ * Browsing never arms it; only a finished emoji does.
+ */
+function noteBoardGenerate(session: EmojiSession, guildId: string | null): void {
+  if (session.allowPost === false && guildId) {
+    armBoardCooldown(guildId, session.ownerId);
   }
 }
 
@@ -458,7 +589,7 @@ async function handleTargetPick(
     return;
   }
 
-  await interaction.deferUpdate();
+  await beginPrivateOrUpdate(interaction, token);
   await enterStyleBrowser(interaction, token, source);
 }
 
@@ -504,8 +635,28 @@ async function handleServerModal(
     return;
   }
 
-  await interaction.deferUpdate();
+  await beginPrivateOrUpdate(interaction, token);
   await enterStyleBrowser(interaction, token, source);
+}
+
+/**
+ * Defer the interaction for a private reply when this is a brand-new postboard
+ * session; otherwise defer an in-place update of the existing dashboard message.
+ *
+ * Postboard entry must never `update` the public channel message — that would
+ * steal the shared board from everyone else.
+ */
+async function beginPrivateOrUpdate(
+  interaction: MessageComponentInteraction | ModalSubmitInteraction,
+  token: string,
+): Promise<void> {
+  const session = getSession(token);
+  if (session?.needsEphemeralStart) {
+    touchSession(token, { needsEphemeralStart: false });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    return;
+  }
+  await interaction.deferUpdate();
 }
 
 /**
@@ -571,6 +722,7 @@ async function handleTargetAction(
     });
     if (!updated) return;
     await interaction.editReply(await buildReply(updated, token));
+    noteBoardGenerate(updated, interaction.guildId);
   } catch (err) {
     await interaction.editReply(failureReply(err, token));
   }
@@ -696,7 +848,7 @@ async function handleUploadAction(
     return;
   }
 
-  await interaction.deferUpdate();
+  await beginPrivateOrUpdate(interaction, token);
 
   try {
     await enterStyleBrowser(interaction, token, {
@@ -782,6 +934,7 @@ async function handleStylesAction(
     if (!updated) return;
     try {
       await interaction.editReply(await buildReply(updated, token));
+      noteBoardGenerate(updated, interaction.guildId);
     } catch (err) {
       await interaction.editReply(failureReply(err, token));
     }
@@ -810,6 +963,7 @@ async function handleStylesAction(
     }
     try {
       await interaction.editReply(await buildReply(updated, token));
+      noteBoardGenerate(updated, interaction.guildId);
     } catch (err) {
       await interaction.editReply(failureReply(err, token));
     }

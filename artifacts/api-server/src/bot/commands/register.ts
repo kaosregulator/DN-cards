@@ -4,7 +4,7 @@ import {
   type SlashCommandSubcommandsOnlyBuilder,
 } from "discord.js";
 import { buildAfkCommandJson, buildAfkSetupCommandJson } from "../afk/commands.js";
-import { buildEmojiCommandJson } from "../emoji/commands/definition.js";
+import { buildEmojiCommandJson, buildPostboardCommandJson } from "../emoji/commands/definition.js";
 import { getRaidFrames } from "../cards/frames.js";
 import {
   buildMaterialChoices, buildWallpaperChoices, buildCanvasChoices, BUILD_LIMITS,
@@ -50,6 +50,7 @@ function buildLegacyCommands() {
       .addUserOption(o => o.setName("user").setDescription("View another member's rank"))),
 
     buildEmojiCommandJson(),
+    buildPostboardCommandJson(),
 
     cmd("info", "Details, worth, and drop chance", s => s
       .addStringOption(o => o.setName("name").setDescription("Name to look up").setRequired(true).setAutocomplete(true))),
@@ -533,6 +534,7 @@ function buildLegacyCommands() {
       .addChannelOption(o => o.setName("channel").setDescription("Channel to post the calculator in").setRequired(true))
       .addChannelOption(o => o.setName("result_channel").setDescription("Optional channel to post calculation results in").setRequired(false))),
 
+    // /postboard is registered via buildPostboardCommandJson() alongside /emoji.
 
     // ── /battle (user, Card Battle System) ────────────────────────────────────
     cmd("battle", "Card battles — fight, raids, sieges, stats & leaderboards", s => s
@@ -803,6 +805,6 @@ export const ADMIN_HUB_COMMANDS = new Set([
   "takeback", "takeshards", "addcard", "createcardfrommttv", "createcardfrom", "library", "editcard", "editimage", "dashboard", "collectorrole",
   "battleforceend",
   "rarity", "embed", "event", "edituser", "giveall", "editpack",
-  "postcalculator", "massrole",
+  "postcalculator", "postboard", "massrole",
   "progression_default", "progression_card",
 ]);

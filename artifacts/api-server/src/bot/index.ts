@@ -952,7 +952,7 @@ export async function startBot() {
     "whisper", "adminsecret", "echo", "afk", "afksetup", "begin", "show_shiny",
     "collection_hub", "hq", "hqadmin", "hqbuild",
     "valuehelp", "valuelist", "info_mttv", "giveall", "editpack", "postcalculator",
-    "massrole", "emoji",
+    "postboard", "massrole", "emoji",
   ]);
   const unmapped = buildCommands()
     .map(c => internalCommandName(c.name))

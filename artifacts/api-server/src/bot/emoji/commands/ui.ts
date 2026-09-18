@@ -42,6 +42,15 @@ export function resultFileName(buffer: Buffer, format: EmojiFormat): string {
 export const RESULT_HINT =
   "-# Tap the preview to open it · press-and-hold (mobile) or right-click (desktop) to save · **Post** drops it into a channel.";
 
+/** Same as RESULT_HINT but without Post — used by the shared channel postboard. */
+export const RESULT_HINT_SAVE_ONLY =
+  "-# Tap the preview to open it · press-and-hold (mobile) or right-click (desktop) to save.";
+
+/** Hint line for the current session (Post only when the flow allows it). */
+export function resultHint(session: EmojiSession): string {
+  return session.allowPost !== false ? RESULT_HINT : RESULT_HINT_SAVE_ONLY;
+}
+
 /**
  * Opening screen: what do you want to animate?
  *
@@ -53,6 +62,10 @@ export const RESULT_HINT =
  * Picking any of them loads the source and drops straight into the style
  * browser, so the whole flow is target → styles → generate with no menus in
  * between.
+ *
+ * The same layout is posted publicly by `/postboard` with {@link BOARD_TOKEN}:
+ * each clicker gets their own private session so many people can use one board
+ * at once without stealing each other's controls.
  */
 export function buildTargetChooser(token: string) {
   const memberRow = new ActionRowBuilder<UserSelectMenuBuilder>().addComponents(
@@ -96,6 +109,99 @@ export function buildTargetChooser(token: string) {
     embeds: [],
     files: [],
     components: [memberRow, otherRow] as unknown as ActionRowBuilder<never>[],
+  };
+}
+
+/**
+ * Sentinel / encoded token on the persistent `/postboard` message.
+ *
+ * Not a real session key — interacting with these components spins up a fresh
+ * per-user session and replies ephemerally so the public board never changes.
+ *
+ * Legacy posts use plain `board`. New posts encode optional role gates as
+ * `b`, `b.w{roleId}`, `b.x{roleId}`, or `b.w{roleId}.x{roleId}` so access
+ * rules survive bot restarts without a database row.
+ */
+export const BOARD_TOKEN = "board";
+
+export interface BoardAccess {
+  allowRoleIds: string[];
+  blockRoleIds: string[];
+}
+
+/** True when a customId token belongs to the shared channel board (not a session). */
+export function isBoardToken(token: string): boolean {
+  return token === BOARD_TOKEN || token === "b" || token.startsWith("b.");
+}
+
+/** Encode optional allow/block role ids into a board customId token. */
+export function encodeBoardToken(access: BoardAccess = { allowRoleIds: [], blockRoleIds: [] }): string {
+  const parts = ["b"];
+  for (const id of access.allowRoleIds) {
+    if (/^\d{1,25}$/.test(id)) parts.push(`w${id}`);
+  }
+  for (const id of access.blockRoleIds) {
+    if (/^\d{1,25}$/.test(id)) parts.push(`x${id}`);
+  }
+  const token = parts.length === 1 ? "b" : parts.join(".");
+  // Discord custom_id max is 100; longest action prefix here is `emoji:pick_server:`.
+  if (`emoji:pick_server:${token}`.length > 100) {
+    throw new Error("Board access token too long for Discord customIds");
+  }
+  return token;
+}
+
+/** Parse allow/block role ids from a board token (including legacy `board`). */
+export function parseBoardAccess(token: string): BoardAccess {
+  if (token === BOARD_TOKEN || token === "b") {
+    return { allowRoleIds: [], blockRoleIds: [] };
+  }
+  if (!token.startsWith("b.")) return { allowRoleIds: [], blockRoleIds: [] };
+  const allowRoleIds: string[] = [];
+  const blockRoleIds: string[] = [];
+  for (const part of token.split(".").slice(1)) {
+    if (part.startsWith("w") && /^\d{1,25}$/.test(part.slice(1))) {
+      allowRoleIds.push(part.slice(1));
+    } else if (part.startsWith("x") && /^\d{1,25}$/.test(part.slice(1))) {
+      blockRoleIds.push(part.slice(1));
+    }
+  }
+  return { allowRoleIds, blockRoleIds };
+}
+
+/**
+ * Public channel board — same controls as `/emoji`, with how-to copy for a
+ * live shared board. Pass {@link BoardAccess} to gate who may tap it.
+ */
+export function buildPublicBoard(access: BoardAccess = { allowRoleIds: [], blockRoleIds: [] }) {
+  const token = encodeBoardToken(access);
+  const chooser = buildTargetChooser(token);
+
+  const accessLines: string[] = [];
+  if (access.allowRoleIds.length > 0) {
+    accessLines.push(`-# **Who can use it:** ${access.allowRoleIds.map(id => `<@&${id}>`).join(", ")} (plus admins)`);
+  }
+  if (access.blockRoleIds.length > 0) {
+    accessLines.push(`-# **Blocked:** ${access.blockRoleIds.map(id => `<@&${id}>`).join(", ")}`);
+  }
+
+  return {
+    ...chooser,
+    content: [
+      "## 🎨 Live emoji board",
+      "Make an animated emoji right here — everyone can use this board at the same time.",
+      "",
+      "**How to use**",
+      "1. Pick **who/what** to animate (member, your avatar, upload, or server icon).",
+      "2. Browse styles on the private board that opens just for you.",
+      "3. Apply a style, tweak settings if you want, then **Done**.",
+      "4. **Save:** press-and-hold (mobile) or right-click (desktop) the image to download.",
+      "",
+      "-# Your session is private — other people won't see your picks. There's no Post-to-channel on this board.",
+      "-# A short cooldown starts **after** your emoji is generated, so browsing stays free.",
+      "-# ⭐ **Favorites** jumps to your starred styles on your avatar — tap **Target** there to switch subject.",
+      ...accessLines,
+    ].join("\n"),
   };
 }
 
@@ -239,21 +345,27 @@ function actionsRow(session: EmojiSession, token: string): ActionRowBuilder<Butt
       .setStyle(f === session.format ? ButtonStyle.Primary : ButtonStyle.Secondary),
   );
 
-  return new ActionRowBuilder<ButtonBuilder>().addComponents(
-    ...formatButtons,
-    new ButtonBuilder()
-      .setCustomId(cid("post", token))
-      .setLabel("Post")
-      .setEmoji("📤")
-      // Nothing to post until a generation has succeeded.
-      .setDisabled(!session.lastResult)
-      .setStyle(ButtonStyle.Secondary),
+  const buttons = [...formatButtons];
+  if (session.allowPost !== false) {
+    buttons.push(
+      new ButtonBuilder()
+        .setCustomId(cid("post", token))
+        .setLabel("Post")
+        .setEmoji("📤")
+        // Nothing to post until a generation has succeeded.
+        .setDisabled(!session.lastResult)
+        .setStyle(ButtonStyle.Secondary),
+    );
+  }
+  buttons.push(
     new ButtonBuilder()
       .setCustomId(cid("done", token))
       .setLabel("Done")
       .setEmoji("✅")
       .setStyle(ButtonStyle.Success),
   );
+
+  return new ActionRowBuilder<ButtonBuilder>().addComponents(...buttons);
 }
 
 /**
@@ -311,18 +423,25 @@ export function buildFinishScreen(session: EmojiSession, token: string) {
   const lines = [
     "## ✅ Your emoji is ready",
     `**${animationLabel(session)}** · \`${session.format.toUpperCase()}\` · ${size}`,
-    "-# **Save it:** tap the image, then Save. · **Share it:** Post it to a channel below.",
+    session.allowPost !== false
+      ? "-# **Save it:** tap the image, then Save. · **Share it:** Post it to a channel below."
+      : "-# **Save it:** press-and-hold (mobile) or right-click (desktop) the image to download.",
   ];
   if (over) {
     lines.push("-# ⚠️ Over Discord's 256 KB custom-emoji limit — reopen editing and try a smaller size.");
   }
 
-  const actions = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder()
-      .setCustomId(cid("post", token))
-      .setLabel("Post to channel")
-      .setEmoji("📤")
-      .setStyle(ButtonStyle.Primary),
+  const actions = new ActionRowBuilder<ButtonBuilder>();
+  if (session.allowPost !== false) {
+    actions.addComponents(
+      new ButtonBuilder()
+        .setCustomId(cid("post", token))
+        .setLabel("Post to channel")
+        .setEmoji("📤")
+        .setStyle(ButtonStyle.Primary),
+    );
+  }
+  actions.addComponents(
     new ButtonBuilder()
       .setCustomId(cid("keep_editing", token))
       .setLabel("Keep editing")
@@ -375,7 +494,7 @@ export function buildCachedControlsReply(session: EmojiSession, token: string) {
   const lines = [
     describe(session, result.bytes, result.providerId, result.cached),
     `-# from ${sourceLabel}`,
-    RESULT_HINT,
+    resultHint(session),
   ];
   if (/avatar/i.test(sourceLabel)) {
     lines.push("-# Tip: tap **Upload** to animate your own image, or **Server icon** for this server's picture.");
