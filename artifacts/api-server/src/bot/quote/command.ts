@@ -37,6 +37,10 @@ import {
   type QuoteLayout,
 } from "./styles.js";
 import { clip, prepareQuoteText } from "./text.js";
+import {
+  buildDualBuilderReply, buildDualPickAEmbed, buildDualPickBEmbed,
+  dualPickARows, dualPickBRows, dualPostCaption, dualPostFiles, renderDualPreviews,
+} from "./dual-ui.js";
 
 const EPHEMERAL = { flags: MessageFlags.Ephemeral } as const;
 const PREVIEW_NAME = "quote-preview.png";
@@ -160,6 +164,7 @@ function builderRows(token: string, session: QuoteSession) {
     new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder().setCustomId(`quote:custom:${token}`).setLabel("Make Your Own").setStyle(ButtonStyle.Secondary).setEmoji("✨"),
       new ButtonBuilder().setCustomId(`quote:edit:${token}`).setLabel("Edit Text").setStyle(ButtonStyle.Secondary).setEmoji("✏️"),
+      new ButtonBuilder().setCustomId(`quote:dualstart:${token}`).setLabel("Target 2 Msgs").setStyle(ButtonStyle.Primary).setEmoji("💬"),
       new ButtonBuilder().setCustomId(`quote:reroll:${token}`).setLabel("Refresh").setStyle(ButtonStyle.Secondary).setEmoji("🔄"),
     ),
     new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -246,6 +251,7 @@ function pickRows(token: string, messages: Message[]) {
   return [
     new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select),
     new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId(`quote:dualstart:${token}`).setLabel("Target 2 Msgs").setStyle(ButtonStyle.Primary).setEmoji("💬"),
       new ButtonBuilder().setCustomId(`quote:customtext:${token}`).setLabel("Type Your Own").setStyle(ButtonStyle.Secondary).setEmoji("✏️"),
       new ButtonBuilder().setCustomId(`quote:close:${token}`).setLabel("Cancel").setStyle(ButtonStyle.Danger),
     ),
@@ -329,6 +335,7 @@ async function openPicker(
       embeds: [embed],
       components: [
         new ActionRowBuilder<ButtonBuilder>().addComponents(
+          new ButtonBuilder().setCustomId(`quote:dualstart:${token}`).setLabel("Target 2 Msgs").setStyle(ButtonStyle.Primary).setEmoji("💬"),
           new ButtonBuilder().setCustomId(`quote:customtext:${token}`).setLabel("Type Your Own").setStyle(ButtonStyle.Primary).setEmoji("✏️"),
           new ButtonBuilder().setCustomId(`quote:close:${token}`).setLabel("Cancel").setStyle(ButtonStyle.Danger),
         ),
@@ -466,9 +473,196 @@ export async function handleQuoteInteraction(
         return;
       }
       session.payload = payload;
+      session.mode = "single";
+      session.payloadB = null;
       session.view = "builder";
       session.lastPng = undefined;
       await interaction.editReply(await buildBuilderReply(token, session)).catch(() => {});
+      return;
+    }
+
+    // ── Dual: Target 2 Msgs ─────────────────────────────────────────────────
+    if (action === "dualstart" && interaction.isButton()) {
+      if (!interaction.channel || !interaction.channel.isTextBased()) return;
+      await interaction.deferUpdate().catch(() => {});
+      const recent = await fetchRecentCandidates(interaction.channel as GuildTextBasedChannel, null, 5);
+      session.mode = "dual";
+      session.payload = null;
+      session.payloadB = null;
+      session.view = "dual-pick-a";
+      session.lastPng = undefined;
+      session.lastDiscordShot = undefined;
+      await interaction.editReply({
+        embeds: [buildDualPickAEmbed(recent.length)],
+        components: dualPickARows(token, recent),
+        files: [],
+      }).catch(() => {});
+      return;
+    }
+
+    if (action === "dualcancel" && interaction.isButton()) {
+      await interaction.deferUpdate().catch(() => {});
+      session.mode = "single";
+      session.payloadB = null;
+      session.lastDiscordShot = undefined;
+      if (session.payload) {
+        session.view = "builder";
+        await interaction.editReply(await buildBuilderReply(token, session)).catch(() => {});
+      } else if (interaction.channel?.isTextBased()) {
+        const recent = await fetchRecentCandidates(interaction.channel as GuildTextBasedChannel, null, 5);
+        session.view = "pick";
+        const embed = new EmbedBuilder()
+          .setColor(0x111111)
+          .setTitle("🖤 Make it a Quote")
+          .setDescription(recent.length
+            ? `Pick one of the **last ${recent.length}** messages, or type your own.`
+            : "No recent text messages — type your own or Target 2 Msgs.")
+          .setFooter({ text: `${BRAND_NAME} · snappy quote cards` });
+        await interaction.editReply({
+          embeds: [embed],
+          components: recent.length ? pickRows(token, recent) : [
+            new ActionRowBuilder<ButtonBuilder>().addComponents(
+              new ButtonBuilder().setCustomId(`quote:dualstart:${token}`).setLabel("Target 2 Msgs").setStyle(ButtonStyle.Primary).setEmoji("💬"),
+              new ButtonBuilder().setCustomId(`quote:customtext:${token}`).setLabel("Type Your Own").setStyle(ButtonStyle.Secondary).setEmoji("✏️"),
+              new ButtonBuilder().setCustomId(`quote:close:${token}`).setLabel("Cancel").setStyle(ButtonStyle.Danger),
+            ),
+          ],
+          files: [],
+        }).catch(() => {});
+      }
+      return;
+    }
+
+    if (action === "dualpicka" && interaction.isStringSelectMenu()) {
+      if (!interaction.channel || !interaction.channel.isTextBased()) return;
+      await interaction.deferUpdate().catch(() => {});
+      const msg = await (interaction.channel as GuildTextBasedChannel).messages.fetch(interaction.values[0]!).catch(() => null);
+      const payload = msg ? payloadFromMessage(msg) : null;
+      if (!payload) {
+        await interaction.editReply({ content: "❌ Couldn't use that message.", embeds: [], components: [], files: [] }).catch(() => {});
+        return;
+      }
+      session.payload = payload;
+      session.payloadB = null;
+      session.mode = "dual";
+      session.view = "dual-pick-b";
+      const recent = await fetchRecentCandidates(interaction.channel as GuildTextBasedChannel, null, 8);
+      await interaction.editReply({
+        embeds: [buildDualPickBEmbed(payload)],
+        components: dualPickBRows(token, recent, payload.messageId),
+        files: [],
+      }).catch(() => {});
+      return;
+    }
+
+    if (action === "dualpicka-back" && interaction.isButton()) {
+      if (!interaction.channel || !interaction.channel.isTextBased()) return;
+      await interaction.deferUpdate().catch(() => {});
+      session.payload = null;
+      session.payloadB = null;
+      session.view = "dual-pick-a";
+      const recent = await fetchRecentCandidates(interaction.channel as GuildTextBasedChannel, null, 5);
+      await interaction.editReply({
+        embeds: [buildDualPickAEmbed(recent.length)],
+        components: dualPickARows(token, recent),
+        files: [],
+      }).catch(() => {});
+      return;
+    }
+
+    if (action === "dualpickb" && interaction.isStringSelectMenu()) {
+      if (!interaction.channel || !interaction.channel.isTextBased()) return;
+      await interaction.deferUpdate().catch(() => {});
+      const msg = await (interaction.channel as GuildTextBasedChannel).messages.fetch(interaction.values[0]!).catch(() => null);
+      const payload = msg ? payloadFromMessage(msg) : null;
+      if (!payload || !session.payload) {
+        await interaction.editReply({ content: "❌ Couldn't use that reply.", embeds: [], components: [], files: [] }).catch(() => {});
+        return;
+      }
+      session.payloadB = payload;
+      session.mode = "dual";
+      session.view = "dual-builder";
+      session.lastPng = undefined;
+      session.lastDiscordShot = undefined;
+      await interaction.editReply(await buildDualBuilderReply(token, session)).catch(() => {});
+      return;
+    }
+
+    if (action === "dualstyle" && interaction.isStringSelectMenu()) {
+      await interaction.deferUpdate().catch(() => {});
+      session.dualStyleId = interaction.values[0]!;
+      session.view = "dual-builder";
+      session.lastPng = undefined;
+      session.lastDiscordShot = undefined;
+      await interaction.editReply(await buildDualBuilderReply(token, session)).catch(() => {});
+      return;
+    }
+
+    if (action === "dualswap" && interaction.isButton()) {
+      await interaction.deferUpdate().catch(() => {});
+      if (session.payload && session.payloadB) {
+        const tmp = session.payload;
+        session.payload = session.payloadB;
+        session.payloadB = tmp;
+        session.lastPng = undefined;
+        session.lastDiscordShot = undefined;
+      }
+      await interaction.editReply(await buildDualBuilderReply(token, session)).catch(() => {});
+      return;
+    }
+
+    if (action === "dualreroll" && interaction.isButton()) {
+      await interaction.deferUpdate().catch(() => {});
+      session.lastPng = undefined;
+      session.lastDiscordShot = undefined;
+      await interaction.editReply(await buildDualBuilderReply(token, session)).catch(() => {});
+      return;
+    }
+
+    if (action === "dualsave" && interaction.isButton()) {
+      await interaction.deferReply(EPHEMERAL).catch(() => {});
+      if (!session.lastPng) await renderDualPreviews(session);
+      const files = dualPostFiles(session);
+      if (!files.length) {
+        await interaction.editReply({ content: "❌ Render failed — try another dual style." }).catch(() => {});
+        return;
+      }
+      await interaction.editReply({
+        content: "💾 **Saved dual quote** — download below" +
+          (session.lastDiscordShot ? " (styled card + Discord screenshot)." : "."),
+        files,
+      }).catch(() => {});
+      return;
+    }
+
+    if (action === "dualpost" && interaction.isButton()) {
+      await interaction.deferReply(EPHEMERAL).catch(() => {});
+      if (!session.lastPng) await renderDualPreviews(session);
+      const files = dualPostFiles(session);
+      if (!files.length || !interaction.channel || !interaction.channel.isTextBased()) {
+        await interaction.editReply({ content: "❌ Couldn't post — render or channel failed." }).catch(() => {});
+        return;
+      }
+      const channel = interaction.channel;
+      if (channel.isDMBased() || !("send" in channel)) {
+        await interaction.editReply({ content: "❌ Can't post here — download instead:", files }).catch(() => {});
+        return;
+      }
+      const posted = await channel.send({
+        content: dualPostCaption(session),
+        files,
+      }).catch((err: unknown) => {
+        logger.warn({ err }, "duo-quote: channel post failed");
+        return null;
+      });
+      if (!posted) {
+        await interaction.editReply({
+          content: "❌ Couldn't post (missing permissions?). Download instead:",
+          files,
+        }).catch(() => {});
+        return;
+      }
+      await interaction.editReply({ content: `✅ Posted → ${posted.url}` }).catch(() => {});
       return;
     }
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { prepareQuoteText, stripDiscordMarkdown, wrapLines } from "../text.js";
 import { QUOTE_STYLES, customFrom, getStyle } from "../styles.js";
+import { DUAL_QUOTE_STYLES, getDualStyle } from "../dual-styles.js";
 
 describe("quote text helpers", () => {
   it("strips common discord markdown", () => {
@@ -40,5 +41,16 @@ describe("quote styles", () => {
     expect(getStyle("bruhh").layout).toBe("bruhh");
     expect(getStyle("ethereal").layout).toBe("ethereal");
     expect(getStyle("miq").layout).toBe("fade-left");
+  });
+});
+
+describe("dual quote styles", () => {
+  it("ships five dual fuse layouts", () => {
+    expect(DUAL_QUOTE_STYLES).toHaveLength(5);
+    expect(getDualStyle("duo-chat").layout).toBe("duo-chat");
+    expect(getDualStyle("duo-versus").layout).toBe("duo-versus");
+    expect(getDualStyle("duo-thread").layout).toBe("duo-thread");
+    expect(getDualStyle("duo-ayoo").layout).toBe("duo-ayoo");
+    expect(getDualStyle("duo-receipts").layout).toBe("duo-receipts");
   });
 });
