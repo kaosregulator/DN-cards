@@ -39,7 +39,7 @@ const SECTIONS: SectionMeta[] = [
   { id: "battle",   emoji: "⚔️", label: "Battles, Raids & Squads",    blurb: "Duels, co-op bosses, teams" },
   { id: "giveaway", emoji: "🎉", label: "Giveaways",                  blurb: "Win prizes through activity" },
   { id: "quests",   emoji: "🎯", label: "Quests & Reputation",        blurb: "Daily/weekly goals, rep, thanks" },
-  { id: "social",   emoji: "🔊", label: "Echo Messages & AFK",        blurb: "Encrypted whispers, away status" },
+  { id: "social",   emoji: "🔊", label: "Quotes, Echo & AFK",         blurb: "Quote cards, encrypted whispers, away status" },
   { id: "admin",    emoji: "🛠️", label: "Admin Toolbox",              blurb: "Setup, config & management (admins)", adminOnly: true },
 ];
 
@@ -294,9 +294,14 @@ const PAGES: Record<HelpSection, PageFn> = {
 
   // ── Echo & AFK ────────────────────────────────────────────────────────────────
   social: (e) => {
-    e.setTitle("🔊 Echo Messages & AFK")
-      .setDescription("Encrypted whispers and away-status tools." + NAV_HINT)
+    e.setTitle("🔊 Quotes, Echo Messages & AFK")
+      .setDescription("Quote cards, encrypted whispers, and away-status tools." + NAV_HINT)
       .addFields(
+        { name: "🖤 Make it a Quote", value:
+          "`/quote` — pick from the last 5 messages, or pass `message_id` / `user` / `text`\n" +
+          "**Right-click a message → Apps → Make it a Quote** — instant quote that message\n" +
+          "9 styles (Classic Fade, Spotlight, Impact, Film…) + **Make Your Own** colors/layout\n" +
+          "Then **Post to Channel** or **Save / Download** the PNG" },
         { name: "🔐 Echo-Whisper", value:
           "`/whisper user:@Member` — send an encrypted message only that member can reveal\n" +
           "`/admin_secret` — post an encrypted staff message only authorized roles can reveal\n" +

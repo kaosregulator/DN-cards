@@ -5,6 +5,7 @@ import {
 } from "discord.js";
 import { buildAfkCommandJson, buildAfkSetupCommandJson } from "../afk/commands.js";
 import { buildEmojiCommandJson, buildPostboardCommandJson } from "../emoji/commands/definition.js";
+import { buildQuoteCommandJson, buildQuoteContextMenuJson } from "../quote/definition.js";
 import { getRaidFrames } from "../cards/frames.js";
 import {
   buildMaterialChoices, buildWallpaperChoices, buildCanvasChoices, BUILD_LIMITS,
@@ -51,6 +52,8 @@ function buildLegacyCommands() {
 
     buildEmojiCommandJson(),
     buildPostboardCommandJson(),
+    buildQuoteCommandJson(),
+    buildQuoteContextMenuJson(),
 
     cmd("info", "Details, worth, and drop chance", s => s
       .addStringOption(o => o.setName("name").setDescription("Name to look up").setRequired(true).setAutocomplete(true))),
@@ -678,7 +681,7 @@ function buildLegacyCommands() {
 }
 
 
-type CommandJson = ReturnType<SlashCommandBuilder["toJSON"]>;
+type CommandJson = ReturnType<SlashCommandBuilder["toJSON"]> & { type?: number };
 
 // ── Clean public command names ───────────────────────────────────────────────
 // Maps a command's INTERNAL name (what handlers switch on) to the clean,
