@@ -7,6 +7,7 @@ import { getCanvas, type CanvasMod, type Ctx } from "../animations/engine.js";
 import { queueRender } from "../animations/render-queue.js";
 import { wrapLines } from "./text.js";
 import type { DualQuoteTheme } from "./dual-styles.js";
+import { paintDuoVibeLayout } from "./render-dual-vibes.js";
 import { logger } from "../../lib/logger.js";
 
 export interface DualLine {
@@ -577,6 +578,11 @@ export async function renderDualQuoteCard(input: DualQuoteRenderInput): Promise<
           break;
         case "duo-notepad":
           paintDuoNotepad(ctx, theme, input.a, input.b, imgA, imgB);
+          break;
+        default:
+          if (!paintDuoVibeLayout(theme.layout, ctx, theme, input.a, input.b, imgA, imgB)) {
+            paintDuoClassic(ctx, theme, input.a, input.b, imgA, imgB);
+          }
           break;
       }
 

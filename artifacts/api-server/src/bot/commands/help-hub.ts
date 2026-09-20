@@ -300,7 +300,7 @@ const PAGES: Record<HelpSection, PageFn> = {
         { name: "🖤 Make it a Quote", value:
           "`/quote` — pick from the last 5 messages, or pass `message_id` / `user` / `text`\n" +
           "**Right-click a message → Apps → Make it a Quote** — instant quote that message\n" +
-          "**Target 2 Msgs** — fuse a setup + reply into one dual card (Classic / Reaction / Thread / Evidence / Notepad)\n" +
+          "**Target 2 Msgs** — fuse a setup + reply into one dual card (14 dual styles)\n" +
           "Then **Post to Channel** or **Save / Download** the PNG" },
         { name: "🔐 Echo-Whisper", value:
           "`/whisper user:@Member` — send an encrypted message only that member can reveal\n" +

@@ -45,12 +45,21 @@ describe("quote styles", () => {
 });
 
 describe("dual quote styles", () => {
-  it("ships five dual fuse layouts from the design sheet", () => {
-    expect(DUAL_QUOTE_STYLES).toHaveLength(5);
+  it("ships classic set + vibe set (14 dual layouts)", () => {
+    expect(DUAL_QUOTE_STYLES).toHaveLength(14);
     expect(getDualStyle("duo-classic").layout).toBe("duo-classic");
     expect(getDualStyle("duo-reaction").layout).toBe("duo-reaction");
     expect(getDualStyle("duo-thread").layout).toBe("duo-thread");
     expect(getDualStyle("duo-evidence").layout).toBe("duo-evidence");
     expect(getDualStyle("duo-notepad").layout).toBe("duo-notepad");
+    expect(getDualStyle("duo-bubble").layout).toBe("duo-bubble");
+    expect(getDualStyle("duo-terminal").layout).toBe("duo-terminal");
+    expect(getDualStyle("duo-polaroid").layout).toBe("duo-polaroid");
+    expect(getDualStyle("duo-sticky").layout).toBe("duo-sticky");
+    expect(getDualStyle("duo-imessage").layout).toBe("duo-imessage");
+    expect(getDualStyle("duo-newspaper").layout).toBe("duo-newspaper");
+    expect(getDualStyle("duo-receipt").layout).toBe("duo-receipt");
+    expect(getDualStyle("duo-chatlog").layout).toBe("duo-chatlog");
+    expect(getDualStyle("duo-comic").layout).toBe("duo-comic");
   });
 });
