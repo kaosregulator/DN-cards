@@ -39,7 +39,7 @@ import {
 import { clip, prepareQuoteText } from "./text.js";
 import {
   buildDualBuilderReply, buildDualPickAEmbed, buildDualPickBEmbed,
-  dualPickARows, dualPickBRows, dualPostCaption, dualPostFiles, renderDualPreviews,
+  dualPickARows, dualPickBRows, dualPostFiles, dualPostPayload, renderDualPreviews,
 } from "./dual-ui.js";
 
 const EPHEMERAL = { flags: MessageFlags.Ephemeral } as const;
@@ -638,27 +638,24 @@ export async function handleQuoteInteraction(
     if (action === "dualpost" && interaction.isButton()) {
       await interaction.deferReply(EPHEMERAL).catch(() => {});
       if (!session.lastPng) await renderDualPreviews(session);
-      const files = dualPostFiles(session);
-      if (!files.length || !interaction.channel || !interaction.channel.isTextBased()) {
+      const payload = dualPostPayload(session);
+      if (!payload.files.length || !interaction.channel || !interaction.channel.isTextBased()) {
         await interaction.editReply({ content: "❌ Couldn't post — render or channel failed." }).catch(() => {});
         return;
       }
       const channel = interaction.channel;
       if (channel.isDMBased() || !("send" in channel)) {
-        await interaction.editReply({ content: "❌ Can't post here — download instead:", files }).catch(() => {});
+        await interaction.editReply({ content: "❌ Can't post here — download instead:", files: payload.files }).catch(() => {});
         return;
       }
-      const posted = await channel.send({
-        content: dualPostCaption(session),
-        files,
-      }).catch((err: unknown) => {
+      const posted = await channel.send(payload).catch((err: unknown) => {
         logger.warn({ err }, "duo-quote: channel post failed");
         return null;
       });
       if (!posted) {
         await interaction.editReply({
           content: "❌ Couldn't post (missing permissions?). Download instead:",
-          files,
+          files: payload.files,
         }).catch(() => {});
         return;
       }

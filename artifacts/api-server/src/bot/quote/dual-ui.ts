@@ -173,22 +173,30 @@ export async function buildDualBuilderReply(token: string, session: QuoteSession
       `**${a?.displayName ?? "?"}** said… then **${b?.displayName ?? "?"}** came back.\n` +
       `Style: **${theme.label}** — ${theme.description}\n\n` +
       (discordShot
-        ? "📸 Also attached: a **Discord chat screenshot** of both msgs."
+        ? "📸 Scroll down — Discord chat screenshot of both msgs is below."
         : "💬 This style *is* the Discord chat screenshot."),
     )
     .setFooter({ text: `${BRAND_NAME} · ayoo they really said that` });
 
   const files: AttachmentBuilder[] = [];
+  const embeds: EmbedBuilder[] = [embed];
   if (main) {
     files.push(new AttachmentBuilder(main, { name: PREVIEW_NAME }));
     embed.setImage(`attachment://${PREVIEW_NAME}`);
   }
   if (discordShot) {
     files.push(new AttachmentBuilder(discordShot, { name: DISCORD_SHOT_NAME }));
+    embeds.push(
+      new EmbedBuilder()
+        .setColor(0x5865f2)
+        .setTitle("💬 Discord chat screenshot")
+        .setDescription("The raw exchange — how it looked in chat.")
+        .setImage(`attachment://${DISCORD_SHOT_NAME}`),
+    );
   }
 
   return {
-    embeds: [embed],
+    embeds,
     components: dualBuilderRows(token, session),
     files,
   };
@@ -203,6 +211,35 @@ export function dualPostFiles(session: QuoteSession): AttachmentBuilder[] {
     files.push(new AttachmentBuilder(session.lastDiscordShot, { name: DISCORD_SHOT_NAME }));
   }
   return files;
+}
+
+/** Public channel post: caption + styled card embed, plus Discord-shot embed when present. */
+export function dualPostPayload(session: QuoteSession): {
+  content: string;
+  embeds: EmbedBuilder[];
+  files: AttachmentBuilder[];
+} {
+  const files = dualPostFiles(session);
+  const theme = getDualStyle(session.dualStyleId);
+  const embeds: EmbedBuilder[] = [];
+  if (session.lastPng) {
+    embeds.push(
+      new EmbedBuilder()
+        .setColor(0x111111)
+        .setTitle(`${theme.emoji} Dual Quote · ${theme.label}`)
+        .setImage(`attachment://${DUAL_QUOTE_FILE}`)
+        .setFooter({ text: dualPostCaption(session).replace(/\*\*/g, "") }),
+    );
+  }
+  if (session.lastDiscordShot) {
+    embeds.push(
+      new EmbedBuilder()
+        .setColor(0x5865f2)
+        .setTitle("💬 Discord chat screenshot")
+        .setImage(`attachment://${DISCORD_SHOT_NAME}`),
+    );
+  }
+  return { content: dualPostCaption(session), embeds, files };
 }
 
 export function dualPostCaption(session: QuoteSession): string {
