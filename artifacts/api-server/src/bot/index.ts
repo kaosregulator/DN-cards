@@ -247,6 +247,16 @@ export async function startBot() {
         return;
       }
 
+      // ── /quote builder (quote:* selects/buttons/modals) ────────────────────
+      if (
+        (interaction.isMessageComponent() || interaction.isModalSubmit()) &&
+        interaction.customId.startsWith("quote:")
+      ) {
+        const { handleQuoteInteraction } = await import("./quote/command.js");
+        await handleQuoteInteraction(interaction);
+        return;
+      }
+
       // ── Wild Mini-Game gameplay buttons (mg:* customIds) ───────────────────
       // Routed early so the encounter owns its own buttons. `mg:` is distinct
       // from the `minigames:` admin panel prefix below.
@@ -868,6 +878,15 @@ export async function startBot() {
       }
 
       // ── Slash commands ─────────────────────────────────────────────────────
+      // ── Message context menus (Apps → Make it a Quote) ────────────────────
+      if (interaction.isMessageContextMenuCommand()) {
+        if (interaction.commandName === "Make it a Quote") {
+          const { handleQuoteContextMenu } = await import("./quote/command.js");
+          await handleQuoteContextMenu(interaction);
+        }
+        return;
+      }
+
       if (!interaction.isChatInputCommand()) return;
       // Translate the clean, registered command name (e.g. "battle_admin") back
       // to its internal handler name (e.g. "battleadmin") so every branch and
@@ -907,6 +926,9 @@ export async function startBot() {
       } else if (cmd === "show_shiny") {
         const { handleShowShinyCommand } = await import("./commands/show-shiny.js");
         await handleShowShinyCommand(interaction);
+      } else if (cmd === "quote") {
+        const { handleQuoteCommand } = await import("./quote/command.js");
+        await handleQuoteCommand(interaction);
       } else if (cmd === "collection_hub") {
         const { handleCollectionHubCommand } = await import("./commands/collection-hub.js");
         await handleCollectionHubCommand(interaction);
@@ -950,11 +972,15 @@ export async function startBot() {
     "battle", "battleadmin", "market", "squad", "raid", "raidadmin",
     "giveaway",
     "whisper", "adminsecret", "echo", "afk", "afksetup", "begin", "show_shiny",
+    "quote",
     "collection_hub", "hq", "hqadmin", "hqbuild",
     "valuehelp", "valuelist", "info_mttv", "giveall", "editpack", "postcalculator",
     "postboard", "massrole", "emoji",
   ]);
+  // Context menus (type 2/3) are routed separately — only chat-input names must
+  // appear in routedInternalNames. ApplicationCommandType.ChatInput === 1.
   const unmapped = buildCommands()
+    .filter(c => (c.type ?? 1) === 1)
     .map(c => internalCommandName(c.name))
     .filter(name => !routedInternalNames.has(name));
   if (unmapped.length > 0) {
