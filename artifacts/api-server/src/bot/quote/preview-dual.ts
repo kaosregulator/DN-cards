@@ -40,18 +40,18 @@ async function main() {
   const avA = await makeAvatar("#F2C9A0", "A");
   const avB = await makeAvatar("#A0C4F2", "B");
   const a = {
-    text: "i never said that",
-    displayName: "le bob when?",
-    handle: "lebob",
+    text: "This is a sample message for the dual quote preview.",
+    displayName: "Username 1",
+    handle: "user1",
     avatarUrl: avA,
     createdAt: new Date("2026-09-20T12:34:00"),
   };
   const b = {
-    text: "bro the screenshots are right there",
-    displayName: "kaos",
-    handle: "kaos",
+    text: "And this is the reply that makes the whole thing funny.",
+    displayName: "Username 2",
+    handle: "user2",
     avatarUrl: avB,
-    createdAt: new Date("2026-09-20T12:35:00"),
+    createdAt: new Date("2026-09-20T12:35:01"),
   };
 
   for (const theme of DUAL_QUOTE_STYLES) {

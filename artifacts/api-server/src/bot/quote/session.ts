@@ -44,7 +44,7 @@ export interface QuoteSession {
   customTheme: QuoteTheme;
   view: QuoteView;
   lastPng?: Buffer;
-  /** Extra Discord-chat screenshot when dual style isn't already duo-chat. */
+  /** Extra Classic companion when dual style isn't already duo-classic. */
   lastDiscordShot?: Buffer;
   expiresAt: number;
 }

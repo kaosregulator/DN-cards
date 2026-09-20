@@ -1,11 +1,11 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Dual-quote renderer — fuse two Discord messages into one funny card.
+// Dual-quote renderer — Classic / Reaction / Thread / Evidence / Notepad.
+// Matches the DUAL QUOTE STYLES design sheet (two Discord msgs, one card).
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { getCanvas, type CanvasMod, type Ctx } from "../animations/engine.js";
 import { queueRender } from "../animations/render-queue.js";
-import { BRAND_NAME } from "../help-banners.js";
-import { fitFontSize, wrapLines } from "./text.js";
+import { wrapLines } from "./text.js";
 import type { DualQuoteTheme } from "./dual-styles.js";
 import { logger } from "../../lib/logger.js";
 
@@ -56,7 +56,6 @@ function drawCover(ctx: Ctx, img: Img, dx: number, dy: number, dw: number, dh: n
 
 function drawCircleAvatar(
   ctx: Ctx, img: Img | null, cx: number, cy: number, r: number,
-  grayscale = false,
 ): void {
   ctx.save();
   ctx.beginPath();
@@ -65,18 +64,14 @@ function drawCircleAvatar(
   ctx.clip();
   if (img) {
     drawCover(ctx, img, cx - r, cy - r, r * 2, r * 2);
-    if (grayscale) {
-      const data = ctx.getImageData(cx - r, cy - r, r * 2, r * 2);
-      const px = data.data;
-      for (let i = 0; i < px.length; i += 4) {
-        const g = (px[i]! * 0.299 + px[i + 1]! * 0.587 + px[i + 2]! * 0.114) | 0;
-        px[i] = g; px[i + 1] = g; px[i + 2] = g;
-      }
-      ctx.putImageData(data, cx - r, cy - r);
-    }
   } else {
-    ctx.fillStyle = "#444";
+    ctx.fillStyle = "#5865F2";
     ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+    ctx.fillStyle = "#FFF";
+    ctx.font = `700 ${Math.max(12, r * 0.7)}px Arial, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("D", cx, cy + 1);
   }
   ctx.restore();
 }
@@ -92,10 +87,6 @@ function roundRect(ctx: Ctx, x: number, y: number, w: number, h: number, r: numb
   ctx.closePath();
 }
 
-function handleOf(line: DualLine): string {
-  return line.handle.startsWith("@") ? line.handle : `@${line.handle}`;
-}
-
 function formatDiscordTime(d: Date): string {
   const h = d.getHours();
   const m = d.getMinutes().toString().padStart(2, "0");
@@ -104,330 +95,457 @@ function formatDiscordTime(d: Date): string {
   return `Today at ${hr}:${m} ${ap}`;
 }
 
-// ── Discord Chat Screenshot ───────────────────────────────────────────────────
-function paintDuoChat(
-  ctx: Ctx, theme: DualQuoteTheme, a: DualLine, b: DualLine,
-  imgA: Img | null, imgB: Img | null,
-): void {
-  const { width: w, height: h } = theme;
-  ctx.fillStyle = "#1E1F22";
-  ctx.fillRect(0, 0, w, h);
-
-  // Channel header strip
-  ctx.fillStyle = "#2B2D31";
-  ctx.fillRect(0, 0, w, 48);
-  ctx.fillStyle = "#F2F3F5";
-  ctx.font = `700 16px Arial, sans-serif`;
-  ctx.textAlign = "left";
-  ctx.fillText("#  receipts", 20, 30);
-  ctx.fillStyle = theme.mutedColor;
-  ctx.font = `400 12px Arial, sans-serif`;
-  ctx.fillText("2 messages · quote fuse", 120, 30);
-
-  const cardX = 16, cardY = 60, cardW = w - 32, cardH = h - 76;
-  roundRect(ctx, cardX, cardY, cardW, cardH, 12);
-  ctx.fillStyle = theme.background;
-  ctx.fill();
-
-  drawChatMessage(ctx, theme, a, imgA, cardX + 20, cardY + 24, cardW - 40);
-  // Divider
-  ctx.strokeStyle = "rgba(255,255,255,0.06)";
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(cardX + 70, cardY + cardH / 2);
-  ctx.lineTo(cardX + cardW - 20, cardY + cardH / 2);
-  ctx.stroke();
-  drawChatMessage(ctx, theme, b, imgB, cardX + 20, cardY + cardH / 2 + 16, cardW - 40);
-
-  // Footer watermark
-  ctx.fillStyle = "rgba(255,255,255,0.25)";
-  ctx.font = `400 11px Arial, sans-serif`;
-  ctx.textAlign = "right";
-  ctx.fillText(BRAND_NAME, w - 24, h - 12);
+function formatEvidenceStamp(d: Date): string {
+  const months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+  const mon = months[d.getMonth()]!;
+  const day = d.getDate().toString().padStart(2, "0");
+  const yr = d.getFullYear();
+  const hh = d.getHours().toString().padStart(2, "0");
+  const mm = d.getMinutes().toString().padStart(2, "0");
+  const ss = d.getSeconds().toString().padStart(2, "0");
+  return `${mon} ${day} ${yr} ${hh}:${mm}:${ss}`;
 }
 
-function drawChatMessage(
-  ctx: Ctx, theme: DualQuoteTheme, line: DualLine, img: Img | null,
-  x: number, y: number, maxW: number,
-): void {
-  const av = 44;
-  drawCircleAvatar(ctx, img, x + av / 2, y + av / 2, av / 2);
+/** Outer page backdrop used by every dual style. */
+function paintPageBg(ctx: Ctx, w: number, h: number, tint = "#0A0B10"): void {
+  ctx.fillStyle = tint;
+  ctx.fillRect(0, 0, w, h);
+}
 
-  const tx = x + av + 14;
+/**
+ * Discord-style message row. Returns the Y of the bottom of the content
+ * (so callers can stack message B).
+ */
+function drawDiscordMessage(
+  ctx: Ctx,
+  theme: DualQuoteTheme,
+  line: DualLine,
+  img: Img | null,
+  x: number,
+  y: number,
+  maxW: number,
+  opts: { avatarR?: number; darkText?: boolean } = {},
+): { bottom: number; avatarCx: number; avatarCy: number; avatarR: number } {
+  const avR = opts.avatarR ?? 22;
+  const avatarCx = x + avR;
+  const avatarCy = y + avR;
+  drawCircleAvatar(ctx, img, avatarCx, avatarCy, avR);
+
+  const tx = x + avR * 2 + 14;
+  const name = line.displayName || "User";
   ctx.textAlign = "left";
-  ctx.fillStyle = "#FFFFFF";
-  ctx.font = `700 16px Arial, sans-serif`;
-  ctx.fillText(line.displayName || "User", tx, y + 16);
-  const nameW = ctx.measureText(line.displayName || "User").width;
+  ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = theme.nameColor;
+  ctx.font = `700 16px Arial, "Helvetica Neue", sans-serif`;
+  ctx.fillText(name, tx, y + 16);
+  const nameW = ctx.measureText(name).width;
+
   ctx.fillStyle = theme.mutedColor;
   ctx.font = `400 12px Arial, sans-serif`;
   ctx.fillText(formatDiscordTime(line.createdAt ?? new Date()), tx + nameW + 10, y + 16);
 
-  ctx.fillStyle = theme.textColor;
-  ctx.font = `400 16px Arial, sans-serif`;
-  const lines = wrapLines(ctx, line.text || "…", maxW - av - 20);
+  ctx.fillStyle = opts.darkText ? theme.textColor : theme.textColor;
+  ctx.font = `400 15.5px Arial, "Helvetica Neue", sans-serif`;
+  const lines = wrapLines(ctx, line.text || "…", maxW - (avR * 2 + 20));
   let ly = y + 40;
   for (const l of lines.slice(0, 4)) {
     ctx.fillText(l, tx, ly);
     ly += 22;
   }
+  return { bottom: Math.max(ly, y + avR * 2 + 8), avatarCx, avatarCy, avatarR: avR };
 }
 
-// ── Versus split ──────────────────────────────────────────────────────────────
-function paintDuoVersus(
+function strokeGlowRect(
+  ctx: Ctx, x: number, y: number, w: number, h: number, r: number,
+  color: string, blur: number, lineWidth = 2,
+): void {
+  ctx.save();
+  ctx.shadowColor = color;
+  ctx.shadowBlur = blur;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = lineWidth;
+  roundRect(ctx, x, y, w, h, r);
+  ctx.stroke();
+  // second pass for richer glow
+  ctx.shadowBlur = blur * 0.45;
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawImpactMarks(ctx: Ctx, x: number, y: number, color: string, angleDeg = -35): void {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate((angleDeg * Math.PI) / 180);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 3;
+  ctx.lineCap = "round";
+  for (let i = 0; i < 3; i++) {
+    const oy = i * 10;
+    ctx.beginPath();
+    ctx.moveTo(0, oy);
+    ctx.lineTo(22, oy - 4);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// ── Classic ───────────────────────────────────────────────────────────────────
+function paintDuoClassic(
   ctx: Ctx, theme: DualQuoteTheme, a: DualLine, b: DualLine,
   imgA: Img | null, imgB: Img | null,
 ): void {
   const { width: w, height: h } = theme;
+  paintPageBg(ctx, w, h);
+
+  const pad = 28;
+  const cardX = pad, cardY = pad, cardW = w - pad * 2, cardH = h - pad * 2;
+  const radius = 18;
+
+  roundRect(ctx, cardX, cardY, cardW, cardH, radius);
   ctx.fillStyle = theme.background;
-  ctx.fillRect(0, 0, w, h);
-
-  // Left / right panels
-  ctx.fillStyle = "#0E0E12";
-  ctx.fillRect(0, 0, w / 2 - 2, h);
-  ctx.fillStyle = "#141018";
-  ctx.fillRect(w / 2 + 2, 0, w / 2 - 2, h);
-
-  // VS badge
-  ctx.fillStyle = theme.accentColor ?? "#FF4D6D";
-  ctx.beginPath();
-  ctx.arc(w / 2, h / 2, 36, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = "#FFFFFF";
-  ctx.font = `900 22px Arial Black, Arial, sans-serif`;
-  ctx.textAlign = "center";
-  ctx.fillText("VS", w / 2, h / 2 + 8);
+  strokeGlowRect(ctx, cardX, cardY, cardW, cardH, radius, theme.accentColor ?? "#7EB8FF", 18, 2.5);
 
-  paintVersusSide(ctx, theme, a, imgA, 0, w / 2 - 8, h, false);
-  paintVersusSide(ctx, theme, b, imgB, w / 2 + 8, w / 2 - 8, h, true);
+  const msgX = cardX + 40;
+  const msgW = cardW - 80;
+  const midGap = 44;
+  // Rough content block height so the pair sits centered like the sheet
+  const blockH = 220;
+  const topY = cardY + (cardH - blockH) / 2;
+  const aInfo = drawDiscordMessage(ctx, theme, a, imgA, msgX, topY, msgW);
+  drawDiscordMessage(ctx, theme, b, imgB, msgX, aInfo.bottom + midGap, msgW);
 }
 
-function paintVersusSide(
-  ctx: Ctx, theme: DualQuoteTheme, line: DualLine, img: Img | null,
-  x: number, panelW: number, h: number, reply: boolean,
+// ── Reaction ──────────────────────────────────────────────────────────────────
+function paintDuoReaction(
+  ctx: Ctx, theme: DualQuoteTheme, a: DualLine, b: DualLine,
+  imgA: Img | null, imgB: Img | null,
 ): void {
-  const cx = x + panelW / 2;
-  drawCircleAvatar(ctx, img, cx, 110, 56, true);
+  const { width: w, height: h } = theme;
+  paintPageBg(ctx, w, h);
 
-  ctx.fillStyle = theme.mutedColor;
-  ctx.font = `700 13px Arial, sans-serif`;
-  ctx.textAlign = "center";
-  ctx.fillText(reply ? "THE REPLY" : "THEY SAID", cx, 190);
+  const pad = 28;
+  const cardX = pad, cardY = pad, cardW = w - pad * 2, cardH = h - pad * 2;
+  const radius = 18;
 
-  ctx.fillStyle = "#FFFFFF";
-  ctx.font = `700 18px Arial, sans-serif`;
-  ctx.fillText(line.displayName || "someone", cx, 218);
+  roundRect(ctx, cardX, cardY, cardW, cardH, radius);
+  ctx.fillStyle = theme.background;
+  ctx.fill();
 
-  const fit = fitFontSize(ctx, line.text || "…", panelW - 48, h - 320, 36, 18, "Arial, sans-serif", "600");
-  let y = 270;
-  ctx.fillStyle = theme.textColor;
-  for (const l of fit.lines) {
-    ctx.font = `600 ${fit.size}px Arial, sans-serif`;
-    ctx.fillText(l, cx, y);
-    y += fit.lineHeight;
-  }
+  // Blue→magenta neon border via gradient stroke on a temp path
+  const grad = ctx.createLinearGradient(cardX, cardY, cardX, cardY + cardH);
+  grad.addColorStop(0, "#4F8CFF");
+  grad.addColorStop(0.45, "#7B5CFF");
+  grad.addColorStop(1, "#E040A0");
+  ctx.save();
+  ctx.shadowColor = "#6A7BFF";
+  ctx.shadowBlur = 22;
+  ctx.strokeStyle = grad;
+  ctx.lineWidth = 3;
+  roundRect(ctx, cardX, cardY, cardW, cardH, radius);
+  ctx.stroke();
+  ctx.restore();
+  // Magenta glow pass on lower half
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(cardX - 10, cardY + cardH * 0.45, cardW + 20, cardH * 0.6);
+  ctx.clip();
+  ctx.shadowColor = "#E040A0";
+  ctx.shadowBlur = 26;
+  ctx.strokeStyle = "#E040A0";
+  ctx.lineWidth = 3;
+  roundRect(ctx, cardX, cardY, cardW, cardH, radius);
+  ctx.stroke();
+  ctx.restore();
 
-  ctx.fillStyle = theme.mutedColor;
-  ctx.font = `400 13px Arial, sans-serif`;
-  ctx.fillText(handleOf(line), cx, h - 36);
+  const msgX = cardX + 40;
+  const msgW = cardW - 110;
+  const midGap = 28;
+  const blockH = 240;
+  const topY = cardY + (cardH - blockH) / 2;
+  const aInfo = drawDiscordMessage(ctx, theme, a, imgA, msgX, topY, msgW);
+
+  // Blue impact marks — top-right of message A (per sheet)
+  drawImpactMarks(ctx, cardX + cardW - 78, topY + 4, "#5B8CFF", -38);
+
+  const divY = aInfo.bottom + 16;
+  ctx.strokeStyle = "rgba(255,255,255,0.08)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(cardX + 78, divY);
+  ctx.lineTo(cardX + cardW - 40, divY);
+  ctx.stroke();
+
+  const bY = divY + 20;
+  const bInfo = drawDiscordMessage(ctx, theme, b, imgB, msgX, bY, msgW);
+
+  // Red impact marks — lower-right of message B
+  drawImpactMarks(ctx, cardX + cardW - 78, bInfo.bottom - 18, "#FF4D6D", -38);
 }
 
-// ── Thread literary ───────────────────────────────────────────────────────────
+// ── Thread ────────────────────────────────────────────────────────────────────
 function paintDuoThread(
   ctx: Ctx, theme: DualQuoteTheme, a: DualLine, b: DualLine,
   imgA: Img | null, imgB: Img | null,
 ): void {
   const { width: w, height: h } = theme;
-  ctx.fillStyle = theme.background;
-  ctx.fillRect(0, 0, w, h);
+  paintPageBg(ctx, w, h, "#0A100C");
 
-  // Accent bar
-  ctx.fillStyle = theme.accentColor ?? "#E8C547";
-  ctx.fillRect(0, 0, 8, h);
+  const pad = 28;
+  const cardX = pad, cardY = pad, cardW = w - pad * 2, cardH = h - pad * 2;
+  const radius = 18;
+  const green = theme.accentColor ?? "#3DDC84";
 
-  ctx.fillStyle = theme.mutedColor;
-  ctx.font = `700 14px Arial, sans-serif`;
-  ctx.textAlign = "left";
-  ctx.fillText("THE THREAD", 40, 48);
-
-  // Block A
-  drawCircleAvatar(ctx, imgA, 64, 110, 28, true);
-  ctx.fillStyle = theme.mutedColor;
-  ctx.font = `italic 400 15px Georgia, serif`;
-  ctx.fillText(`${a.displayName} said…`, 110, 100);
-  const fitA = fitFontSize(ctx, `"${a.text}"`, w - 140, 140, 34, 18, "Georgia, serif", "500");
-  let y = 140;
-  ctx.fillStyle = theme.textColor;
-  ctx.textAlign = "left";
-  for (const l of fitA.lines) {
-    ctx.font = `500 ${fitA.size}px Georgia, serif`;
-    ctx.fillText(l, 110, y);
-    y += fitA.lineHeight;
-  }
-
-  // Connector
-  y += 28;
-  ctx.strokeStyle = "rgba(255,255,255,0.2)";
-  ctx.setLineDash([6, 6]);
-  ctx.beginPath();
-  ctx.moveTo(110, y);
-  ctx.lineTo(w - 60, y);
-  ctx.stroke();
-  ctx.setLineDash([]);
-  ctx.fillStyle = theme.accentColor ?? "#E8C547";
-  ctx.font = `700 13px Arial, sans-serif`;
-  ctx.textAlign = "center";
-  ctx.fillText("YEAH BUT THEN", w / 2, y + 5);
-
-  // Block B
-  y += 50;
-  drawCircleAvatar(ctx, imgB, 64, y + 10, 28, true);
-  ctx.textAlign = "left";
-  ctx.fillStyle = theme.mutedColor;
-  ctx.font = `italic 400 15px Georgia, serif`;
-  ctx.fillText(`${b.displayName} came back with…`, 110, y);
-  const fitB = fitFontSize(ctx, `"${b.text}"`, w - 140, 160, 38, 18, "Georgia, serif", "600");
-  y += 40;
-  ctx.fillStyle = "#FFFFFF";
-  for (const l of fitB.lines) {
-    ctx.font = `600 ${fitB.size}px Georgia, serif`;
-    ctx.fillText(l, 110, y);
-    y += fitB.lineHeight;
-  }
-
-  ctx.fillStyle = theme.mutedColor;
-  ctx.font = `400 12px Arial, sans-serif`;
-  ctx.textAlign = "right";
-  ctx.fillText(`${handleOf(a)}  →  ${handleOf(b)}`, w - 40, h - 28);
-}
-
-// ── Ayoo punchline ────────────────────────────────────────────────────────────
-function paintDuoAyoo(
-  ctx: Ctx, theme: DualQuoteTheme, a: DualLine, b: DualLine,
-  imgA: Img | null, imgB: Img | null,
-): void {
-  const { width: w, height: h } = theme;
-  ctx.fillStyle = theme.background;
-  ctx.fillRect(0, 0, w, h);
-
-  // Setup — quiet, small
-  drawCircleAvatar(ctx, imgA, 70, 70, 28, true);
-  ctx.textAlign = "left";
-  ctx.fillStyle = theme.mutedColor;
-  ctx.font = `400 14px Arial, sans-serif`;
-  ctx.fillText(`${a.displayName} · setup`, 110, 55);
-  ctx.fillStyle = "rgba(255,255,255,0.55)";
-  ctx.font = `400 22px Arial, sans-serif`;
-  const setupLines = wrapLines(ctx, a.text || "…", w - 160);
-  let y = 90;
-  for (const l of setupLines.slice(0, 3)) {
-    ctx.fillText(l, 110, y);
-    y += 28;
-  }
-
-  // Divider
-  y += 20;
-  ctx.fillStyle = theme.accentColor ?? "#FEE75C";
-  ctx.font = `900 18px Arial Black, Arial, sans-serif`;
-  ctx.fillText("AYOO  ↓", 110, y);
-
-  // Punchline — huge
-  y += 50;
-  drawCircleAvatar(ctx, imgB, 80, y + 20, 36, false);
-  ctx.fillStyle = theme.accentColor ?? "#FEE75C";
-  ctx.font = `700 14px Arial, sans-serif`;
-  ctx.fillText(b.displayName || "reply", 130, y);
-
-  const fit = fitFontSize(
-    ctx, (b.text || "…").toUpperCase(), w - 160, h - y - 100,
-    64, 28, '"Arial Black", Impact, Arial, sans-serif', "900",
+  // Soft green wash in bottom-right
+  const wash = ctx.createRadialGradient(
+    cardX + cardW * 0.85, cardY + cardH * 0.85, 10,
+    cardX + cardW * 0.85, cardY + cardH * 0.85, cardW * 0.55,
   );
-  y += 50;
-  ctx.fillStyle = "#FFFFFF";
-  ctx.textAlign = "left";
-  for (const l of fit.lines) {
-    ctx.font = `900 ${fit.size}px "Arial Black", Impact, Arial, sans-serif`;
-    ctx.fillText(l, 130, y);
-    y += fit.lineHeight;
-  }
+  wash.addColorStop(0, "rgba(61,220,132,0.18)");
+  wash.addColorStop(1, "rgba(61,220,132,0)");
+  roundRect(ctx, cardX, cardY, cardW, cardH, radius);
+  ctx.fillStyle = theme.background;
+  ctx.fill();
+  ctx.fillStyle = wash;
+  ctx.fill();
 
-  ctx.fillStyle = theme.mutedColor;
-  ctx.font = `400 13px Arial, sans-serif`;
-  ctx.textAlign = "right";
-  ctx.fillText(`${handleOf(b)} cooked the chat`, w - 36, h - 28);
+  strokeGlowRect(ctx, cardX, cardY, cardW, cardH, radius, green, 16, 2.5);
+
+  const msgX = cardX + 40;
+  const msgW = cardW - 80;
+  const midGap = 52;
+  const blockH = 250;
+  const topY = cardY + (cardH - blockH) / 2;
+  const aInfo = drawDiscordMessage(ctx, theme, a, imgA, msgX, topY, msgW);
+  const bInfo = drawDiscordMessage(ctx, theme, b, imgB, msgX, aInfo.bottom + midGap, msgW);
+
+  // Thread line between avatars
+  const x = aInfo.avatarCx;
+  const y1 = aInfo.avatarCy + aInfo.avatarR + 4;
+  const y2 = bInfo.avatarCy - bInfo.avatarR - 4;
+  ctx.save();
+  ctx.strokeStyle = green;
+  ctx.lineWidth = 3;
+  ctx.shadowColor = green;
+  ctx.shadowBlur = 10;
+  ctx.beginPath();
+  ctx.moveTo(x, y1);
+  ctx.lineTo(x, y2);
+  ctx.stroke();
+  // Center node
+  const ny = (y1 + y2) / 2;
+  ctx.fillStyle = green;
+  ctx.beginPath();
+  ctx.arc(x, ny, 6, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
 }
 
-// ── Double receipts (4K board) ────────────────────────────────────────────────
-function paintDuoReceipts(
+// ── Evidence ──────────────────────────────────────────────────────────────────
+function paintDuoEvidence(
   ctx: Ctx, theme: DualQuoteTheme, a: DualLine, b: DualLine,
   imgA: Img | null, imgB: Img | null,
 ): void {
   const { width: w, height: h } = theme;
+  paintPageBg(ctx, w, h, "#050506");
+
+  const pad = 28;
+  const cardX = pad, cardY = pad, cardW = w - pad * 2, cardH = h - pad * 2;
+  const red = theme.accentColor ?? "#FF3B3B";
+
+  roundRect(ctx, cardX, cardY, cardW, cardH, 10);
   ctx.fillStyle = theme.background;
-  ctx.fillRect(0, 0, w, h);
+  ctx.fill();
 
-  // Grain (sparse)
-  const grain = ctx.getImageData(0, 0, w, h);
-  const px = grain.data;
-  for (let yi = 0; yi < h; yi += 3) {
-    for (let xi = 0; xi < w; xi += 3) {
-      const i = (yi * w + xi) * 4;
-      const n = (Math.random() * 45) | 0;
-      px[i] = Math.min(255, (px[i]! || 8) + n);
-      px[i + 1] = Math.min(255, (px[i + 1]! || 8) + n);
-      px[i + 2] = Math.min(255, (px[i + 2]! || 8) + n);
-    }
-  }
-  ctx.putImageData(grain, 0, 0);
-
-  ctx.strokeStyle = "rgba(255,255,255,0.7)";
-  ctx.lineWidth = 2;
-  ctx.strokeRect(20, 20, w - 40, h - 40);
+  // Viewfinder corner brackets
+  const br = 28;
+  const bw = 3;
+  ctx.strokeStyle = red;
+  ctx.lineWidth = bw;
+  ctx.lineCap = "square";
+  // Top-left
+  ctx.beginPath();
+  ctx.moveTo(cardX + 18, cardY + 18 + br);
+  ctx.lineTo(cardX + 18, cardY + 18);
+  ctx.lineTo(cardX + 18 + br, cardY + 18);
+  ctx.stroke();
+  // Bottom-right
+  ctx.beginPath();
+  ctx.moveTo(cardX + cardW - 18 - br, cardY + cardH - 18);
+  ctx.lineTo(cardX + cardW - 18, cardY + cardH - 18);
+  ctx.lineTo(cardX + cardW - 18, cardY + cardH - 18 - br);
+  ctx.stroke();
 
   // REC
-  ctx.fillStyle = theme.accentColor ?? "#FF2A2A";
+  ctx.fillStyle = red;
   ctx.beginPath();
-  ctx.arc(56, 52, 7, 0, Math.PI * 2);
+  ctx.arc(cardX + 52, cardY + 42, 7, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = "#FFF";
-  ctx.font = `700 18px "Courier New", monospace`;
-  ctx.textAlign = "left";
-  ctx.fillText("REC  ·  DOUBLE RECEIPTS", 74, 58);
-
-  paintReceiptRow(ctx, theme, a, imgA, 56, 120, w - 112, "01");
-  paintReceiptRow(ctx, theme, b, imgB, 56, 360, w - 112, "02");
-
-  ctx.fillStyle = "#FFF";
-  ctx.font = `700 18px "Courier New", monospace`;
-  ctx.textAlign = "right";
-  ctx.fillText("BOTH CAUGHT IN 4K", w - 48, h - 40);
-}
-
-function paintReceiptRow(
-  ctx: Ctx, theme: DualQuoteTheme, line: DualLine, img: Img | null,
-  x: number, y: number, maxW: number, tag: string,
-): void {
-  ctx.fillStyle = theme.accentColor ?? "#FF2A2A";
+  ctx.fillStyle = red;
   ctx.font = `700 14px "Courier New", monospace`;
   ctx.textAlign = "left";
-  ctx.fillText(`EVIDENCE ${tag}`, x, y);
+  ctx.fillText("REC", cardX + 66, cardY + 47);
 
-  drawCircleAvatar(ctx, img, x + 28, y + 50, 28, true);
-  ctx.fillStyle = "#FFF";
-  ctx.font = `700 22px "Courier New", monospace`;
-  ctx.fillText((line.displayName || "USER").toUpperCase(), x + 70, y + 42);
-  ctx.fillStyle = theme.mutedColor;
-  ctx.font = `400 14px "Courier New", monospace`;
-  ctx.fillText(handleOf(line), x + 70, y + 66);
+  // Timestamp
+  const stamp = formatEvidenceStamp(b.createdAt ?? a.createdAt ?? new Date());
+  ctx.fillStyle = "rgba(255,255,255,0.75)";
+  ctx.font = `500 13px "Courier New", monospace`;
+  ctx.textAlign = "right";
+  ctx.fillText(stamp, cardX + cardW - 28, cardY + 47);
 
-  ctx.fillStyle = theme.textColor;
-  ctx.font = `400 22px "Courier New", monospace`;
-  const lines = wrapLines(ctx, line.text || "…", maxW - 20);
-  let ly = y + 110;
-  for (const l of lines.slice(0, 3)) {
-    ctx.fillText(l, x, ly);
-    ly += 28;
+  // Message pods
+  const podPad = 22;
+  const podX = cardX + 36;
+  const podW = cardW - 72;
+  const podH = 140;
+  const pod1Y = cardY + 78;
+  const pod2Y = pod1Y + podH + 24;
+
+  for (const [py, line, img] of [
+    [pod1Y, a, imgA] as const,
+    [pod2Y, b, imgB] as const,
+  ]) {
+    roundRect(ctx, podX, py, podW, podH, 12);
+    ctx.fillStyle = "rgba(255,255,255,0.06)";
+    ctx.fill();
+    drawDiscordMessage(ctx, theme, line, img, podX + podPad, py + 28, podW - podPad * 2);
   }
+}
+
+// ── Notepad ───────────────────────────────────────────────────────────────────
+function paintDuoNotepad(
+  ctx: Ctx, theme: DualQuoteTheme, a: DualLine, b: DualLine,
+  imgA: Img | null, imgB: Img | null,
+): void {
+  const { width: w, height: h } = theme;
+  paintPageBg(ctx, w, h, "#0A0B10");
+
+  const paperX = 70;
+  const paperY = 48;
+  const paperW = w - 140;
+  const paperH = h - 96;
+
+  // Soft drop shadow
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,0.55)";
+  ctx.shadowBlur = 28;
+  ctx.shadowOffsetY = 10;
+  drawTornPaperPath(ctx, paperX, paperY, paperW, paperH);
+  ctx.fillStyle = "#F3EFE6";
+  ctx.fill();
+  ctx.restore();
+
+  // Paper body again (sharp)
+  drawTornPaperPath(ctx, paperX, paperY, paperW, paperH);
+  ctx.fillStyle = "#F3EFE6";
+  ctx.fill();
+  // Subtle paper grain
+  ctx.save();
+  ctx.clip();
+  const grain = ctx.getImageData(paperX, paperY, paperW, paperH);
+  const px = grain.data;
+  for (let i = 0; i < px.length; i += 16) {
+    const n = ((Math.random() * 18) | 0) - 6;
+    px[i] = Math.max(0, Math.min(255, (px[i] ?? 240) + n));
+    px[i + 1] = Math.max(0, Math.min(255, (px[i + 1] ?? 236) + n));
+    px[i + 2] = Math.max(0, Math.min(255, (px[i + 2] ?? 230) + n));
+  }
+  ctx.putImageData(grain, paperX, paperY);
+  ctx.restore();
+
+  // Blue tape top-left
+  drawTape(ctx, paperX + 18, paperY - 8, 70, 28, -18, "#3B82F6");
+  // Red tape bottom-right
+  drawTape(ctx, paperX + paperW - 78, paperY + paperH - 18, 70, 28, 16, "#E11D48");
+
+  // Crown doodle top-right
+  drawCrownDoodle(ctx, paperX + paperW - 48, paperY + 36);
+
+  // Dark text theme for paper
+  const paperTheme: DualQuoteTheme = {
+    ...theme,
+    textColor: "#2B2D31",
+    mutedColor: "#6B6E74",
+    nameColor: "#1E6BB8",
+  };
+  const msgX = paperX + 36;
+  const msgW = paperW - 72;
+  const aInfo = drawDiscordMessage(ctx, paperTheme, a, imgA, msgX, paperY + 56, msgW, { darkText: true });
+  drawDiscordMessage(ctx, paperTheme, b, imgB, msgX, aInfo.bottom + 40, msgW, { darkText: true });
+}
+
+function drawTornPaperPath(ctx: Ctx, x: number, y: number, w: number, h: number): void {
+  const jag = 10;
+  ctx.beginPath();
+  ctx.moveTo(x + 8, y);
+  // top edge
+  for (let i = 0; i < 14; i++) {
+    const px = x + 8 + (w - 16) * ((i + 1) / 14);
+    const py = y + ((i % 2 === 0) ? -jag * 0.35 : jag * 0.25);
+    ctx.lineTo(px, py);
+  }
+  // right edge
+  for (let i = 0; i < 10; i++) {
+    const py = y + (h) * ((i + 1) / 10);
+    const px = x + w + ((i % 2 === 0) ? jag * 0.3 : -jag * 0.15);
+    ctx.lineTo(px, py);
+  }
+  // bottom edge
+  for (let i = 0; i < 14; i++) {
+    const px = x + w - 8 - (w - 16) * ((i + 1) / 14);
+    const py = y + h + ((i % 2 === 0) ? jag * 0.35 : -jag * 0.2);
+    ctx.lineTo(px, py);
+  }
+  // left edge
+  for (let i = 0; i < 10; i++) {
+    const py = y + h - h * ((i + 1) / 10);
+    const px = x + ((i % 2 === 0) ? -jag * 0.25 : jag * 0.15);
+    ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+}
+
+function drawTape(
+  ctx: Ctx, x: number, y: number, w: number, h: number, angleDeg: number, color: string,
+): void {
+  ctx.save();
+  ctx.translate(x + w / 2, y + h / 2);
+  ctx.rotate((angleDeg * Math.PI) / 180);
+  ctx.globalAlpha = 0.72;
+  ctx.fillStyle = color;
+  roundRect(ctx, -w / 2, -h / 2, w, h, 3);
+  ctx.fill();
+  // tape sheen stripes
+  ctx.globalAlpha = 0.18;
+  ctx.fillStyle = "#FFF";
+  ctx.fillRect(-w / 2 + 6, -h / 2 + 4, w - 12, 4);
+  ctx.restore();
+}
+
+function drawCrownDoodle(ctx: Ctx, cx: number, cy: number): void {
+  ctx.save();
+  ctx.strokeStyle = "#1A1A1A";
+  ctx.fillStyle = "#1A1A1A";
+  ctx.lineWidth = 2.2;
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(cx - 16, cy + 10);
+  ctx.lineTo(cx - 16, cy - 2);
+  ctx.lineTo(cx - 6, cy + 6);
+  ctx.lineTo(cx, cy - 10);
+  ctx.lineTo(cx + 6, cy + 6);
+  ctx.lineTo(cx + 16, cy - 2);
+  ctx.lineTo(cx + 16, cy + 10);
+  ctx.closePath();
+  ctx.stroke();
+  // little jewels
+  for (const [jx, jy] of [[-8, 2], [0, -2], [8, 2]] as const) {
+    ctx.beginPath();
+    ctx.arc(cx + jx, cy + jy, 1.6, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
 }
 
 export async function renderDualQuoteCard(input: DualQuoteRenderInput): Promise<Buffer | null> {
@@ -445,20 +563,20 @@ export async function renderDualQuoteCard(input: DualQuoteRenderInput): Promise<
       ]);
 
       switch (theme.layout) {
-        case "duo-chat":
-          paintDuoChat(ctx, theme, input.a, input.b, imgA, imgB);
+        case "duo-classic":
+          paintDuoClassic(ctx, theme, input.a, input.b, imgA, imgB);
           break;
-        case "duo-versus":
-          paintDuoVersus(ctx, theme, input.a, input.b, imgA, imgB);
+        case "duo-reaction":
+          paintDuoReaction(ctx, theme, input.a, input.b, imgA, imgB);
           break;
         case "duo-thread":
           paintDuoThread(ctx, theme, input.a, input.b, imgA, imgB);
           break;
-        case "duo-ayoo":
-          paintDuoAyoo(ctx, theme, input.a, input.b, imgA, imgB);
+        case "duo-evidence":
+          paintDuoEvidence(ctx, theme, input.a, input.b, imgA, imgB);
           break;
-        case "duo-receipts":
-          paintDuoReceipts(ctx, theme, input.a, input.b, imgA, imgB);
+        case "duo-notepad":
+          paintDuoNotepad(ctx, theme, input.a, input.b, imgA, imgB);
           break;
       }
 

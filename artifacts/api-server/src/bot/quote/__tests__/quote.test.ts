@@ -45,12 +45,12 @@ describe("quote styles", () => {
 });
 
 describe("dual quote styles", () => {
-  it("ships five dual fuse layouts", () => {
+  it("ships five dual fuse layouts from the design sheet", () => {
     expect(DUAL_QUOTE_STYLES).toHaveLength(5);
-    expect(getDualStyle("duo-chat").layout).toBe("duo-chat");
-    expect(getDualStyle("duo-versus").layout).toBe("duo-versus");
+    expect(getDualStyle("duo-classic").layout).toBe("duo-classic");
+    expect(getDualStyle("duo-reaction").layout).toBe("duo-reaction");
     expect(getDualStyle("duo-thread").layout).toBe("duo-thread");
-    expect(getDualStyle("duo-ayoo").layout).toBe("duo-ayoo");
-    expect(getDualStyle("duo-receipts").layout).toBe("duo-receipts");
+    expect(getDualStyle("duo-evidence").layout).toBe("duo-evidence");
+    expect(getDualStyle("duo-notepad").layout).toBe("duo-notepad");
   });
 });

@@ -122,12 +122,12 @@ export async function renderDualPreviews(session: QuoteSession): Promise<{
   const main = await renderDualQuoteCard({ a, b, theme, watermark: BRAND_NAME });
   session.lastPng = main ?? undefined;
 
-  // Companion Discord screenshot when the chosen style isn't already that look.
+  // Companion Classic (clean Discord look) when the chosen style isn't already that.
   let discordShot: Buffer | null = null;
-  if (theme.layout !== "duo-chat") {
+  if (theme.layout !== "duo-classic") {
     discordShot = await renderDualQuoteCard({
       a, b,
-      theme: getDualStyle("duo-chat"),
+      theme: getDualStyle("duo-classic"),
       watermark: BRAND_NAME,
     });
     session.lastDiscordShot = discordShot ?? undefined;
@@ -173,8 +173,8 @@ export async function buildDualBuilderReply(token: string, session: QuoteSession
       `**${a?.displayName ?? "?"}** said… then **${b?.displayName ?? "?"}** came back.\n` +
       `Style: **${theme.label}** — ${theme.description}\n\n` +
       (discordShot
-        ? "📸 Scroll down — Discord chat screenshot of both msgs is below."
-        : "💬 This style *is* the Discord chat screenshot."),
+        ? "📸 Scroll down — Classic Discord look of both msgs is below."
+        : "🖤 Classic is the clean Discord dual look."),
     )
     .setFooter({ text: `${BRAND_NAME} · ayoo they really said that` });
 
@@ -189,8 +189,8 @@ export async function buildDualBuilderReply(token: string, session: QuoteSession
     embeds.push(
       new EmbedBuilder()
         .setColor(0x5865f2)
-        .setTitle("💬 Discord chat screenshot")
-        .setDescription("The raw exchange — how it looked in chat.")
+        .setTitle("🖤 Classic companion")
+        .setDescription("Clean Discord dual of the same two msgs.")
         .setImage(`attachment://${DISCORD_SHOT_NAME}`),
     );
   }
@@ -235,7 +235,7 @@ export function dualPostPayload(session: QuoteSession): {
     embeds.push(
       new EmbedBuilder()
         .setColor(0x5865f2)
-        .setTitle("💬 Discord chat screenshot")
+        .setTitle("🖤 Classic companion")
         .setImage(`attachment://${DISCORD_SHOT_NAME}`),
     );
   }
