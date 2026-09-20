@@ -35,6 +35,10 @@ describe("quote styles", () => {
     expect(getStyle("discord").layout).toBe("discord");
     expect(getStyle("caught4k").layout).toBe("caught4k");
     expect(getStyle("cinematic").layout).toBe("cinematic");
+    expect(getStyle("absolute").layout).toBe("absolute");
+    expect(getStyle("glitch").layout).toBe("glitch");
+    expect(getStyle("bruhh").layout).toBe("bruhh");
+    expect(getStyle("ethereal").layout).toBe("ethereal");
     expect(getStyle("miq").layout).toBe("fade-left");
   });
 });

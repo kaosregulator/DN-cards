@@ -11,6 +11,10 @@ export type QuoteLayout =
   | "discord"      // Discord message capture UI
   | "caught4k"     // camcorder / CCTV
   | "cinematic"    // scenic backdrop + centered serif quote
+  | "absolute"     // Absolute Cinema — glowing circle + serif
+  | "glitch"       // Did he really say that — glitch + grunge type
+  | "bruhh"        // Water reflection impact
+  | "ethereal"     // Moonlight clouds · poetic
   | "portrait"     // full-bleed fade-down
   | "impact"       // huge type + corner avatar
   | "custom";
@@ -39,10 +43,12 @@ export interface QuoteTheme {
   fadeShare: number;
   quoteMarks: boolean;
   letterbox?: boolean;
-  fontTone: "clean" | "display" | "impact" | "serif" | "mono";
+  fontTone: "clean" | "display" | "impact" | "serif" | "mono" | "grunge";
   /** Optional footer tagline (Classic / Cinematic). */
   tagline?: string;
   uppercaseQuote?: boolean;
+  /** Bottom-right Discord message chip (Absolute / Glitch / Bruhh / Ethereal). */
+  discordChip?: boolean;
 }
 
 /** Built-in presets — Discord select menus allow ≤25 options. */
@@ -214,6 +220,97 @@ export const QUOTE_STYLES: QuoteTheme[] = [
     fadeShare: 0,
     quoteMarks: false,
     fontTone: "impact",
+  },
+  // ── “Bruh they said that” pack (design sheet 2) ────────────────────────────
+  {
+    id: "absolute",
+    label: "Absolute Cinema",
+    emoji: "🎞️",
+    description: "Glowing B&W circle · mock-serious serif · Discord chip",
+    width: 1200,
+    height: 675,
+    layout: "absolute",
+    background: "#000000",
+    textColor: "#FFFFFF",
+    attributionColor: "#D0D0D0",
+    handleColor: "#9A9A9A",
+    watermarkColor: "#555555",
+    avatarLayout: "circle-left",
+    grayscale: true,
+    avatarShare: 0.48,
+    fadeShare: 0.3,
+    quoteMarks: true,
+    fontTone: "serif",
+    uppercaseQuote: true,
+    discordChip: true,
+  },
+  {
+    id: "glitch",
+    label: "Did He Really…?",
+    emoji: "😵",
+    description: "Glitch avatar + grunge type — did they really say that",
+    width: 1200,
+    height: 675,
+    layout: "glitch",
+    background: "#050505",
+    textColor: "#FFFFFF",
+    attributionColor: "#D8D8D8",
+    handleColor: "#A0A0A0",
+    watermarkColor: "#666666",
+    accentColor: "#FF3B5C",
+    avatarLayout: "circle-left",
+    grayscale: true,
+    avatarShare: 0.42,
+    fadeShare: 0.25,
+    quoteMarks: false,
+    fontTone: "grunge",
+    uppercaseQuote: true,
+    discordChip: true,
+  },
+  {
+    id: "bruhh",
+    label: "Bruhh Reflection",
+    emoji: "💧",
+    description: "Avatar + words reflected in dark water — heavy BRUHH",
+    width: 1200,
+    height: 720,
+    layout: "bruhh",
+    background: "#000000",
+    textColor: "#FFFFFF",
+    attributionColor: "#D0D0D0",
+    handleColor: "#9A9A9A",
+    watermarkColor: "#555555",
+    avatarLayout: "circle-left",
+    grayscale: true,
+    avatarShare: 0.4,
+    fadeShare: 0.2,
+    quoteMarks: false,
+    fontTone: "impact",
+    uppercaseQuote: true,
+    discordChip: true,
+  },
+  {
+    id: "ethereal",
+    label: "Moonlight",
+    emoji: "🌕",
+    description: "Avatar in the clouds under a full moon — ethereal",
+    width: 1200,
+    height: 720,
+    layout: "ethereal",
+    background: "#0A0C14",
+    textColor: "#FFFFFF",
+    attributionColor: "#E0E0E8",
+    handleColor: "#A8A8B8",
+    watermarkColor: "#707080",
+    accentColor: "#E8E8F0",
+    avatarLayout: "circle-left",
+    grayscale: true,
+    avatarShare: 0.38,
+    fadeShare: 0.4,
+    quoteMarks: true,
+    fontTone: "serif",
+    uppercaseQuote: false,
+    discordChip: true,
   },
 ];
 
