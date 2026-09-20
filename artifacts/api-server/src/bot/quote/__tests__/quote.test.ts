@@ -63,3 +63,12 @@ describe("dual quote styles", () => {
     expect(getDualStyle("duo-comic").layout).toBe("duo-comic");
   });
 });
+
+describe("dual slot hub", () => {
+  it("maps dual-pick views to A/B slots", async () => {
+    const { dualSlotFromView } = await import("../dual-ui.js");
+    expect(dualSlotFromView({ view: "dual-pick-a" } as never)).toBe("a");
+    expect(dualSlotFromView({ view: "dual-pick-b" } as never)).toBe("b");
+    expect(dualSlotFromView({ view: "dual-builder" } as never)).toBe("a");
+  });
+});

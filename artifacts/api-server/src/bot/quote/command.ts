@@ -18,6 +18,7 @@ import type {
   MessageContextMenuCommandInteraction,
   ModalSubmitInteraction,
   StringSelectMenuInteraction,
+  UserSelectMenuInteraction,
   GuildTextBasedChannel,
 } from "discord.js";
 import {
@@ -38,8 +39,8 @@ import {
 } from "./styles.js";
 import { clip, prepareQuoteText } from "./text.js";
 import {
-  buildDualBuilderReply, buildDualPickAEmbed, buildDualPickBEmbed,
-  dualPickARows, dualPickBRows, dualPostFiles, dualPostPayload, renderDualPreviews,
+  buildDualBuilderReply, buildDualHubReply,
+  dualPostFiles, dualPostPayload, dualSlotFromView, renderDualPreviews,
 } from "./dual-ui.js";
 
 const EPHEMERAL = { flags: MessageFlags.Ephemeral } as const;
@@ -50,6 +51,7 @@ type QuoteInteraction =
   | MessageContextMenuCommandInteraction
   | ButtonInteraction
   | StringSelectMenuInteraction
+  | UserSelectMenuInteraction
   | ModalSubmitInteraction;
 
 function assertOwner(interaction: QuoteInteraction, session: QuoteSession): boolean {
@@ -422,9 +424,48 @@ export async function handleQuoteContextMenu(
   await openBuilder(interaction, payload, "classic", true);
 }
 
+/** Lock in payload for dual slot A or B, then advance to next hub / builder. */
+async function advanceDualWithPayload(
+  token: string,
+  session: QuoteSession,
+  interaction: ButtonInteraction | StringSelectMenuInteraction | UserSelectMenuInteraction | ModalSubmitInteraction,
+  payload: QuotePayload,
+  channel: GuildTextBasedChannel,
+): Promise<void> {
+  session.mode = "dual";
+  session.dualFilterUserId = null;
+  session.dualFilterUserName = null;
+  session.lastPng = undefined;
+  session.lastDiscordShot = undefined;
+
+  const slot = dualSlotFromView(session);
+  if (slot === "a") {
+    session.payload = payload;
+    session.payloadB = null;
+    session.view = "dual-pick-b";
+    const recent = await fetchRecentCandidates(channel, null, 5);
+    await interaction.editReply(buildDualHubReply(token, session, recent)).catch(() => {});
+    return;
+  }
+
+  if (!session.payload) {
+    // Safety: treat as A if somehow B without A
+    session.payload = payload;
+    session.payloadB = null;
+    session.view = "dual-pick-b";
+    const recent = await fetchRecentCandidates(channel, null, 5);
+    await interaction.editReply(buildDualHubReply(token, session, recent)).catch(() => {});
+    return;
+  }
+
+  session.payloadB = payload;
+  session.view = "dual-builder";
+  await interaction.editReply(await buildDualBuilderReply(token, session)).catch(() => {});
+}
+
 // ── Components / modals ───────────────────────────────────────────────────────
 export async function handleQuoteInteraction(
-  interaction: ButtonInteraction | StringSelectMenuInteraction | ModalSubmitInteraction,
+  interaction: ButtonInteraction | StringSelectMenuInteraction | UserSelectMenuInteraction | ModalSubmitInteraction,
 ): Promise<void> {
   const parts = interaction.customId.split(":");
   // quote:<action>:<token>
@@ -485,18 +526,16 @@ export async function handleQuoteInteraction(
     if (action === "dualstart" && interaction.isButton()) {
       if (!interaction.channel || !interaction.channel.isTextBased()) return;
       await interaction.deferUpdate().catch(() => {});
-      const recent = await fetchRecentCandidates(interaction.channel as GuildTextBasedChannel, null, 5);
       session.mode = "dual";
       session.payload = null;
       session.payloadB = null;
       session.view = "dual-pick-a";
+      session.dualFilterUserId = null;
+      session.dualFilterUserName = null;
       session.lastPng = undefined;
       session.lastDiscordShot = undefined;
-      await interaction.editReply({
-        embeds: [buildDualPickAEmbed(recent.length)],
-        components: dualPickARows(token, recent),
-        files: [],
-      }).catch(() => {});
+      const recent = await fetchRecentCandidates(interaction.channel as GuildTextBasedChannel, null, 5);
+      await interaction.editReply(buildDualHubReply(token, session, recent)).catch(() => {});
       return;
     }
 
@@ -504,6 +543,8 @@ export async function handleQuoteInteraction(
       await interaction.deferUpdate().catch(() => {});
       session.mode = "single";
       session.payloadB = null;
+      session.dualFilterUserId = null;
+      session.dualFilterUserName = null;
       session.lastDiscordShot = undefined;
       if (session.payload) {
         session.view = "builder";
@@ -533,7 +574,7 @@ export async function handleQuoteInteraction(
       return;
     }
 
-    if (action === "dualpicka" && interaction.isStringSelectMenu()) {
+    if ((action === "dualpicka" || action === "dualpickb") && interaction.isStringSelectMenu()) {
       if (!interaction.channel || !interaction.channel.isTextBased()) return;
       await interaction.deferUpdate().catch(() => {});
       const msg = await (interaction.channel as GuildTextBasedChannel).messages.fetch(interaction.values[0]!).catch(() => null);
@@ -542,16 +583,7 @@ export async function handleQuoteInteraction(
         await interaction.editReply({ content: "❌ Couldn't use that message.", embeds: [], components: [], files: [] }).catch(() => {});
         return;
       }
-      session.payload = payload;
-      session.payloadB = null;
-      session.mode = "dual";
-      session.view = "dual-pick-b";
-      const recent = await fetchRecentCandidates(interaction.channel as GuildTextBasedChannel, null, 8);
-      await interaction.editReply({
-        embeds: [buildDualPickBEmbed(payload)],
-        components: dualPickBRows(token, recent, payload.messageId),
-        files: [],
-      }).catch(() => {});
+      await advanceDualWithPayload(token, session, interaction, payload, interaction.channel as GuildTextBasedChannel);
       return;
     }
 
@@ -561,30 +593,137 @@ export async function handleQuoteInteraction(
       session.payload = null;
       session.payloadB = null;
       session.view = "dual-pick-a";
+      session.dualFilterUserId = null;
+      session.dualFilterUserName = null;
       const recent = await fetchRecentCandidates(interaction.channel as GuildTextBasedChannel, null, 5);
-      await interaction.editReply({
-        embeds: [buildDualPickAEmbed(recent.length)],
-        components: dualPickARows(token, recent),
-        files: [],
-      }).catch(() => {});
+      await interaction.editReply(buildDualHubReply(token, session, recent)).catch(() => {});
       return;
     }
 
-    if (action === "dualpickb" && interaction.isStringSelectMenu()) {
+    if (action === "dualuser" && interaction.isUserSelectMenu()) {
       if (!interaction.channel || !interaction.channel.isTextBased()) return;
       await interaction.deferUpdate().catch(() => {});
-      const msg = await (interaction.channel as GuildTextBasedChannel).messages.fetch(interaction.values[0]!).catch(() => null);
-      const payload = msg ? payloadFromMessage(msg) : null;
-      if (!payload || !session.payload) {
-        await interaction.editReply({ content: "❌ Couldn't use that reply.", embeds: [], components: [], files: [] }).catch(() => {});
+      const user = interaction.users.first();
+      if (!user) return;
+      const member = await interaction.guild?.members.fetch(user.id).catch(() => null);
+      session.dualFilterUserId = user.id;
+      session.dualFilterUserName = member?.displayName ?? user.displayName ?? user.username;
+      const recent = await fetchRecentCandidates(
+        interaction.channel as GuildTextBasedChannel,
+        user.id,
+        5,
+      );
+      await interaction.editReply(buildDualHubReply(token, session, recent)).catch(() => {});
+      return;
+    }
+
+    if (action === "dualclearuser" && interaction.isButton()) {
+      if (!interaction.channel || !interaction.channel.isTextBased()) return;
+      await interaction.deferUpdate().catch(() => {});
+      session.dualFilterUserId = null;
+      session.dualFilterUserName = null;
+      const recent = await fetchRecentCandidates(interaction.channel as GuildTextBasedChannel, null, 5);
+      await interaction.editReply(buildDualHubReply(token, session, recent)).catch(() => {});
+      return;
+    }
+
+    if (action === "dualmsgid" && interaction.isButton()) {
+      const slot = dualSlotFromView(session);
+      const modal = new ModalBuilder()
+        .setCustomId(`quote:dualmsgidmodal:${token}`)
+        .setTitle(slot === "a" ? "Message ID · Setup" : "Message ID · Reply")
+        .addComponents(
+          new ActionRowBuilder<TextInputBuilder>().addComponents(
+            new TextInputBuilder()
+              .setCustomId("message_id")
+              .setLabel("Discord message ID")
+              .setStyle(TextInputStyle.Short)
+              .setRequired(true)
+              .setMinLength(17)
+              .setMaxLength(22)
+              .setPlaceholder("Right-click message → Copy Message ID"),
+          ),
+        );
+      await interaction.showModal(modal).catch(() => {});
+      return;
+    }
+
+    if (action === "dualmsgidmodal" && interaction.isModalSubmit()) {
+      if (!interaction.channel || !interaction.channel.isTextBased()) return;
+      await interaction.deferUpdate().catch(() => {});
+      const messageId = interaction.fields.getTextInputValue("message_id").trim();
+      if (!snowflakeOk(messageId)) {
+        await interaction.followUp({ content: "❌ That doesn't look like a message ID.", ...EPHEMERAL }).catch(() => {});
         return;
       }
-      session.payloadB = payload;
-      session.mode = "dual";
-      session.view = "dual-builder";
-      session.lastPng = undefined;
-      session.lastDiscordShot = undefined;
-      await interaction.editReply(await buildDualBuilderReply(token, session)).catch(() => {});
+      const msg = await (interaction.channel as GuildTextBasedChannel).messages.fetch(messageId).catch(() => null);
+      const payload = msg ? payloadFromMessage(msg) : null;
+      if (!payload) {
+        await interaction.followUp({
+          content: "❌ Couldn't find that message here, or it has no text.",
+          ...EPHEMERAL,
+        }).catch(() => {});
+        return;
+      }
+      await advanceDualWithPayload(token, session, interaction, payload, interaction.channel as GuildTextBasedChannel);
+      return;
+    }
+
+    if (action === "dualcustom" && interaction.isButton()) {
+      const slot = dualSlotFromView(session);
+      const modal = new ModalBuilder()
+        .setCustomId(`quote:dualcustommodal:${token}`)
+        .setTitle(slot === "a" ? "Custom · Setup" : "Custom · Reply")
+        .addComponents(
+          new ActionRowBuilder<TextInputBuilder>().addComponents(
+            new TextInputBuilder()
+              .setCustomId("text")
+              .setLabel("Quote text")
+              .setStyle(TextInputStyle.Paragraph)
+              .setRequired(true)
+              .setMaxLength(500)
+              .setPlaceholder("What they said…"),
+          ),
+          new ActionRowBuilder<TextInputBuilder>().addComponents(
+            new TextInputBuilder()
+              .setCustomId("name")
+              .setLabel("Author display name")
+              .setStyle(TextInputStyle.Short)
+              .setRequired(true)
+              .setMaxLength(80)
+              .setValue(clip(interaction.user.displayName, 80)),
+          ),
+          new ActionRowBuilder<TextInputBuilder>().addComponents(
+            new TextInputBuilder()
+              .setCustomId("handle")
+              .setLabel("Handle (without @)")
+              .setStyle(TextInputStyle.Short)
+              .setRequired(true)
+              .setMaxLength(32)
+              .setValue(clip(interaction.user.username, 32)),
+          ),
+        );
+      await interaction.showModal(modal).catch(() => {});
+      return;
+    }
+
+    if (action === "dualcustommodal" && interaction.isModalSubmit()) {
+      if (!interaction.channel || !interaction.channel.isTextBased()) return;
+      await interaction.deferUpdate().catch(() => {});
+      const text = prepareQuoteText(interaction.fields.getTextInputValue("text"));
+      const displayName = interaction.fields.getTextInputValue("name").trim() || interaction.user.displayName;
+      const handle = interaction.fields.getTextInputValue("handle").trim().replace(/^@/, "") || interaction.user.username;
+      const member = await interaction.guild?.members.fetch(interaction.user.id).catch(() => null);
+      const payload: QuotePayload = {
+        text,
+        displayName,
+        handle,
+        avatarUrl: member?.displayAvatarURL({ extension: "png", size: 512 })
+          ?? interaction.user.displayAvatarURL({ extension: "png", size: 512 }),
+        authorId: interaction.user.id,
+        channelId: interaction.channelId ?? undefined,
+      };
+      await advanceDualWithPayload(token, session, interaction, payload, interaction.channel as GuildTextBasedChannel);
       return;
     }
 
