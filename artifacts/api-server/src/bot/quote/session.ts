@@ -43,6 +43,9 @@ export interface QuoteSession {
   dualStyleId: string;
   customTheme: QuoteTheme;
   view: QuoteView;
+  /** When browsing a member's recent msgs inside the dual hub. */
+  dualFilterUserId?: string | null;
+  dualFilterUserName?: string | null;
   lastPng?: Buffer;
   /** Extra Classic companion when dual style isn't already duo-classic. */
   lastDiscordShot?: Buffer;
@@ -83,6 +86,8 @@ export function createQuoteSession(init: {
     dualStyleId: DUAL_QUOTE_STYLES[0]!.id,
     customTheme: customFrom(styleId === CUSTOM_STYLE_ID ? "classic" : styleId),
     view: init.view ?? (init.payload ? "builder" : "pick"),
+    dualFilterUserId: null,
+    dualFilterUserName: null,
     expiresAt: Date.now() + TTL_MS,
   };
   sessions.set(token, session);
