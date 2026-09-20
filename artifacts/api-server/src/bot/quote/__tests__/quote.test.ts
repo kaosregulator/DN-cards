@@ -28,10 +28,13 @@ describe("quote text helpers", () => {
 });
 
 describe("quote styles", () => {
-  it("ships at least five presets plus custom", () => {
+  it("ships classic + discord + 4k + cinematic among presets", () => {
     expect(QUOTE_STYLES.length).toBeGreaterThanOrEqual(5);
     expect(customFrom("classic").id).toBe("custom");
-    expect(getStyle("classic").avatarLayout).toBe("left");
-    expect(getStyle("spotlight").avatarLayout).toBe("portrait");
+    expect(getStyle("classic").layout).toBe("classic");
+    expect(getStyle("discord").layout).toBe("discord");
+    expect(getStyle("caught4k").layout).toBe("caught4k");
+    expect(getStyle("cinematic").layout).toBe("cinematic");
+    expect(getStyle("miq").layout).toBe("fade-left");
   });
 });

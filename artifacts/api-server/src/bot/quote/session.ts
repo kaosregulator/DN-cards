@@ -20,6 +20,8 @@ export interface QuotePayload {
   messageId?: string;
   channelId?: string;
   authorId?: string;
+  /** Original message timestamp (Discord / 4K overlays). */
+  createdAt?: Date;
 }
 
 export interface QuoteSession {

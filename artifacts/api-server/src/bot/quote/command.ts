@@ -34,7 +34,7 @@ import {
 } from "./session.js";
 import {
   BG_SWATCHES, CUSTOM_STYLE_ID, QUOTE_STYLES, TEXT_SWATCHES, customFrom,
-  type AvatarLayout,
+  type QuoteLayout,
 } from "./styles.js";
 import { clip, prepareQuoteText } from "./text.js";
 
@@ -88,6 +88,7 @@ function payloadFromMessage(message: Message): QuotePayload | null {
     messageId: message.id,
     channelId: message.channelId,
     authorId: message.author.id,
+    createdAt: message.createdAt,
   };
 }
 
@@ -125,6 +126,7 @@ async function renderPreview(session: QuoteSession): Promise<Buffer | null> {
     avatarUrl: session.payload.avatarUrl,
     theme: activeTheme(session),
     watermark: BRAND_NAME,
+    createdAt: session.payload.createdAt,
   });
   if (buf) session.lastPng = buf;
   return buf;
@@ -171,18 +173,19 @@ function builderRows(token: string, session: QuoteSession) {
 
 function customRows(token: string, session: QuoteSession) {
   const theme = session.customTheme;
-  const layout = theme.avatarLayout;
+  const layout = theme.layout;
   return [
     new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
       new StringSelectMenuBuilder()
         .setCustomId(`quote:layout:${token}`)
-        .setPlaceholder("Avatar layout")
+        .setPlaceholder("Card layout")
         .addOptions(
-          { label: "Fade Left", value: "left", default: layout === "left", emoji: "⬅️" },
-          { label: "Fade Right", value: "right", default: layout === "right", emoji: "➡️" },
-          { label: "Spotlight (portrait)", value: "portrait", default: layout === "portrait", emoji: "🔦" },
-          { label: "Corner Avatar", value: "corner", default: layout === "corner", emoji: "⭕" },
-          { label: "Words Only", value: "none", default: layout === "none", emoji: "🔤" },
+          { label: "Classic (circle fade)", value: "classic", default: layout === "classic", emoji: "🖤" },
+          { label: "MakeItAQuote fade", value: "fade-left", default: layout === "fade-left", emoji: "📷" },
+          { label: "Discord Capture", value: "discord", default: layout === "discord", emoji: "💬" },
+          { label: "Caught in 4K", value: "caught4k", default: layout === "caught4k", emoji: "📼" },
+          { label: "Cinematic", value: "cinematic", default: layout === "cinematic", emoji: "🎥" },
+          { label: "Impact meme", value: "impact", default: layout === "impact", emoji: "💥" },
         ),
     ),
     new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
@@ -509,15 +512,23 @@ export async function handleQuoteInteraction(
       await interaction.deferUpdate().catch(() => {});
       session.styleId = CUSTOM_STYLE_ID;
       session.view = "custom";
-      const layout = interaction.values[0] as AvatarLayout;
-      session.customTheme = { ...session.customTheme, avatarLayout: layout };
-      if (layout === "portrait") {
-        session.customTheme = { ...session.customTheme, width: 1080, height: 1350, quoteMarks: true, avatarShare: 1, fadeShare: 0.55 };
-      } else if (layout === "corner" || layout === "none") {
-        session.customTheme = { ...session.customTheme, width: 1200, height: 630, quoteMarks: false, avatarShare: layout === "corner" ? 0.18 : 0, fadeShare: 0 };
-      } else {
-        session.customTheme = { ...session.customTheme, width: 1200, height: 630, quoteMarks: false, avatarShare: 0.46, fadeShare: 0.55 };
-      }
+      const next = interaction.values[0] as QuoteLayout;
+      // Seed dimensions / avatar treatment from the matching preset when possible.
+      const seed = QUOTE_STYLES.find(s => s.layout === next) ?? customFrom("classic");
+      session.customTheme = {
+        ...session.customTheme,
+        layout: next,
+        width: seed.width,
+        height: seed.height,
+        avatarLayout: seed.avatarLayout,
+        avatarShare: seed.avatarShare,
+        fadeShare: seed.fadeShare,
+        quoteMarks: seed.quoteMarks,
+        fontTone: seed.fontTone,
+        tagline: seed.tagline,
+        uppercaseQuote: seed.uppercaseQuote,
+        grayscale: next === "discord" || next === "cinematic" ? false : session.customTheme.grayscale,
+      };
       session.lastPng = undefined;
       await interaction.editReply(await buildBuilderReply(token, session)).catch(() => {});
       return;
