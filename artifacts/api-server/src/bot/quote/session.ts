@@ -1,38 +1,51 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // In-memory quote builder sessions (TTL + cap), same pattern as /emoji.
+// Supports single quotes and dual “fuse 2 msgs” sessions.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { randomBytes } from "node:crypto";
 import type { QuoteTheme } from "./styles.js";
 import { CUSTOM_STYLE_ID, customFrom, getStyle } from "./styles.js";
+import { DUAL_QUOTE_STYLES } from "./dual-styles.js";
 
 const TTL_MS = 10 * 60 * 1000;
 const MAX_SESSIONS = 250;
 
-export type QuoteView = "pick" | "builder" | "custom";
+export type QuoteView =
+  | "pick"
+  | "builder"
+  | "custom"
+  | "dual-pick-a"
+  | "dual-pick-b"
+  | "dual-builder";
+
+export type QuoteMode = "single" | "dual";
 
 export interface QuotePayload {
   text: string;
   displayName: string;
   handle: string;
   avatarUrl: string | null;
-  /** Source message id when quoting an existing Discord message. */
   messageId?: string;
   channelId?: string;
   authorId?: string;
-  /** Original message timestamp (Discord / 4K overlays). */
   createdAt?: Date;
 }
 
 export interface QuoteSession {
   ownerId: string;
   guildId: string;
+  mode: QuoteMode;
   payload: QuotePayload | null;
+  /** Second line when mode === "dual". */
+  payloadB: QuotePayload | null;
   styleId: string;
+  dualStyleId: string;
   customTheme: QuoteTheme;
   view: QuoteView;
-  /** Cached last PNG so Post/Save don't re-render. */
   lastPng?: Buffer;
+  /** Extra Classic companion when dual style isn't already duo-classic. */
+  lastDiscordShot?: Buffer;
   expiresAt: number;
 }
 
@@ -55,6 +68,7 @@ export function createQuoteSession(init: {
   payload?: QuotePayload | null;
   styleId?: string;
   view?: QuoteView;
+  mode?: QuoteMode;
 }): { token: string; session: QuoteSession } {
   sweep();
   const token = randomBytes(6).toString("hex");
@@ -62,8 +76,11 @@ export function createQuoteSession(init: {
   const session: QuoteSession = {
     ownerId: init.ownerId,
     guildId: init.guildId,
+    mode: init.mode ?? "single",
     payload: init.payload ?? null,
+    payloadB: null,
     styleId,
+    dualStyleId: DUAL_QUOTE_STYLES[0]!.id,
     customTheme: customFrom(styleId === CUSTOM_STYLE_ID ? "classic" : styleId),
     view: init.view ?? (init.payload ? "builder" : "pick"),
     expiresAt: Date.now() + TTL_MS,
