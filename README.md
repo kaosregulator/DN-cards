@@ -85,6 +85,7 @@ SESSION_SECRET=long-random-string
 NODE_ENV=development
 PUBLIC_BASE_URL=https://your-public-host.example
 ANTHROPIC_API_KEY=for_claude_ai_features  # optional, enables /bob_talk AI
+UNBELIEVABOAT_TOKEN=your_unb_api_token    # optional — UnbelievaBoat hub + pet shop (see docs/unbelievaboat.md)
 ```
 
 ### Deploy on Railway
