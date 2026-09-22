@@ -6,6 +6,7 @@ import type {
   ButtonInteraction,
   StringSelectMenuInteraction,
   UserSelectMenuInteraction,
+  ModalSubmitInteraction,
   User,
 } from "discord.js";
 import {
@@ -18,6 +19,9 @@ import {
   AttachmentBuilder,
   MessageFlags,
   UserSelectMenuBuilder,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
 } from "discord.js";
 import {
   hatchPet,
@@ -40,7 +44,7 @@ import {
   PET_SPECIES,
   type PetSpecies,
 } from "./engine.js";
-import { renderPetGif, renderHatchGif, renderChallengeGif } from "./render.js";
+import { renderPetGif, renderHatchGif, renderChallengeGif, renderIntroGif } from "./render.js";
 import type { Pet } from "@workspace/db";
 import { listCatalog } from "../../lib/unbelievaboat/db.js";
 
@@ -155,7 +159,7 @@ function petEmbed(pet: Pet, title?: string): EmbedBuilder {
     .setFooter({ text: "Pets grow in real time · neglect can be fatal · shop uses UnbelievaBoat cash" });
 }
 
-function careRows(pet: Pet): ActionRowBuilder<ButtonBuilder>[] {
+function careRows(pet: Pet, tutorial = false): ActionRowBuilder<ButtonBuilder>[] {
   if (pet.isDead) {
     return [
       new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -164,31 +168,35 @@ function careRows(pet: Pet): ActionRowBuilder<ButtonBuilder>[] {
       ),
     ];
   }
-  return [
-    new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder().setCustomId("pet:feed").setLabel("Feed").setEmoji("🍖").setStyle(ButtonStyle.Success),
-      new ButtonBuilder().setCustomId("pet:clean").setLabel("Clean").setEmoji("🧼").setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId("pet:play").setLabel("Play").setEmoji("🎾").setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId("pet:shop").setLabel("Shop").setEmoji("🛒").setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId("pet:refresh").setLabel("Refresh").setEmoji("🔄").setStyle(ButtonStyle.Secondary),
-    ),
-    new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder().setCustomId("pet:challenge").setLabel("Challenge").setEmoji("⚔️").setStyle(ButtonStyle.Danger),
-      new ButtonBuilder().setCustomId("pet:top").setLabel("Top pets").setEmoji("🏆").setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId("pet:inv").setLabel("Use item").setEmoji("🎒").setStyle(ButtonStyle.Secondary),
-    ),
-  ];
+  const care = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId("pet:feed").setLabel(tutorial ? "① Feed" : "Feed").setEmoji("🍖").setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId("pet:clean").setLabel(tutorial ? "② Clean" : "Clean").setEmoji("🧼").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId("pet:play").setLabel(tutorial ? "③ Play" : "Play").setEmoji("🎾").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId("pet:shop").setLabel("Shop").setEmoji("🛒").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId("pet:refresh").setLabel("Refresh").setEmoji("🔄").setStyle(ButtonStyle.Secondary),
+  );
+  const extra = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId("pet:challenge").setLabel("Challenge").setEmoji("⚔️").setStyle(ButtonStyle.Danger),
+    new ButtonBuilder().setCustomId("pet:top").setLabel("Top pets").setEmoji("🏆").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId("pet:inv").setLabel("Use item").setEmoji("🎒").setStyle(ButtonStyle.Secondary),
+  );
+  return [care, extra];
 }
 
 async function replyWithPet(
-  interaction: ChatInputCommandInteraction | ButtonInteraction | StringSelectMenuInteraction | UserSelectMenuInteraction,
+  interaction: ChatInputCommandInteraction | ButtonInteraction | StringSelectMenuInteraction | UserSelectMenuInteraction | ModalSubmitInteraction,
   pet: Pet,
-  opts?: { hatchAnim?: boolean; content?: string },
+  opts?: { hatchAnim?: boolean; content?: string; tutorial?: boolean },
 ) {
   const live = await tickPet(pet);
   const anim = opts?.hatchAnim ? await renderHatchGif(live) : await renderPetGif(live);
   const files: AttachmentBuilder[] = [];
   const embed = petEmbed(live);
+  if (opts?.tutorial) {
+    embed.setFooter({
+      text: "① Feed  ② Clean  ③ Play — keep hearts full or your pet can leave forever",
+    });
+  }
   if (anim?.buffer) {
     files.push(new AttachmentBuilder(anim.buffer, { name: "pet.gif" }));
     embed.setImage("attachment://pet.gif");
@@ -196,7 +204,7 @@ async function replyWithPet(
   const payload = {
     content: opts?.content,
     embeds: [embed],
-    components: careRows(live),
+    components: careRows(live, opts?.tutorial),
     files,
   };
   if (interaction.deferred || interaction.replied) {
@@ -249,9 +257,10 @@ export async function handlePetCommand(interaction: ChatInputCommandInteraction)
       const { pet, charged } = await hatchPet(guildId, interaction.user.id, { name, species });
       await replyWithPet(interaction, pet, {
         hatchAnim: true,
+        tutorial: true,
         content: charged > 0
-          ? `🥚 Hatched **${pet.name}** (−${charged} UB cash). Keep them fed & clean!`
-          : `🥚 Hatched **${pet.name}**! Keep them fed & clean — they grow in real time.`,
+          ? `🎉 **${pet.name}** hatched! (−${charged} UB cash)\nYou're a caretaker now — start with **Feed → Clean → Play**.`
+          : `🎉 **${pet.name}** hatched!\nYou're a caretaker now — start with **Feed → Clean → Play**. Hearts drop over real time.`,
       });
     } catch (err) {
       await interaction.editReply(`❌ ${err instanceof Error ? err.message : "Hatch failed."}`);
@@ -291,9 +300,31 @@ export async function handlePetCommand(interaction: ChatInputCommandInteraction)
       await interaction.editReply(`<@${target.id}> doesn't have a pet yet.`);
       return;
     }
+    const intro = await renderIntroGif();
+    const files: AttachmentBuilder[] = [];
+    const embed = new EmbedBuilder()
+      .setColor(0xf5c84c)
+      .setTitle("🥚 Welcome to the Tamagotchi Nursery")
+      .setDescription(
+        [
+          "**How it works (classic style):**",
+          "① Pick a **species** below",
+          "② Give your pet a **name**",
+          "③ Watch the **egg crack** and meet your hatchling",
+          "④ Keep hearts full — **Feed · Clean · Play**",
+          "",
+          "Neglect them too long and they can **truly leave**…",
+          "Buy treats with UnbelievaBoat cash · Challenge friends for glory.",
+        ].join("\n"),
+      )
+      .setFooter({ text: "Tip: you can also run /pet hatch species:… name:…" });
+    if (intro?.buffer) {
+      files.push(new AttachmentBuilder(intro.buffer, { name: "nursery.gif" }));
+      embed.setImage("attachment://nursery.gif");
+    }
     const speciesSelect = new StringSelectMenuBuilder()
       .setCustomId("pet:species")
-      .setPlaceholder("Pick a species to hatch…")
+      .setPlaceholder("① Pick a species to begin…")
       .addOptions(PET_SPECIES.map(s => ({
         label: SPECIES_META[s].label,
         value: s,
@@ -301,16 +332,8 @@ export async function handlePetCommand(interaction: ChatInputCommandInteraction)
         description: `Hatch a ${SPECIES_META[s].label.toLowerCase()} egg`,
       })));
     await interaction.editReply({
-      embeds: [
-        new EmbedBuilder()
-          .setColor(0x6366f1)
-          .setTitle("🥚 Tamagotchi Nursery")
-          .setDescription(
-            "You don't have a pet yet.\nPick a species below, then name it with `/pet hatch`, **or** use the hatch command directly.\n\n"
-            + "Pets get **hungry**, **dirty**, and **sad** over real time. Care for them or they can **die** from neglect.\n"
-            + "Buy treats with **UnbelievaBoat cash** and challenge friends for glory.",
-          ),
-      ],
+      embeds: [embed],
+      files,
       components: [
         new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(speciesSelect),
         new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -390,8 +413,38 @@ export async function handlePetComponent(
 
   if (id === "pet:species" && interaction.isStringSelectMenu()) {
     const species = interaction.values[0] as PetSpecies;
+    const modal = new ModalBuilder()
+      .setCustomId(`pet:hatch_modal:${species}`)
+      .setTitle(`Name your ${SPECIES_META[species].label}`);
+    modal.addComponents(
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder()
+          .setCustomId("name")
+          .setLabel("Pet name")
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+          .setMinLength(1)
+          .setMaxLength(24)
+          .setPlaceholder("e.g. Spark, Mochi, Bean…"),
+      ),
+    );
+    await interaction.showModal(modal);
+    return;
+  }
+
+  if (id === "pet:hatchmenu" && interaction.isButton()) {
+    const speciesSelect = new StringSelectMenuBuilder()
+      .setCustomId("pet:species")
+      .setPlaceholder("Pick a species to hatch…")
+      .addOptions(PET_SPECIES.map(s => ({
+        label: SPECIES_META[s].label,
+        value: s,
+        emoji: SPECIES_META[s].emoji,
+        description: `Hatch a ${SPECIES_META[s].label.toLowerCase()}`,
+      })));
     await interaction.reply({
-      content: `Great pick — **${SPECIES_META[species].label}**!\nRun \`/pet hatch species:${species} name:YourName\` to hatch your egg.`,
+      content: "🥚 Choose a species — then name your egg:",
+      components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(speciesSelect)],
       ...EPHEMERAL,
     });
     return;
@@ -608,5 +661,43 @@ export async function handlePetComponent(
       content: `❌ ${err instanceof Error ? err.message : "Action failed."}`,
       ...EPHEMERAL,
     });
+  }
+}
+
+/** Modal submit: pet:hatch_modal:<species> */
+export async function handlePetModal(interaction: ModalSubmitInteraction): Promise<void> {
+  const guildId = interaction.guildId;
+  if (!guildId) {
+    await interaction.reply({ content: "Server only.", ...EPHEMERAL });
+    return;
+  }
+  const parts = interaction.customId.split(":");
+  if (parts[1] !== "hatch_modal") {
+    await interaction.reply({ content: "Unknown pet form.", ...EPHEMERAL });
+    return;
+  }
+  const species = parts[2] as PetSpecies;
+  if (!PET_SPECIES.includes(species)) {
+    await interaction.reply({ content: "Unknown species.", ...EPHEMERAL });
+    return;
+  }
+  const name = interaction.fields.getTextInputValue("name").trim();
+  if (!name) {
+    await interaction.reply({ content: "Give your pet a name.", ...EPHEMERAL });
+    return;
+  }
+
+  await interaction.deferReply();
+  try {
+    const { pet, charged } = await hatchPet(guildId, interaction.user.id, { name, species });
+    await replyWithPet(interaction, pet, {
+      hatchAnim: true,
+      tutorial: true,
+      content: charged > 0
+        ? `🎉 **${pet.name}** hatched! (−${charged} UB cash)\nStart with **Feed → Clean → Play**.`
+        : `🎉 **${pet.name}** hatched!\nStart with **Feed → Clean → Play**. Hearts drop over real time.`,
+    });
+  } catch (err) {
+    await interaction.editReply(`❌ ${err instanceof Error ? err.message : "Hatch failed."}`);
   }
 }

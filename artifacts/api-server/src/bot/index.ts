@@ -257,13 +257,18 @@ export async function startBot() {
         return;
       }
 
-      // ── Tamagotchi pets addon (pet:* buttons/selects) ──────────────────────
+      // ── Tamagotchi pets addon (pet:* buttons/selects/modals) ────────────────
       if (
         (interaction.isButton() || interaction.isStringSelectMenu() || interaction.isUserSelectMenu()) &&
         interaction.customId.startsWith("pet:")
       ) {
         const { handlePetComponent } = await import("./pets/command.js");
         await handlePetComponent(interaction);
+        return;
+      }
+      if (interaction.isModalSubmit() && interaction.customId.startsWith("pet:")) {
+        const { handlePetModal } = await import("./pets/command.js");
+        await handlePetModal(interaction);
         return;
       }
 

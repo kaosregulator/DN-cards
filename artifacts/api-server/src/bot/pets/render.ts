@@ -1,30 +1,22 @@
-// Animated Tamagotchi GIF renderer — procedural creatures (dragon/cat/dog/hamster)
-// using the shared @napi-rs/canvas + gifencoder pipeline from animations/engine.
-// Mood, dirt, hunger, stage, and cosmetics all drive the frame loop.
+// Tamagotchi-style GIF renderer — Onocentaur egg sprites + cute chibi pets
+// inside a big, readable LCD device frame. Inspired by classic Connection
+// care UX (meters, attention, hatch ritual) — original art + free egg pack.
 
 import { encodeAnimation, type Ctx } from "../animations/engine.js";
 import type { AnimationResult } from "../animations/types.js";
 import type { Pet } from "@workspace/db";
 import { SPECIES_META, moodOf, isDirty, isHungry, type PetSpecies } from "./engine.js";
+import {
+  loadEggSheet, loadPetBackground, blitEggTile, eggFrameAt, eggCol, eggRowFor,
+} from "./sprites.js";
 
-export const PET_CANVAS = { width: 420, height: 320 } as const;
+/** Bigger canvas so Discord mobile users can actually see the pet. */
+export const PET_CANVAS = { width: 480, height: 400 } as const;
 
 type Mood = ReturnType<typeof moodOf>;
 
-function palette(pet: Pet): { body: string; accent: string; bg0: string; bg1: string } {
-  const sp = (pet.species as PetSpecies) in SPECIES_META ? (pet.species as PetSpecies) : "cat";
-  const hues = SPECIES_META[sp].hues;
-  const [body, accent] = hues[pet.variant % hues.length]!;
-  const mood = moodOf(pet);
-  const bg =
-    mood === "dead" ? ["#1a1214", "#3a2024"] as const
-    : mood === "critical" ? ["#2a1a14", "#4a3020"] as const
-    : mood === "sad" ? ["#1a2230", "#2a3850"] as const
-    : ["#142028", "#1e3a4a"] as const;
-  return { body, accent, bg0: bg[0], bg1: bg[1] };
-}
-
 function ellipse(ctx: Ctx, x: number, y: number, rx: number, ry: number) {
+  ctx.beginPath();
   (ctx as unknown as { ellipse(x: number, y: number, rx: number, ry: number, rot: number, a0: number, a1: number): void })
     .ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
 }
@@ -40,556 +32,798 @@ function roundRect(ctx: Ctx, x: number, y: number, w: number, h: number, r: numb
   ctx.closePath();
 }
 
-function drawBg(ctx: Ctx, w: number, h: number, p: ReturnType<typeof palette>, t: number, mood: Mood) {
-  const g = ctx.createLinearGradient(0, 0, 0, h);
-  g.addColorStop(0, p.bg0);
-  g.addColorStop(1, p.bg1);
-  ctx.fillStyle = g;
+function palette(pet: Pet) {
+  const sp = (pet.species as PetSpecies) in SPECIES_META ? (pet.species as PetSpecies) : "cat";
+  const hues = SPECIES_META[sp].hues;
+  const [body, accent] = hues[pet.variant % hues.length]!;
+  return { body, accent, species: sp };
+}
+
+/** Soft pastel device shell + LCD window (original — not Bandai art).
+ * Flat fills only — GIF quantization destroys gradients/alpha. */
+function drawDevice(ctx: Ctx, w: number, h: number, t: number) {
+  // Outer atmosphere (flat, GIF-safe)
+  ctx.fillStyle = "#1a2740";
   ctx.fillRect(0, 0, w, h);
 
-  // Soft floating particles / stars.
-  ctx.save();
+  // Sparse constellation dots (opaque)
+  ctx.fillStyle = "#3a5070";
   for (let i = 0; i < 18; i++) {
-    const px = ((i * 97 + t * (mood === "dead" ? 20 : 40)) % (w + 20)) - 10;
-    const py = (i * 53) % h;
-    ctx.globalAlpha = 0.15 + (i % 5) * 0.05;
-    ctx.fillStyle = mood === "dead" ? "#ff8899" : "#c8e8ff";
-    ellipse(ctx, px, py, 1.5 + (i % 3), 1.5 + (i % 3));
+    const dx = Math.floor((i * 73 + t * 20) % w);
+    const dy = Math.floor((i * 41) % h);
+    ctx.fillRect(dx, dy, 2, 2);
+  }
+
+  // Device body
+  const pad = 28;
+  ctx.fillStyle = "#d8e0ec";
+  roundRect(ctx, pad, pad - 4, w - pad * 2, h - pad * 2 + 18, 36);
+  ctx.fill();
+  ctx.fillStyle = "#b8c4d4";
+  roundRect(ctx, pad + 6, pad + 2, w - pad * 2 - 12, h - pad * 2 + 6, 30);
+  ctx.fill();
+
+  // LCD bezel
+  const lx = 58, ly = 56, lw = w - 116, lh = h - 150;
+  ctx.fillStyle = "#2a3344";
+  roundRect(ctx, lx - 8, ly - 8, lw + 16, lh + 16, 14);
+  ctx.fill();
+  // Yellow classic bezel ring
+  ctx.fillStyle = "#e8b830";
+  roundRect(ctx, lx - 4, ly - 4, lw + 8, lh + 8, 10);
+  ctx.fill();
+  // Screen — warm cream, no checker (avoids GIF banding triangles)
+  ctx.fillStyle = "#fff8e7";
+  roundRect(ctx, lx, ly, lw, lh, 6);
+  ctx.fill();
+
+  // Three classic buttons under screen
+  const by = h - 58;
+  for (const bx of [w / 2 - 54, w / 2, w / 2 + 54]) {
+    ctx.fillStyle = "#e8b830";
+    ellipse(ctx, bx, by, 14, 10);
+    ctx.fill();
+    ctx.fillStyle = "#c49218";
+    ellipse(ctx, bx, by + 2, 10, 6);
     ctx.fill();
   }
-  ctx.restore();
 
-  // Floor ellipse.
-  ctx.fillStyle = "rgba(0,0,0,0.28)";
-  ellipse(ctx, w / 2, h - 48, 110, 18);
-  ctx.fill();
+  return { lx, ly, lw, lh };
 }
 
-function drawMeter(ctx: Ctx, x: number, y: number, label: string, value: number, color: string) {
-  ctx.fillStyle = "rgba(255,255,255,0.12)";
-  roundRect(ctx, x, y, 100, 10, 4);
-  ctx.fill();
-  ctx.fillStyle = color;
-  roundRect(ctx, x, y, Math.max(2, 100 * (value / 100)), 10, 4);
-  ctx.fill();
-  ctx.fillStyle = "rgba(255,255,255,0.75)";
-  ctx.font = "10px sans-serif";
-  ctx.fillText(`${label} ${Math.round(value)}`, x, y - 3);
-}
-
-function eye(ctx: Ctx, x: number, y: number, r: number, mood: Mood, blink: boolean) {
-  if (blink) {
-    ctx.strokeStyle = "#12161c";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(x - r, y);
-    ctx.lineTo(x + r, y);
-    ctx.stroke();
-    return;
-  }
-  if (mood === "dead") {
-    ctx.strokeStyle = "#12161c";
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.moveTo(x - r, y - r); ctx.lineTo(x + r, y + r);
-    ctx.moveTo(x + r, y - r); ctx.lineTo(x - r, y + r);
-    ctx.stroke();
-    return;
-  }
-  ellipse(ctx, x, y, r, r);
-  ctx.fillStyle = "#f7fbff";
-  ctx.fill();
-  const pupil = mood === "sad" || mood === "critical" ? r * 0.35 : r * 0.5;
-  ellipse(ctx, x + r * 0.15, y + (mood === "critical" ? r * 0.15 : 0), pupil, pupil * 1.1);
-  ctx.fillStyle = "#12161c";
-  ctx.fill();
-}
-
-function drawEgg(ctx: Ctx, cx: number, cy: number, pet: Pet, t: number, p: ReturnType<typeof palette>) {
-  const wobble = Math.sin(t * Math.PI * 4) * 4;
+/** Clip subsequent draws to the LCD screen. */
+function clipScreen(ctx: Ctx, lx: number, ly: number, lw: number, lh: number) {
   ctx.save();
-  ctx.translate(cx, cy);
-  ctx.rotate((wobble * Math.PI) / 180);
-  // Shell.
-  ellipse(ctx, 0, 0, 42, 54);
-  ctx.fillStyle = "#f5efe6";
-  ctx.fill();
-  ctx.strokeStyle = "rgba(0,0,0,0.35)";
-  ctx.lineWidth = 2;
-  ctx.stroke();
-  // Speckles.
-  ctx.fillStyle = p.body;
-  for (const [sx, sy, sr] of [[-12, -8, 5], [14, 6, 4], [-4, 18, 6], [10, -20, 3]] as const) {
-    ellipse(ctx, sx, sy, sr, sr * 0.8);
-    ctx.fill();
-  }
-  // Crack when close to hatch (high care).
-  if (pet.happiness > 70 && pet.hunger > 60) {
-    ctx.strokeStyle = "rgba(0,0,0,0.45)";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(-8, -10);
-    ctx.lineTo(0, 0);
-    ctx.lineTo(10, -6);
-    ctx.lineTo(4, 12);
-    ctx.stroke();
-  }
-  ctx.restore();
+  roundRect(ctx, lx, ly, lw, lh, 6);
+  ctx.clip();
 }
 
-function drawCreature(ctx: Ctx, cx: number, feetY: number, pet: Pet, t: number, p: ReturnType<typeof palette>) {
+function drawHearts(ctx: Ctx, x: number, y: number, value: number, label: string, color: string) {
+  const filled = Math.round(value / 25); // 0–4 hearts
+  ctx.fillStyle = "#3a4558";
+  ctx.font = "bold 11px Early GameBoy, monospace";
+  ctx.fillText(label, x, y - 2);
+  for (let i = 0; i < 4; i++) {
+    const hx = x + i * 18;
+    // Block hearts — no bezier (GIF-safe)
+    ctx.fillStyle = i < filled ? color : "#d4cbb8";
+    ctx.fillRect(hx + 2, y + 2, 4, 4);
+    ctx.fillRect(hx + 8, y + 2, 4, 4);
+    ctx.fillRect(hx + 1, y + 5, 12, 5);
+    ctx.beginPath();
+    ctx.moveTo(hx + 1, y + 10);
+    ctx.lineTo(hx + 7, y + 15);
+    ctx.lineTo(hx + 13, y + 10);
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+
+function drawIconRow(ctx: Ctx, lx: number, ly: number, lw: number, pet: Pet) {
+  // Classic top care icons (text glyphs — emoji often render poorly in canvas GIFs)
+  const icons = [
+    { label: "Fd", warn: isHungry(pet) },
+    { label: "Lt", warn: false },
+    { label: "Pl", warn: pet.happiness < 35 },
+    { label: "Md", warn: pet.health < 40 },
+  ];
+  const gap = lw / (icons.length + 1);
+  icons.forEach((ic, i) => {
+    const x = lx + gap * (i + 1);
+    if (ic.warn) {
+      ctx.fillStyle = "#ffcccc";
+      roundRect(ctx, x - 14, ly + 6, 28, 18, 4);
+      ctx.fill();
+    }
+    ctx.fillStyle = ic.warn ? "#b91c1c" : "#5a6578";
+    ctx.font = "bold 11px Early GameBoy, monospace";
+    ctx.textAlign = "center";
+    ctx.fillText(ic.label, x, ly + 19);
+  });
+  ctx.textAlign = "left";
+
+  // Attention bang
+  if (isHungry(pet) || isDirty(pet) || pet.happiness < 30 || pet.health < 40) {
+    const blink = Math.floor(Date.now() / 400) % 2 === 0;
+    if (blink) {
+      ctx.fillStyle = "#e11d48";
+      ctx.font = "bold 16px Early GameBoy, monospace";
+      ctx.fillText("!", lx + lw - 22, ly + 22);
+    }
+  }
+}
+
+function drawMess(ctx: Ctx, cx: number, feetY: number, t: number) {
+  ctx.fillStyle = "#6b4f2a";
+  for (let i = 0; i < 3; i++) {
+    const ox = -36 + i * 18 + Math.sin(t * 3 + i) * 2;
+    ellipse(ctx, cx + ox, feetY - 4, 8, 5);
+    ctx.fill();
+    ctx.fillStyle = "#8a6840";
+    ellipse(ctx, cx + ox - 2, feetY - 7, 3, 2);
+    ctx.fill();
+    ctx.fillStyle = "#6b4f2a";
+  }
+}
+
+/** Cute chibi creature — big head, simple face, readable at Discord scale. */
+function drawChibi(ctx: Ctx, pet: Pet, cx: number, feetY: number, t: number, scale = 1) {
   const mood = moodOf(pet);
-  const stage = pet.stage;
-  const scale =
-    stage === "hatchling" ? 0.72
-    : stage === "juvenile" ? 0.9
-    : 1.05;
+  const p = palette(pet);
+  const stageScale =
+    pet.stage === "hatchling" ? 0.7
+    : pet.stage === "juvenile" ? 0.88
+    : pet.stage === "egg" ? 0.55
+    : 1;
+  const s = scale * stageScale;
   const bounce = mood === "dead" ? 0
-    : mood === "ecstatic" ? Math.abs(Math.sin(t * Math.PI * 6)) * 10
-    : mood === "happy" ? Math.abs(Math.sin(t * Math.PI * 4)) * 6
+    : mood === "ecstatic" ? Math.abs(Math.sin(t * Math.PI * 5)) * 10
+    : mood === "happy" ? Math.abs(Math.sin(t * Math.PI * 3)) * 6
     : Math.abs(Math.sin(t * Math.PI * 2)) * 3;
-  const blink = !pet.isDead && Math.floor(t * 12) % 17 === 0;
-  const hungry = isHungry(pet);
-  const dirty = isDirty(pet);
-  const sp = pet.species as PetSpecies;
+  const blink = !pet.isDead && Math.floor(t * 10) % 15 === 0;
 
   ctx.save();
   ctx.translate(cx, feetY - bounce);
-  ctx.scale(scale, scale);
 
-  // Dirt cloud.
-  if (dirty && !pet.isDead) {
-    ctx.save();
-    ctx.globalAlpha = 0.35 + Math.sin(t * 8) * 0.1;
-    ctx.fillStyle = "#6b5a40";
-    for (let i = 0; i < 6; i++) {
-      ellipse(ctx, -30 + i * 12 + Math.sin(t * 5 + i) * 3, -20 - (i % 3) * 8, 4, 3);
-      ctx.fill();
-    }
-    ctx.restore();
-  }
+  // Shadow (flat oval, no alpha)
+  ctx.fillStyle = "#c9b896";
+  ellipse(ctx, 0, 0, 34 * s, 10 * s);
+  ctx.fill();
 
-  // Hunger rumble lines.
-  if (hungry && !pet.isDead) {
-    ctx.strokeStyle = "rgba(255,200,120,0.55)";
-    ctx.lineWidth = 2;
-    const ox = 48;
-    for (let i = 0; i < 3; i++) {
-      const yy = -40 - i * 8 + Math.sin(t * 10 + i) * 2;
-      ctx.beginPath();
-      ctx.moveTo(ox, yy);
-      ctx.quadraticCurveTo(ox + 8, yy - 4, ox + 14, yy);
-      ctx.stroke();
-    }
-  }
+  if (isDirty(pet) && !pet.isDead) drawMess(ctx, 0, 0, t);
 
-  switch (sp) {
+  const bodyY = -28 * s;
+  const headY = -62 * s;
+
+  // Species silhouette
+  switch (p.species) {
     case "dragon":
-      drawDragon(ctx, p, mood, blink, t);
+      drawChibiDragon(ctx, p, mood, blink, t, s, bodyY, headY);
       break;
     case "cat":
-      drawCat(ctx, p, mood, blink, t);
+      drawChibiCat(ctx, p, mood, blink, t, s, bodyY, headY);
       break;
     case "dog":
-      drawDog(ctx, p, mood, blink, t);
+      drawChibiDog(ctx, p, mood, blink, t, s, bodyY, headY);
       break;
     default:
-      drawHamster(ctx, p, mood, blink, t);
+      drawChibiHamster(ctx, p, mood, blink, t, s, bodyY, headY);
   }
 
-  // Cosmetic overlays.
+  // Cosmetics
   if (pet.activeCosmetic === "hat") {
     ctx.fillStyle = "#1f2937";
-    roundRect(ctx, -18, -88, 36, 10, 2);
+    roundRect(ctx, -16 * s, headY - 28 * s, 32 * s, 8 * s, 2);
     ctx.fill();
-    roundRect(ctx, -10, -108, 20, 22, 3);
+    roundRect(ctx, -10 * s, headY - 44 * s, 20 * s, 18 * s, 3);
     ctx.fill();
   } else if (pet.activeCosmetic === "ribbon") {
     ctx.fillStyle = "#ec4899";
     ctx.beginPath();
-    ctx.moveTo(-22, -70);
-    ctx.lineTo(-6, -62);
-    ctx.lineTo(-22, -54);
-    ctx.closePath();
+    ctx.moveTo(-20 * s, headY - 8 * s);
+    ctx.lineTo(-4 * s, headY);
+    ctx.lineTo(-20 * s, headY + 8 * s);
     ctx.fill();
     ctx.beginPath();
-    ctx.moveTo(22, -70);
-    ctx.lineTo(6, -62);
-    ctx.lineTo(22, -54);
-    ctx.closePath();
+    ctx.moveTo(20 * s, headY - 8 * s);
+    ctx.lineTo(4 * s, headY);
+    ctx.lineTo(20 * s, headY + 8 * s);
     ctx.fill();
   } else if (pet.activeCosmetic === "armor") {
     ctx.strokeStyle = "#94a3b8";
-    ctx.lineWidth = 4;
-    ellipse(ctx, 0, -30, 34, 28);
+    ctx.lineWidth = 3 * s;
+    ellipse(ctx, 0, bodyY, 28 * s, 22 * s);
     ctx.stroke();
   }
 
-  // Death veil.
   if (pet.isDead) {
-    ctx.fillStyle = "rgba(20,10,12,0.35)";
-    ellipse(ctx, 0, -36, 50, 55);
+    ctx.fillStyle = "#8a7a6a";
+    ellipse(ctx, 0, headY + 10 * s, 40 * s, 50 * s);
     ctx.fill();
-    // Floating spirit.
-    ctx.globalAlpha = 0.55 + Math.sin(t * 6) * 0.2;
     ctx.fillStyle = "#e8f0ff";
-    ellipse(ctx, 20 + Math.sin(t * 3) * 8, -110 - t * 20, 10, 14);
+    ellipse(ctx, 18 * s, headY - 50 * s - t * 30, 8 * s, 12 * s);
     ctx.fill();
   }
 
   ctx.restore();
 }
 
-function drawDragon(ctx: Ctx, p: ReturnType<typeof palette>, mood: Mood, blink: boolean, t: number) {
-  // Tail.
-  ctx.strokeStyle = p.body;
-  ctx.lineWidth = 10;
-  ctx.lineCap = "round";
-  ctx.beginPath();
-  ctx.moveTo(-28, -18);
-  ctx.quadraticCurveTo(-55, -30 - Math.sin(t * 6) * 8, -48, -55);
-  ctx.stroke();
-  // Body.
-  ellipse(ctx, 0, -28, 36, 28);
-  ctx.fillStyle = p.body;
-  ctx.fill();
-  ctx.strokeStyle = "rgba(0,0,0,0.35)";
-  ctx.lineWidth = 2;
-  ctx.stroke();
-  // Belly.
-  ellipse(ctx, 4, -22, 18, 16);
-  ctx.fillStyle = p.accent;
-  ctx.fill();
-  // Wings.
-  ctx.fillStyle = p.accent;
-  ctx.globalAlpha = 0.85;
-  const wing = Math.sin(t * Math.PI * 5) * 8;
-  ctx.beginPath();
-  ctx.moveTo(-8, -40);
-  ctx.quadraticCurveTo(-50, -70 - wing, -20, -20);
-  ctx.closePath();
-  ctx.fill();
-  ctx.beginPath();
-  ctx.moveTo(8, -40);
-  ctx.quadraticCurveTo(50, -70 - wing, 20, -20);
-  ctx.closePath();
-  ctx.fill();
-  ctx.globalAlpha = 1;
-  // Head.
-  ellipse(ctx, 22, -52, 18, 16);
-  ctx.fillStyle = p.body;
-  ctx.fill();
-  ctx.strokeStyle = "rgba(0,0,0,0.35)";
-  ctx.stroke();
-  // Horns.
-  ctx.fillStyle = p.accent;
-  ctx.beginPath();
-  ctx.moveTo(14, -64); ctx.lineTo(10, -82); ctx.lineTo(20, -66); ctx.fill();
-  ctx.beginPath();
-  ctx.moveTo(28, -64); ctx.lineTo(34, -84); ctx.lineTo(34, -64); ctx.fill();
-  // Eyes + snout.
-  eye(ctx, 18, -54, 4, mood, blink);
-  eye(ctx, 28, -54, 4, mood, blink);
-  ellipse(ctx, 34, -48, 7, 5);
-  ctx.fillStyle = p.accent;
-  ctx.fill();
-  // Flame breath when happy.
-  if (mood === "ecstatic" || mood === "happy") {
-    ctx.fillStyle = `rgba(255,${140 + Math.floor(Math.sin(t * 20) * 40)},40,0.85)`;
-    ellipse(ctx, 48 + Math.sin(t * 15) * 4, -48, 8 + Math.sin(t * 20) * 3, 5);
+function face(ctx: Ctx, hx: number, hy: number, s: number, mood: Mood, blink: boolean, eyeGap = 14) {
+  const drawEye = (ex: number) => {
+    if (mood === "dead") {
+      ctx.strokeStyle = "#1a1a1a";
+      ctx.lineWidth = 2 * s;
+      ctx.beginPath();
+      ctx.moveTo(ex - 4 * s, hy - 4 * s); ctx.lineTo(ex + 4 * s, hy + 4 * s);
+      ctx.moveTo(ex + 4 * s, hy - 4 * s); ctx.lineTo(ex - 4 * s, hy + 4 * s);
+      ctx.stroke();
+      return;
+    }
+    if (blink) {
+      ctx.strokeStyle = "#1a1a1a";
+      ctx.lineWidth = 2 * s;
+      ctx.beginPath();
+      ctx.moveTo(ex - 5 * s, hy);
+      ctx.lineTo(ex + 5 * s, hy);
+      ctx.stroke();
+      return;
+    }
+    ellipse(ctx, ex, hy, 5.5 * s, 6.5 * s);
+    ctx.fillStyle = "#fffef8";
+    ctx.fill();
+    const py = mood === "sad" || mood === "critical" ? 1.5 * s : 0;
+    ellipse(ctx, ex + 1 * s, hy + py, 2.8 * s, 3.2 * s);
+    ctx.fillStyle = "#1a1a22";
+    ctx.fill();
+    ellipse(ctx, ex + 2.2 * s, hy - 1.5 * s, 1.2 * s, 1.2 * s);
+    ctx.fillStyle = "#fff";
+    ctx.fill();
+  };
+  drawEye(hx - eyeGap * s / 2);
+  drawEye(hx + eyeGap * s / 2);
+
+  // Blush
+  if (mood === "happy" || mood === "ecstatic") {
+    ctx.fillStyle = "#f9a8d4";
+    ellipse(ctx, hx - 18 * s, hy + 8 * s, 5 * s, 3 * s);
+    ctx.fill();
+    ellipse(ctx, hx + 18 * s, hy + 8 * s, 5 * s, 3 * s);
     ctx.fill();
   }
-  // Legs.
-  ctx.fillStyle = p.body;
-  for (const lx of [-16, -4, 8, 18]) {
-    roundRect(ctx, lx - 4, -8, 8, 16, 3);
+
+  // Mouth
+  ctx.strokeStyle = "#1a1a22";
+  ctx.lineWidth = 2 * s;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  if (mood === "ecstatic") {
+    ellipse(ctx, hx, hy + 12 * s, 5 * s, 4 * s);
+    ctx.fillStyle = "#1a1a22";
     ctx.fill();
+  } else if (mood === "happy") {
+    ctx.arc(hx, hy + 8 * s, 6 * s, 0.15 * Math.PI, 0.85 * Math.PI);
+    ctx.stroke();
+  } else if (mood === "sad" || mood === "critical") {
+    ctx.arc(hx, hy + 16 * s, 6 * s, 1.15 * Math.PI, 1.85 * Math.PI);
+    ctx.stroke();
+  } else if (mood === "dead") {
+    /* x eyes already */
+  } else {
+    ctx.moveTo(hx - 3 * s, hy + 11 * s);
+    ctx.lineTo(hx + 3 * s, hy + 11 * s);
+    ctx.stroke();
   }
 }
 
-function drawCat(ctx: Ctx, p: ReturnType<typeof palette>, mood: Mood, blink: boolean, t: number) {
-  // Tail curl.
+function drawChibiDragon(ctx: Ctx, p: ReturnType<typeof palette>, mood: Mood, blink: boolean, t: number, s: number, bodyY: number, headY: number) {
+  // Bat wings — solid triangles (GIF-safe, readable at Discord scale)
+  const flap = Math.sin(t * Math.PI * 4) * 5 * s;
+  ctx.fillStyle = p.accent;
+  // Left wing
+  ctx.beginPath();
+  ctx.moveTo(-8 * s, bodyY - 4 * s);
+  ctx.lineTo(-44 * s, bodyY - 26 * s - flap);
+  ctx.lineTo(-38 * s, bodyY + 8 * s);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = "#1a1a22";
+  ctx.lineWidth = 2 * s;
+  ctx.stroke();
+  // Right wing
+  ctx.beginPath();
+  ctx.moveTo(8 * s, bodyY - 4 * s);
+  ctx.lineTo(44 * s, bodyY - 26 * s - flap);
+  ctx.lineTo(38 * s, bodyY + 8 * s);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // Body
+  ellipse(ctx, 0, bodyY, 26 * s, 22 * s);
+  ctx.fillStyle = p.body;
+  ctx.fill();
+  ctx.strokeStyle = "#1a1a22";
+  ctx.lineWidth = 2.5 * s;
+  ctx.stroke();
+  ellipse(ctx, 0, bodyY + 4 * s, 14 * s, 11 * s);
+  ctx.fillStyle = p.accent;
+  ctx.fill();
+
+  // Head (BIG)
+  ellipse(ctx, 0, headY, 26 * s, 24 * s);
+  ctx.fillStyle = p.body;
+  ctx.fill();
+  ctx.strokeStyle = "#1a1a22";
+  ctx.stroke();
+
+  // Horns
+  ctx.fillStyle = "#fde68a";
+  ctx.beginPath();
+  ctx.moveTo(-10 * s, headY - 16 * s); ctx.lineTo(-14 * s, headY - 34 * s); ctx.lineTo(-2 * s, headY - 18 * s);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(10 * s, headY - 16 * s); ctx.lineTo(14 * s, headY - 34 * s); ctx.lineTo(2 * s, headY - 18 * s);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  face(ctx, 0, headY, s, mood, blink);
+
+  if (mood === "happy" || mood === "ecstatic") {
+    ctx.fillStyle = "#ff8c28";
+    ellipse(ctx, 0, headY + 26 * s + Math.sin(t * 12) * 2, 5 * s, 7 * s);
+    ctx.fill();
+  }
+
+  ctx.fillStyle = p.body;
+  roundRect(ctx, -16 * s, -8 * s, 11 * s, 10 * s, 3 * s);
+  ctx.fill();
+  roundRect(ctx, 5 * s, -8 * s, 11 * s, 10 * s, 3 * s);
+  ctx.fill();
+}
+
+function drawChibiCat(ctx: Ctx, p: ReturnType<typeof palette>, mood: Mood, blink: boolean, t: number, s: number, bodyY: number, headY: number) {
+  // Tail
   ctx.strokeStyle = p.body;
-  ctx.lineWidth = 7;
+  ctx.lineWidth = 7 * s;
   ctx.lineCap = "round";
   ctx.beginPath();
-  ctx.moveTo(-30, -24);
-  ctx.quadraticCurveTo(-48, -50 - Math.sin(t * 5) * 6, -28, -70);
+  ctx.moveTo(-24 * s, bodyY);
+  ctx.quadraticCurveTo(-40 * s, bodyY - 30 * s - Math.sin(t * 4) * 8 * s, -22 * s, bodyY - 48 * s);
   ctx.stroke();
-  // Body.
-  ellipse(ctx, 0, -26, 32, 22);
+
+  ellipse(ctx, 0, bodyY, 28 * s, 22 * s);
   ctx.fillStyle = p.body;
   ctx.fill();
-  ctx.strokeStyle = "rgba(0,0,0,0.35)";
-  ctx.lineWidth = 2;
+  ctx.strokeStyle = "#1a1a22";
+  ctx.lineWidth = 2 * s;
   ctx.stroke();
-  // Head.
-  ellipse(ctx, 18, -48, 16, 15);
+
+  ellipse(ctx, 0, headY, 26 * s, 24 * s);
   ctx.fillStyle = p.body;
   ctx.fill();
   ctx.stroke();
-  // Ears.
+
+  // Ears
   ctx.fillStyle = p.body;
   ctx.beginPath();
-  ctx.moveTo(8, -56); ctx.lineTo(4, -76); ctx.lineTo(16, -58); ctx.fill();
+  ctx.moveTo(-16 * s, headY - 14 * s); ctx.lineTo(-22 * s, headY - 40 * s); ctx.lineTo(-4 * s, headY - 18 * s);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
   ctx.beginPath();
-  ctx.moveTo(28, -56); ctx.lineTo(36, -78); ctx.lineTo(34, -56); ctx.fill();
-  ctx.fillStyle = p.accent;
+  ctx.moveTo(16 * s, headY - 14 * s); ctx.lineTo(22 * s, headY - 40 * s); ctx.lineTo(4 * s, headY - 18 * s);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = "#f9a8d4";
   ctx.beginPath();
-  ctx.moveTo(10, -58); ctx.lineTo(8, -70); ctx.lineTo(14, -58); ctx.fill();
-  // Face.
-  eye(ctx, 14, -50, 3.5, mood, blink);
-  eye(ctx, 24, -50, 3.5, mood, blink);
-  ellipse(ctx, 20, -44, 3, 2);
+  ctx.moveTo(-14 * s, headY - 16 * s); ctx.lineTo(-18 * s, headY - 32 * s); ctx.lineTo(-8 * s, headY - 18 * s);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(14 * s, headY - 16 * s); ctx.lineTo(18 * s, headY - 32 * s); ctx.lineTo(8 * s, headY - 18 * s);
+  ctx.closePath();
+  ctx.fill();
+
+  face(ctx, 0, headY + 2 * s, s, mood, blink);
+  // Nose
+  ellipse(ctx, 0, headY + 8 * s, 2.5 * s, 2 * s);
   ctx.fillStyle = "#f472b6";
   ctx.fill();
-  // Legs.
-  ctx.fillStyle = p.body;
-  for (const lx of [-18, -6, 6, 16]) {
-    roundRect(ctx, lx - 3, -10, 6, 14, 2);
-    ctx.fill();
+
+  // Whiskers
+  ctx.strokeStyle = "#1a1a22";
+  ctx.lineWidth = 1.5 * s;
+  for (const side of [-1, 1]) {
+    ctx.beginPath();
+    ctx.moveTo(side * 8 * s, headY + 10 * s);
+    ctx.lineTo(side * 28 * s, headY + 6 * s);
+    ctx.moveTo(side * 8 * s, headY + 14 * s);
+    ctx.lineTo(side * 28 * s, headY + 16 * s);
+    ctx.stroke();
   }
+
+  ctx.fillStyle = p.body;
+  roundRect(ctx, -16 * s, -8 * s, 10 * s, 10 * s, 3 * s);
+  ctx.fill();
+  roundRect(ctx, 6 * s, -8 * s, 10 * s, 10 * s, 3 * s);
+  ctx.fill();
 }
 
-function drawDog(ctx: Ctx, p: ReturnType<typeof palette>, mood: Mood, blink: boolean, t: number) {
-  // Wagging tail.
+function drawChibiDog(ctx: Ctx, p: ReturnType<typeof palette>, mood: Mood, blink: boolean, t: number, s: number, bodyY: number, headY: number) {
+  // Wag
+  const wag = Math.sin(t * Math.PI * 7) * 14 * s;
   ctx.strokeStyle = p.body;
-  ctx.lineWidth = 8;
+  ctx.lineWidth = 8 * s;
   ctx.lineCap = "round";
-  const wag = Math.sin(t * Math.PI * 8) * 18;
   ctx.beginPath();
-  ctx.moveTo(-28, -22);
-  ctx.quadraticCurveTo(-40 + wag * 0.2, -40, -30 + wag * 0.4, -55);
+  ctx.moveTo(-22 * s, bodyY);
+  ctx.quadraticCurveTo(-30 * s + wag * 0.3, bodyY - 28 * s, -18 * s + wag * 0.5, bodyY - 42 * s);
   ctx.stroke();
-  // Body.
-  ellipse(ctx, 0, -26, 34, 22);
+
+  // Body
+  ellipse(ctx, 0, bodyY, 30 * s, 22 * s);
   ctx.fillStyle = p.body;
   ctx.fill();
-  ctx.strokeStyle = "rgba(0,0,0,0.35)";
-  ctx.lineWidth = 2;
+  ctx.strokeStyle = "#1a1a22";
+  ctx.lineWidth = 2 * s;
   ctx.stroke();
-  // Head.
-  ellipse(ctx, 22, -46, 17, 15);
+
+  // Head
+  ellipse(ctx, 0, headY, 24 * s, 22 * s);
   ctx.fillStyle = p.body;
   ctx.fill();
   ctx.stroke();
-  // Floppy ear.
+
+  // Floppy ears
   ctx.fillStyle = p.accent;
-  ellipse(ctx, 10, -42, 8, 14);
+  ellipse(ctx, -22 * s, headY + 6 * s, 9 * s, 16 * s);
   ctx.fill();
-  // Snout.
-  ellipse(ctx, 34, -42, 9, 7);
-  ctx.fillStyle = p.accent;
+  ctx.strokeStyle = "#1a1a22";
+  ctx.stroke();
+  ellipse(ctx, 22 * s, headY + 6 * s, 9 * s, 16 * s);
   ctx.fill();
-  ellipse(ctx, 40, -44, 3, 2.5);
-  ctx.fillStyle = "#111";
+  ctx.stroke();
+
+  // Muzzle
+  ellipse(ctx, 0, headY + 12 * s, 11 * s, 8 * s);
+  ctx.fillStyle = "#fff8e7";
   ctx.fill();
-  eye(ctx, 18, -50, 3.5, mood, blink);
-  eye(ctx, 28, -50, 3.5, mood, blink);
-  // Tongue when happy.
+  ctx.strokeStyle = "#1a1a22";
+  ctx.stroke();
+  ellipse(ctx, 0, headY + 8 * s, 3.5 * s, 2.5 * s);
+  ctx.fillStyle = "#1a1a22";
+  ctx.fill();
+
+  face(ctx, 0, headY - 2 * s, s, mood, blink, 16);
+
   if (mood === "happy" || mood === "ecstatic") {
     ctx.fillStyle = "#f87171";
-    ellipse(ctx, 36, -36 + Math.abs(Math.sin(t * 10)) * 2, 4, 5);
+    ellipse(ctx, 5 * s, headY + 20 * s + Math.abs(Math.sin(t * 10)) * 2 * s, 4 * s, 5 * s);
     ctx.fill();
   }
+
   ctx.fillStyle = p.body;
-  for (const lx of [-18, -6, 8, 18]) {
-    roundRect(ctx, lx - 3.5, -10, 7, 14, 2);
-    ctx.fill();
-  }
+  roundRect(ctx, -16 * s, -8 * s, 10 * s, 10 * s, 3 * s);
+  ctx.fill();
+  roundRect(ctx, 6 * s, -8 * s, 10 * s, 10 * s, 3 * s);
+  ctx.fill();
 }
 
-function drawHamster(ctx: Ctx, p: ReturnType<typeof palette>, mood: Mood, blink: boolean, t: number) {
-  // Round body.
-  ellipse(ctx, 0, -28, 30, 26);
+function drawChibiHamster(ctx: Ctx, p: ReturnType<typeof palette>, mood: Mood, blink: boolean, t: number, s: number, bodyY: number, headY: number) {
+  // Round body+head almost merged (classic blob pet)
+  ellipse(ctx, 0, bodyY - 8 * s, 34 * s, 32 * s);
   ctx.fillStyle = p.body;
   ctx.fill();
-  ctx.strokeStyle = "rgba(0,0,0,0.35)";
-  ctx.lineWidth = 2;
+  ctx.strokeStyle = "#1a1a22";
+  ctx.lineWidth = 2 * s;
   ctx.stroke();
-  // Belly.
-  ellipse(ctx, 0, -20, 16, 14);
+
+  ellipse(ctx, 0, bodyY, 18 * s, 14 * s);
   ctx.fillStyle = p.accent;
   ctx.fill();
-  // Ears.
+
+  // Ears
+  ellipse(ctx, -20 * s, headY - 8 * s, 10 * s, 10 * s);
   ctx.fillStyle = p.body;
-  ellipse(ctx, -16, -48, 8, 8);
   ctx.fill();
-  ellipse(ctx, 16, -48, 8, 8);
+  ctx.stroke();
+  ellipse(ctx, 20 * s, headY - 8 * s, 10 * s, 10 * s);
   ctx.fill();
+  ctx.stroke();
   ctx.fillStyle = "#f9a8d4";
-  ellipse(ctx, -16, -48, 4, 4);
+  ellipse(ctx, -20 * s, headY - 8 * s, 5 * s, 5 * s);
   ctx.fill();
-  ellipse(ctx, 16, -48, 4, 4);
+  ellipse(ctx, 20 * s, headY - 8 * s, 5 * s, 5 * s);
   ctx.fill();
-  // Cheeks (stuffed when happy).
-  const cheek = mood === "ecstatic" ? 10 : 7;
-  ellipse(ctx, -18, -30, cheek, cheek - 1);
+
+  // Cheeks
+  const cheek = mood === "ecstatic" ? 12 : 9;
   ctx.fillStyle = p.accent;
+  ellipse(ctx, -22 * s, bodyY - 18 * s, cheek * s, (cheek - 2) * s);
   ctx.fill();
-  ellipse(ctx, 18, -30, cheek, cheek - 1);
+  ellipse(ctx, 22 * s, bodyY - 18 * s, cheek * s, (cheek - 2) * s);
   ctx.fill();
-  eye(ctx, -8, -36, 3.5, mood, blink);
-  eye(ctx, 8, -36, 3.5, mood, blink);
-  // Nose.
-  ellipse(ctx, 0, -30, 3, 2.5);
+
+  face(ctx, 0, bodyY - 22 * s, s, mood, blink, 16);
+  ellipse(ctx, 0, bodyY - 14 * s, 3 * s, 2.5 * s);
   ctx.fillStyle = "#e11d48";
   ctx.fill();
-  // Tiny paws bounce.
+
+  const paw = Math.sin(t * 8) * 2 * s;
   ctx.fillStyle = p.body;
-  const paw = Math.sin(t * 8) * 2;
-  roundRect(ctx, -14, -8 + paw, 8, 8, 3);
+  roundRect(ctx, -14 * s, -6 * s + paw, 10 * s, 8 * s, 3 * s);
   ctx.fill();
-  roundRect(ctx, 6, -8 - paw, 8, 8, 3);
+  roundRect(ctx, 4 * s, -6 * s - paw, 10 * s, 8 * s, 3 * s);
   ctx.fill();
 }
 
-function drawHud(ctx: Ctx, pet: Pet, w: number) {
-  const mood = moodOf(pet);
-  ctx.fillStyle = "rgba(0,0,0,0.45)";
-  roundRect(ctx, 12, 12, w - 24, 58, 10);
-  ctx.fill();
+function drawHudInside(ctx: Ctx, pet: Pet, lx: number, ly: number, lw: number) {
+  const sp = SPECIES_META[pet.species as PetSpecies];
+  ctx.fillStyle = "#2a3344";
+  ctx.font = "bold 13px Early GameBoy, monospace";
+  const title = pet.isDead
+    ? `${pet.name} — passed on`
+    : pet.name;
+  ctx.fillText(title, lx + 12, ly + 48);
+  ctx.font = "10px Early GameBoy, monospace";
+  ctx.fillStyle = "#5a6578";
+  ctx.fillText(
+    `${(sp?.label ?? pet.species).toUpperCase()}  ${pet.stage.toUpperCase()}  Lv${pet.level}  PWR ${pet.power}`,
+    lx + 12,
+    ly + 64,
+  );
 
-  ctx.fillStyle = "#fff";
-  ctx.font = "bold 14px sans-serif";
-  const sp = SPECIES_META[(pet.species as PetSpecies)]?.emoji ?? "🐾";
-  ctx.fillText(`${sp} ${pet.name}`, 24, 32);
-  ctx.font = "11px sans-serif";
-  ctx.fillStyle = "rgba(255,255,255,0.7)";
-  ctx.fillText(`${pet.stage} · Lv ${pet.level} · PWR ${pet.power} · ${mood}`, 24, 48);
+  drawHearts(ctx, lx + 12, ly + 82, pet.health, "HP", "#34d399");
+  drawHearts(ctx, lx + 100, ly + 82, pet.hunger, "HUN", "#fbbf24");
+  drawHearts(ctx, lx + 188, ly + 82, pet.cleanliness, "CLN", "#60a5fa");
+  drawHearts(ctx, lx + 276, ly + 82, pet.happiness, "HAP", "#f472b6");
+}
 
-  drawMeter(ctx, 24, 70, "HP", pet.health, "#34d399");
-  drawMeter(ctx, 140, 70, "HUN", pet.hunger, "#fbbf24");
-  drawMeter(ctx, 256, 70, "CLN", pet.cleanliness, "#60a5fa");
-  // Happiness on second row-ish right.
-  drawMeter(ctx, 24, 292, "HAP", pet.happiness, "#f472b6");
-
-  if (pet.neglectCount > 0 && !pet.isDead) {
-    ctx.fillStyle = "#fb7185";
-    ctx.font = "10px sans-serif";
-    ctx.fillText(`Neglect ${pet.neglectCount}`, w - 90, 32);
+async function drawEggSprite(
+  ctx: Ctx,
+  pet: Pet,
+  cx: number,
+  cy: number,
+  size: number,
+  frame: ReturnType<typeof eggFrameAt>,
+  /** Integer pixel nudge only — never rotate (GIF destroys rotated pixels). */
+  shakeX = 0,
+) {
+  const sheet = await loadEggSheet();
+  const row = eggRowFor(pet.species, pet.variant);
+  const dx = Math.round(cx + shakeX);
+  const dy = Math.round(cy);
+  if (!sheet) {
+    ellipse(ctx, dx, dy, size * 0.35, size * 0.45);
+    ctx.fillStyle = "#f5efe6";
+    ctx.fill();
+    ctx.strokeStyle = "#1a1a22";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    return;
   }
-  if (pet.isDead) {
-    ctx.fillStyle = "#fb7185";
-    ctx.font = "bold 12px sans-serif";
-    ctx.fillText("✝ PASSED ON", w - 120, 48);
+  if (frame === "open") {
+    // Top shell floats up; bottom sits as a nest
+    blitEggTile(ctx, sheet, row, eggCol("top"), dx - size / 2, dy - size * 0.95, size);
+    blitEggTile(ctx, sheet, row, eggCol("bottom"), dx - size / 2, dy - size * 0.1, size);
+  } else {
+    blitEggTile(ctx, sheet, row, eggCol(frame), dx - size / 2, dy - size / 2, size);
   }
 }
 
-/** Idle / care loop GIF for the pet hub. */
+/** Idle / care loop for the hub — big device frame. */
 export async function renderPetGif(pet: Pet, opts?: { durationMs?: number }): Promise<AnimationResult | null> {
   const { width, height } = PET_CANVAS;
-  const p = palette(pet);
   const mood = moodOf(pet);
-  const durationMs = opts?.durationMs ?? (mood === "dead" ? 2200 : 1800);
+  const durationMs = opts?.durationMs ?? (mood === "dead" ? 2400 : 2000);
+  await loadEggSheet();
+  await loadPetBackground("pink");
 
   return encodeAnimation({
-    width,
-    height,
-    speed: "normal",
-    durationMs,
-    maxFrames: 24,
-    quality: 12,
-    renderScale: 1,
-    render: (frame) => {
+    width, height, speed: "normal", durationMs, maxFrames: 24, quality: 3, renderScale: 1,
+    render: async (frame) => {
       const { ctx, t } = frame;
-      drawBg(ctx, width, height, p, t, mood);
-      drawHud(ctx, pet, width);
+      const screen = drawDevice(ctx, width, height, t);
+      clipScreen(ctx, screen.lx, screen.ly, screen.lw, screen.lh);
+      drawIconRow(ctx, screen.lx, screen.ly, screen.lw, pet);
+      drawHudInside(ctx, pet, screen.lx, screen.ly, screen.lw);
+
+      const feetY = screen.ly + screen.lh - 36;
+      const cx = screen.lx + screen.lw / 2;
+
       if (pet.stage === "egg" && !pet.isDead) {
-        drawEgg(ctx, width / 2, height / 2 + 20, pet, t, p);
+        const shake = Math.round(Math.sin(t * Math.PI * 4) * 6);
+        await drawEggSprite(ctx, pet, cx, feetY - 50, 110, "idle", shake);
+        ctx.fillStyle = "#2a3344";
+        ctx.font = "bold 12px Early GameBoy, monospace";
+        ctx.textAlign = "center";
+        ctx.fillText("Your egg is warming…", cx, feetY + 8);
+        ctx.textAlign = "left";
       } else {
-        drawCreature(ctx, width / 2, height - 56, pet, t, p);
+        drawChibi(ctx, pet, cx, feetY, t, 1.15);
       }
+      ctx.restore();
     },
   });
 }
 
-/** Short hatch-crack celebration GIF. */
+/** Full hatch cinematic: wobble → Onocentaur crack frames → baby pops out. */
 export async function renderHatchGif(pet: Pet): Promise<AnimationResult | null> {
   const { width, height } = PET_CANVAS;
-  const p = palette(pet);
+  await loadEggSheet();
+
   return encodeAnimation({
-    width,
-    height,
-    speed: "fast",
-    durationMs: 1600,
-    maxFrames: 20,
-    quality: 12,
-    render: (frame) => {
+    width, height, speed: "fast", durationMs: 3000, maxFrames: 36, quality: 3, renderScale: 1,
+    render: async (frame) => {
       const { ctx, t } = frame;
-      drawBg(ctx, width, height, p, t, "ecstatic");
-      // Egg shrinks / cracks then creature pops.
-      if (t < 0.55) {
-        drawEgg(ctx, width / 2, height / 2 + 10, pet, t, p);
-        // Burst shards.
-        ctx.fillStyle = "#f5efe6";
-        for (let i = 0; i < 8; i++) {
-          const ang = (i / 8) * Math.PI * 2 + t * 4;
-          const r = 30 + t * 80;
-          ellipse(ctx, width / 2 + Math.cos(ang) * r, height / 2 + Math.sin(ang) * r, 4, 3);
-          ctx.fill();
-        }
-      } else {
-        drawCreature(ctx, width / 2, height - 56, { ...pet, stage: "hatchling" }, t, p);
-        ctx.fillStyle = "#fde68a";
-        ctx.font = "bold 18px sans-serif";
-        ctx.fillText("It's alive!", width / 2 - 48, 40);
+      const screen = drawDevice(ctx, width, height, t);
+      clipScreen(ctx, screen.lx, screen.ly, screen.lw, screen.lh);
+      const cx = screen.lx + screen.lw / 2;
+      const cy = screen.ly + screen.lh / 2 + 16;
+      const sp = SPECIES_META[pet.species as PetSpecies];
+
+      // Title card
+      if (t < 0.1) {
+        ctx.fillStyle = "#2a3344";
+        ctx.font = "bold 18px Early GameBoy, monospace";
+        ctx.textAlign = "center";
+        ctx.fillText("A new life…", cx, cy - 12);
+        ctx.font = "12px Early GameBoy, monospace";
+        ctx.fillText("Something is moving inside!", cx, cy + 14);
+        ctx.textAlign = "left";
+        ctx.restore();
+        return;
       }
+
+      const hatchT = (t - 0.1) / 0.9;
+      // Stay on crack frames until birth cut — never open during shake phase
+      const eggFrame = eggFrameAt(Math.min(0.65, hatchT));
+      // Pixel shake only (no rotation — GIF quantization destroys rotated sprites)
+      const shake = eggFrame === "idle"
+        ? Math.round(Math.sin(t * Math.PI * 6) * 5)
+        : Math.round(Math.sin(t * 40) * 8);
+
+      if (hatchT < 0.68) {
+        await drawEggSprite(ctx, pet, cx, cy, 120, eggFrame, shake);
+        // Opaque sparkles while cracking
+        if (eggFrame !== "idle") {
+          ctx.fillStyle = "#e8b830";
+          for (let i = 0; i < 6; i++) {
+            const ang = t * 8 + i * 1.1;
+            const px = Math.round(cx + Math.cos(ang) * (48 + hatchT * 30));
+            const py = Math.round(cy + Math.sin(ang * 1.3) * (36 + hatchT * 18));
+            ctx.fillRect(px, py, 4, 4);
+          }
+        }
+        ctx.fillStyle = "#2a3344";
+        ctx.font = "bold 14px Early GameBoy, monospace";
+        ctx.textAlign = "center";
+        const caption =
+          eggFrame === "idle" ? "Wobble… wobble…"
+          : eggFrame === "crack1" ? "Tap… tap…"
+          : eggFrame === "crack2" ? "Crack!"
+          : "CRACK!!";
+        ctx.fillText(caption, cx, screen.ly + screen.lh - 18);
+        ctx.textAlign = "left";
+      } else {
+        // Birth: bottom nest + peeking baby + top shell flying away
+        const birth = (hatchT - 0.68) / 0.32;
+        const sheet = await loadEggSheet();
+        const row = eggRowFor(pet.species, pet.variant);
+        const shellSize = 96;
+        if (sheet) {
+          const topLift = Math.round(birth * 70);
+          const topDrift = Math.round(birth * 40);
+          blitEggTile(ctx, sheet, row, eggCol("top"), cx - shellSize / 2 + topDrift, cy - shellSize * 0.85 - topLift, shellSize);
+          blitEggTile(ctx, sheet, row, eggCol("bottom"), cx - shellSize / 2, cy + 8, shellSize);
+        }
+        const baby = { ...pet, stage: "hatchling" as const };
+        drawChibi(ctx, baby, cx, cy + 28, t, 0.95 + birth * 0.25);
+
+        // Burst stars (opaque squares)
+        ctx.fillStyle = "#e8b830";
+        for (let i = 0; i < 10; i++) {
+          const ang = (i / 10) * Math.PI * 2 + t * 3;
+          const r = 30 + birth * 90;
+          ctx.fillRect(
+            Math.round(cx + Math.cos(ang) * r),
+            Math.round(cy - 10 + Math.sin(ang) * r),
+            5, 5,
+          );
+        }
+
+        ctx.fillStyle = "#2a3344";
+        ctx.font = "bold 16px Early GameBoy, monospace";
+        ctx.textAlign = "center";
+        ctx.fillText(`It's ${pet.name}!`, cx, screen.ly + 38);
+        ctx.font = "11px Early GameBoy, monospace";
+        ctx.fillText(`A ${sp?.label ?? pet.species} was born!`, cx, screen.ly + 56);
+        ctx.textAlign = "left";
+      }
+      ctx.restore();
     },
   });
 }
 
-/** Challenge clash GIF — two pets bump, winner flashes. */
+/** Short nursery / intro banner GIF — shown before first hatch. */
+export async function renderIntroGif(species?: PetSpecies): Promise<AnimationResult | null> {
+  const { width, height } = PET_CANVAS;
+  const sheet = await loadEggSheet();
+
+  return encodeAnimation({
+    width, height, speed: "normal", durationMs: 2200, maxFrames: 20, quality: 3, renderScale: 1,
+    render: async (frame) => {
+      const { ctx, t } = frame;
+      const screen = drawDevice(ctx, width, height, t);
+      clipScreen(ctx, screen.lx, screen.ly, screen.lw, screen.lh);
+      const cx = screen.lx + screen.lw / 2;
+      const cy = screen.ly + screen.lh / 2 - 4;
+
+      ctx.fillStyle = "#2a3344";
+      ctx.font = "bold 16px Early GameBoy, monospace";
+      ctx.textAlign = "center";
+      ctx.fillText("TAMAGOTCHI NURSERY", cx, screen.ly + 34);
+      ctx.font = "11px Early GameBoy, monospace";
+      ctx.fillText("Pick a species · Name it · Hatch!", cx, screen.ly + 52);
+
+      const kinds: PetSpecies[] = ["dragon", "cat", "dog", "hamster"];
+      kinds.forEach((k, i) => {
+        const ex = cx - 120 + i * 80;
+        const shake = Math.round(Math.sin(t * Math.PI * 3 + i) * 4);
+        if (sheet) {
+          blitEggTile(ctx, sheet, eggRowFor(k, 0), 0, ex - 28, cy - 28 + shake, 56);
+        }
+        ctx.fillStyle = species === k ? "#b45309" : "#2a3344";
+        ctx.font = "bold 10px Early GameBoy, monospace";
+        ctx.fillText(SPECIES_META[k].label, ex, cy + 44);
+      });
+
+      ctx.fillStyle = "#5a6578";
+      ctx.font = "10px Early GameBoy, monospace";
+      ctx.fillText("Feed · Clean · Play — or it may leave you…", cx, screen.ly + screen.lh - 16);
+      ctx.textAlign = "left";
+      ctx.restore();
+    },
+  });
+}
+
 export async function renderChallengeGif(
   a: Pet,
   b: Pet,
   winnerId: string,
 ): Promise<AnimationResult | null> {
   const width = 520;
-  const height = 300;
-  const pa = palette(a);
-  const pb = palette(b);
+  const height = 360;
   return encodeAnimation({
-    width,
-    height,
-    speed: "fast",
-    durationMs: 2000,
-    maxFrames: 24,
-    quality: 14,
+    width, height, speed: "fast", durationMs: 2200, maxFrames: 24, quality: 3, renderScale: 1,
     render: (frame) => {
       const { ctx, t } = frame;
-      const g = ctx.createLinearGradient(0, 0, width, height);
-      g.addColorStop(0, "#1a1520");
-      g.addColorStop(1, "#243044");
-      ctx.fillStyle = g;
-      ctx.fillRect(0, 0, width, height);
-
+      const screen = drawDevice(ctx, width, height, t);
+      clipScreen(ctx, screen.lx, screen.ly, screen.lw, screen.lh);
       const clash = t < 0.55;
-      const shake = clash ? Math.sin(t * 60) * 6 : 0;
-      const ax = width * 0.28 + (clash ? t * 40 : 30) + shake;
-      const bx = width * 0.72 - (clash ? t * 40 : 30) - shake;
+      const shake = clash ? Math.sin(t * 60) * 5 : 0;
+      const ax = screen.lx + screen.lw * 0.28 + (clash ? t * 30 : 10) + shake;
+      const bx = screen.lx + screen.lw * 0.72 - (clash ? t * 30 : 10) - shake;
+      const feet = screen.ly + screen.lh - 40;
 
-      drawCreature(ctx, ax, height - 40, a, t, pa);
-      drawCreature(ctx, bx, height - 40, b, t, pb);
+      drawChibi(ctx, a, ax, feet, t, 0.95);
+      drawChibi(ctx, b, bx, feet, t, 0.95);
 
+      ctx.fillStyle = "#2a3344";
+      ctx.font = "bold 18px Early GameBoy, monospace";
+      ctx.textAlign = "center";
       if (t > 0.55) {
         const winner = winnerId === a.userId ? a : b;
-        ctx.fillStyle = "#fde68a";
-        ctx.font = "bold 20px sans-serif";
-        ctx.fillText(`${winner.name} wins!`, width / 2 - 70, 40);
-        // Sparkles on winner side.
-        const wx = winnerId === a.userId ? ax : bx;
-        ctx.fillStyle = "#fbbf24";
-        for (let i = 0; i < 10; i++) {
-          const ang = t * 8 + i;
-          ellipse(ctx, wx + Math.cos(ang) * 40, height - 100 + Math.sin(ang * 1.3) * 30, 3, 3);
-          ctx.fill();
-        }
+        ctx.fillText(`${winner.name} wins!`, screen.lx + screen.lw / 2, screen.ly + 40);
       } else {
-        ctx.fillStyle = "#fff";
-        ctx.font = "bold 22px sans-serif";
-        ctx.fillText("VS", width / 2 - 16, height / 2);
+        ctx.fillText("VS", screen.lx + screen.lw / 2, screen.ly + screen.lh / 2);
       }
+      ctx.textAlign = "left";
+      ctx.restore();
     },
   });
 }

@@ -209,31 +209,48 @@ export async function hatchPet(
 
   let charged = 0;
   if (settings.hatchCost > 0) {
-    charged = await chargeUbCash(guildId, userId, settings.hatchCost, `Hatch pet: ${opts.name}`);
+    try {
+      charged = await chargeUbCash(guildId, userId, settings.hatchCost, `Hatch pet: ${opts.name}`);
+    } catch (err) {
+      // Soft-fail economy so a missing UB authorization never blocks the birth ritual.
+      // Admins can still require spend once the app is authorized.
+      const msg = err instanceof Error ? err.message : String(err);
+      if (/not authorized|UNBELIEVABOAT_TOKEN|rate limit|503/i.test(msg)) {
+        charged = 0;
+      } else if (/Not enough UnbelievaBoat cash/i.test(msg)) {
+        throw err;
+      } else {
+        charged = 0;
+      }
+    }
   }
 
   const variant = Math.floor(Math.random() * 4);
+  // Birth ritual: the hatch GIF shows egg→crack→baby; the stored pet starts
+  // as a hatchling so the player immediately has something to care for
+  // (classic Connection still has a short egg, but Discord needs a clear payoff).
   const values = {
     guildId,
     userId,
     name: opts.name.slice(0, 24),
     species: opts.species,
     variant,
-    stage: "egg" as const,
+    stage: "hatchling" as const,
     hunger: 85,
     cleanliness: 90,
-    happiness: 80,
+    happiness: 90,
     health: 100,
     level: 1,
-    xp: 0,
-    power: 10,
+    xp: 10,
+    power: 12,
     neglectCount: 0,
     isDead: false,
     diedAt: null,
-    inventory: {},
+    inventory: { food: 2, soap: 1 } as Record<string, number>,
     cosmetics: [] as string[],
     lastTickAt: new Date(),
     stageStartedAt: new Date(),
+    hatchedAt: new Date(),
   };
 
   let pet: Pet;
@@ -243,7 +260,6 @@ export async function hatchPet(
       wins: 0,
       losses: 0,
       activeCosmetic: null,
-      hatchedAt: null,
       updatedAt: new Date(),
     }).where(eq(petsTable.id, existing.id)).returning();
     pet = row!;
