@@ -8,6 +8,7 @@ import type {
   UserSelectMenuInteraction,
   ModalSubmitInteraction,
   User,
+  Message,
 } from "discord.js";
 import {
   SlashCommandBuilder,
@@ -49,6 +50,81 @@ import type { Pet } from "@workspace/db";
 import { listCatalog } from "../../lib/unbelievaboat/db.js";
 
 const EPHEMERAL = { flags: MessageFlags.Ephemeral } as const;
+
+/** Subtle UnbelievaBoat mark — economy spends use their cash. */
+const UB_ICON =
+  "https://cdn.discordapp.com/avatars/292953664492929025/e81ffdbb910a3757b874a890b2a92740.webp?size=64";
+const UB_AUTHOR = { name: "UnbelievaBoat cash", iconURL: UB_ICON } as const;
+
+const PET_IDLE_MS = 60_000;
+const petIdleTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+function bumpPetIdleCleanup(message: Message | null | undefined) {
+  if (!message?.id) return;
+  const prev = petIdleTimers.get(message.id);
+  if (prev) clearTimeout(prev);
+  const timer = setTimeout(() => {
+    petIdleTimers.delete(message.id);
+    void message.delete().catch(() => {
+      void message.edit({ components: [] }).catch(() => {});
+    });
+  }, PET_IDLE_MS);
+  timer.unref?.();
+  petIdleTimers.set(message.id, timer);
+}
+
+async function afterPetMessage(
+  interaction:
+    | ChatInputCommandInteraction
+    | ButtonInteraction
+    | StringSelectMenuInteraction
+    | UserSelectMenuInteraction
+    | ModalSubmitInteraction,
+) {
+  try {
+    const msg = await interaction.fetchReply();
+    bumpPetIdleCleanup(msg as Message);
+  } catch { /* ephemeral follow-ups / missing reply */ }
+}
+
+/** customId helpers — panel owner is baked in so strangers can't drive your pet. */
+function petId(action: string, ownerId: string, extra?: string | number) {
+  return extra != null ? `pet:${action}:${ownerId}:${extra}` : `pet:${action}:${ownerId}`;
+}
+
+function parsePetId(customId: string): { action: string; ownerId: string; extra?: string } | null {
+  const parts = customId.split(":");
+  if (parts[0] !== "pet" || parts.length < 2) return null;
+  const action = parts[1]!;
+  // Challenge accept/decline: pet:accept:<challengeId>
+  if (action === "accept" || action === "decline") {
+    return { action, ownerId: "", extra: parts[2] };
+  }
+  // Modal: pet:hatch_modal:<ownerId>:<species>
+  if (action === "hatch_modal") {
+    return { action, ownerId: parts[2] ?? "", extra: parts[3] };
+  }
+  // Standard: pet:<action>:<ownerId> or pet:<action>:<ownerId>:<extra>
+  if (parts.length < 3 || !parts[2]) return null;
+  return { action, ownerId: parts[2], extra: parts[3] };
+}
+
+async function assertPetOwner(
+  interaction: ButtonInteraction | StringSelectMenuInteraction | UserSelectMenuInteraction | ModalSubmitInteraction,
+  ownerId: string,
+): Promise<boolean> {
+  if (!ownerId || interaction.user.id === ownerId) return true;
+  await interaction.reply({
+    content: "Only the owner of this pet panel can use these buttons. Run `/pet hub` for yours.",
+    ...EPHEMERAL,
+  }).catch(async () => {
+    await interaction.followUp({
+      content: "Only the owner of this pet panel can use these buttons. Run `/pet hub` for yours.",
+      ...EPHEMERAL,
+    }).catch(() => {});
+  });
+  return false;
+}
 
 export function buildPetCommandJson() {
   return new SlashCommandBuilder()
@@ -139,6 +215,7 @@ function petEmbed(pet: Pet, title?: string): EmbedBuilder {
 
   return new EmbedBuilder()
     .setColor(color)
+    .setAuthor(UB_AUTHOR)
     .setTitle(title ?? `${sp?.emoji ?? "🐾"} ${pet.name}`)
     .setDescription(
       pet.isDead
@@ -164,29 +241,40 @@ function petEmbed(pet: Pet, title?: string): EmbedBuilder {
         inline: true,
       },
     )
-    .setFooter({ text: "Pets grow in real time · neglect can be fatal · shop uses UnbelievaBoat cash" });
+    .setFooter({
+      text: "Shop & hatch use UnbelievaBoat cash · grows in real time · neglect can be fatal · idle panels close in 1m",
+    });
 }
 
-function careRows(pet: Pet, tutorial = false): ActionRowBuilder<ButtonBuilder>[] {
-  if (pet.isDead) {
+function careRows(ownerId: string, pet: Pet, opts?: { tutorial?: boolean; readOnly?: boolean }): ActionRowBuilder<ButtonBuilder>[] {
+  if (opts?.readOnly) {
     return [
       new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder().setCustomId("pet:hatchmenu").setLabel("Hatch new pet").setEmoji("🥚").setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId("pet:top").setLabel("Leaderboard").setEmoji("🏆").setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId(petId("top", ownerId)).setLabel("Top pets").setEmoji("🏆").setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId(petId("myhub", ownerId)).setLabel("My pet hub").setEmoji("🐾").setStyle(ButtonStyle.Primary),
       ),
     ];
   }
+  if (pet.isDead) {
+    return [
+      new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder().setCustomId(petId("hatchmenu", ownerId)).setLabel("Hatch new pet").setEmoji("🥚").setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId(petId("top", ownerId)).setLabel("Leaderboard").setEmoji("🏆").setStyle(ButtonStyle.Secondary),
+      ),
+    ];
+  }
+  const tutorial = opts?.tutorial ?? false;
   const care = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId("pet:feed").setLabel(tutorial ? "① Feed" : "Feed").setEmoji("🍖").setStyle(ButtonStyle.Success),
-    new ButtonBuilder().setCustomId("pet:clean").setLabel(tutorial ? "② Clean" : "Clean").setEmoji("🧼").setStyle(ButtonStyle.Primary),
-    new ButtonBuilder().setCustomId("pet:play").setLabel(tutorial ? "③ Play" : "Play").setEmoji("🎾").setStyle(ButtonStyle.Primary),
-    new ButtonBuilder().setCustomId("pet:shop").setLabel("Shop").setEmoji("🛒").setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId("pet:refresh").setLabel("Refresh").setEmoji("🔄").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(petId("feed", ownerId)).setLabel(tutorial ? "① Feed" : "Feed").setEmoji("🍖").setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId(petId("clean", ownerId)).setLabel(tutorial ? "② Clean" : "Clean").setEmoji("🧼").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId(petId("play", ownerId)).setLabel(tutorial ? "③ Play" : "Play").setEmoji("🎾").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId(petId("shop", ownerId)).setLabel("Shop").setEmoji("🛒").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(petId("refresh", ownerId)).setLabel("Refresh").setEmoji("🔄").setStyle(ButtonStyle.Secondary),
   );
   const extra = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId("pet:challenge").setLabel("Challenge").setEmoji("⚔️").setStyle(ButtonStyle.Danger),
-    new ButtonBuilder().setCustomId("pet:top").setLabel("Top pets").setEmoji("🏆").setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId("pet:inv").setLabel("Use item").setEmoji("🎒").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(petId("challenge", ownerId)).setLabel("Challenge").setEmoji("⚔️").setStyle(ButtonStyle.Danger),
+    new ButtonBuilder().setCustomId(petId("top", ownerId)).setLabel("Top pets").setEmoji("🏆").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(petId("inv", ownerId)).setLabel("Use item").setEmoji("🎒").setStyle(ButtonStyle.Secondary),
   );
   return [care, extra];
 }
@@ -194,16 +282,20 @@ function careRows(pet: Pet, tutorial = false): ActionRowBuilder<ButtonBuilder>[]
 async function replyWithPet(
   interaction: ChatInputCommandInteraction | ButtonInteraction | StringSelectMenuInteraction | UserSelectMenuInteraction | ModalSubmitInteraction,
   pet: Pet,
-  opts?: { hatchAnim?: boolean; content?: string; tutorial?: boolean },
+  opts?: { hatchAnim?: boolean; content?: string; tutorial?: boolean; readOnly?: boolean; ownerId?: string },
 ) {
   const live = await tickPet(pet);
+  const ownerId = opts?.ownerId ?? interaction.user.id;
   const anim = opts?.hatchAnim ? await renderHatchGif(live) : await renderPetGif(live);
   const files: AttachmentBuilder[] = [];
   const embed = petEmbed(live);
   if (opts?.tutorial) {
     embed.setFooter({
-      text: "① Feed  ② Clean  ③ Play — keep hearts full or your pet can leave forever",
+      text: "① Feed  ② Clean  ③ Play — UnbelievaBoat cash powers the shop · idle panels close in 1m",
     });
+  }
+  if (opts?.readOnly) {
+    embed.setFooter({ text: "View-only · open /pet hub for your own companion · UnbelievaBoat cash" });
   }
   if (anim?.buffer) {
     files.push(new AttachmentBuilder(anim.buffer, { name: "pet.gif" }));
@@ -212,7 +304,7 @@ async function replyWithPet(
   const payload = {
     content: opts?.content,
     embeds: [embed],
-    components: careRows(live, opts?.tutorial),
+    components: careRows(ownerId, live, { tutorial: opts?.tutorial, readOnly: opts?.readOnly }),
     files,
   };
   if (interaction.deferred || interaction.replied) {
@@ -222,6 +314,7 @@ async function replyWithPet(
   } else {
     await interaction.reply(payload);
   }
+  await afterPetMessage(interaction);
 }
 
 export async function handlePetCommand(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -267,7 +360,7 @@ export async function handlePetCommand(interaction: ChatInputCommandInteraction)
         hatchAnim: true,
         tutorial: true,
         content: charged > 0
-          ? `🎉 **${pet.name}** hatched! (−${charged} UB cash)\nYou're a caretaker now — start with **Feed → Clean → Play**.`
+          ? `🎉 **${pet.name}** hatched! (−${charged} UnbelievaBoat cash)\nYou're a caretaker now — start with **Feed → Clean → Play**.`
           : `🎉 **${pet.name}** hatched!\nYou're a caretaker now — start with **Feed → Clean → Play**. Hearts drop over real time.`,
       });
     } catch (err) {
@@ -288,9 +381,10 @@ export async function handlePetCommand(interaction: ChatInputCommandInteraction)
         new ButtonBuilder().setCustomId(`pet:decline:${id}`).setLabel("Decline").setStyle(ButtonStyle.Secondary),
       );
       await interaction.editReply({
-        content: `⚔️ <@${interaction.user.id}> challenges <@${opponent.id}>'s pet${wager > 0 ? ` for **${wager}** UB cash` : ""}!`,
+        content: `⚔️ <@${interaction.user.id}> challenges <@${opponent.id}>'s pet${wager > 0 ? ` for **${wager}** UnbelievaBoat cash` : ""}!`,
         components: [row],
       });
+      await afterPetMessage(interaction);
     } catch (err) {
       await interaction.editReply(`❌ ${err instanceof Error ? err.message : "Challenge failed."}`);
     }
@@ -302,16 +396,19 @@ export async function handlePetCommand(interaction: ChatInputCommandInteraction)
   const target: User = sub === "view"
     ? (interaction.options.getUser("user") ?? interaction.user)
     : interaction.user;
+  const viewingOther = target.id !== interaction.user.id;
   let pet = await getPet(guildId, target.id);
   if (!pet) {
-    if (target.id !== interaction.user.id) {
+    if (viewingOther) {
       await interaction.editReply(`<@${target.id}> doesn't have a pet yet.`);
       return;
     }
     const intro = await renderIntroGif();
     const files: AttachmentBuilder[] = [];
+    const ownerId = interaction.user.id;
     const embed = new EmbedBuilder()
       .setColor(0xf5c84c)
+      .setAuthor(UB_AUTHOR)
       .setTitle("🥚 Welcome to the Tamagotchi Nursery")
       .setDescription(
         [
@@ -322,16 +419,16 @@ export async function handlePetCommand(interaction: ChatInputCommandInteraction)
           "④ Keep hearts full — **Feed · Clean · Play**",
           "",
           "Neglect them too long and they can **truly leave**…",
-          "Buy treats with UnbelievaBoat cash · Challenge friends for glory.",
+          "Shop & hatch spend **UnbelievaBoat** cash · Challenge friends for glory.",
         ].join("\n"),
       )
-      .setFooter({ text: "Tip: you can also run /pet hatch species:… name:…" });
+      .setFooter({ text: "Tip: /pet hatch · idle panels close after 1 minute" });
     if (intro?.buffer) {
       files.push(new AttachmentBuilder(intro.buffer, { name: "nursery.gif" }));
       embed.setImage("attachment://nursery.gif");
     }
     const speciesSelect = new StringSelectMenuBuilder()
-      .setCustomId("pet:species")
+      .setCustomId(petId("species", ownerId))
       .setPlaceholder("① Pick a species to begin…")
       .addOptions(PET_SPECIES.map(s => ({
         label: SPECIES_META[s].label,
@@ -345,14 +442,19 @@ export async function handlePetCommand(interaction: ChatInputCommandInteraction)
       components: [
         new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(speciesSelect),
         new ActionRowBuilder<ButtonBuilder>().addComponents(
-          new ButtonBuilder().setCustomId("pet:top").setLabel("Leaderboard").setEmoji("🏆").setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder().setCustomId(petId("top", ownerId)).setLabel("Leaderboard").setEmoji("🏆").setStyle(ButtonStyle.Secondary),
         ),
       ],
     });
+    await afterPetMessage(interaction);
     return;
   }
   pet = await tickPet(pet);
-  await replyWithPet(interaction, pet);
+  await replyWithPet(interaction, pet, {
+    readOnly: viewingOther,
+    ownerId: interaction.user.id,
+    content: viewingOther ? `Looking at <@${target.id}>'s pet (view-only).` : undefined,
+  });
 }
 
 export async function handlePetAdminCommand(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -442,13 +544,74 @@ export async function handlePetComponent(
     await interaction.reply({ content: "Server only.", ...EPHEMERAL });
     return;
   }
-  const id = interaction.customId;
-  const parts = id.split(":");
 
-  if (id === "pet:species" && interaction.isStringSelectMenu()) {
+  const parsed = parsePetId(interaction.customId);
+  if (!parsed) {
+    await interaction.reply({
+      content: "This pet panel expired. Run `/pet hub` again.",
+      ...EPHEMERAL,
+    }).catch(() => {});
+    return;
+  }
+  const { action, ownerId, extra } = parsed;
+
+  // Challenge accept/decline — opponent (or challenger for decline) uses these; no panel owner.
+  if (action === "accept" && interaction.isButton()) {
+    const challengeId = Number(extra);
+    await interaction.deferUpdate();
+    try {
+      const { winner, loser, challenge } = await resolveChallenge(challengeId, interaction.user.id);
+      const challengerPet = winner.userId === challenge.challengerId ? winner : loser;
+      const opponentPet = winner.userId === challenge.opponentId ? winner : loser;
+      const fight = await renderChallengeGif(challengerPet, opponentPet, winner.userId);
+      const files: AttachmentBuilder[] = [];
+      const embed = new EmbedBuilder()
+        .setColor(0xf59e0b)
+        .setAuthor(UB_AUTHOR)
+        .setTitle("⚔️ Pet Challenge Result")
+        .setDescription(
+          `**${winner.name}** defeated **${loser.name}**!${
+            challenge.wager ? `\nWager: **${challenge.wager}** UnbelievaBoat cash` : ""
+          }`,
+        );
+      if (fight?.buffer) {
+        files.push(new AttachmentBuilder(fight.buffer, { name: "fight.gif" }));
+        embed.setImage("attachment://fight.gif");
+      }
+      await interaction.editReply({ content: null, embeds: [embed], components: [], files });
+      await afterPetMessage(interaction);
+    } catch (err) {
+      await interaction.followUp({
+        content: `❌ ${err instanceof Error ? err.message : "Could not resolve."}`,
+        ...EPHEMERAL,
+      });
+    }
+    return;
+  }
+
+  if (action === "decline" && interaction.isButton()) {
+    const challengeId = Number(extra);
+    try {
+      await cancelChallenge(challengeId, interaction.user.id);
+      await interaction.update({ content: "Challenge declined.", embeds: [], components: [] });
+    } catch (err) {
+      await interaction.reply({
+        content: `❌ ${err instanceof Error ? err.message : "Failed."}`,
+        ...EPHEMERAL,
+      });
+    }
+    return;
+  }
+
+  if (!(await assertPetOwner(interaction, ownerId))) return;
+
+  // Bump idle timer on the source message whenever the owner clicks.
+  if (interaction.message) bumpPetIdleCleanup(interaction.message);
+
+  if (action === "species" && interaction.isStringSelectMenu()) {
     const species = interaction.values[0] as PetSpecies;
     const modal = new ModalBuilder()
-      .setCustomId(`pet:hatch_modal:${species}`)
+      .setCustomId(petId("hatch_modal", ownerId, species))
       .setTitle(`Name your ${SPECIES_META[species].label}`);
     modal.addComponents(
       new ActionRowBuilder<TextInputBuilder>().addComponents(
@@ -466,9 +629,9 @@ export async function handlePetComponent(
     return;
   }
 
-  if (id === "pet:hatchmenu" && interaction.isButton()) {
+  if (action === "hatchmenu" && interaction.isButton()) {
     const speciesSelect = new StringSelectMenuBuilder()
-      .setCustomId("pet:species")
+      .setCustomId(petId("species", ownerId))
       .setPlaceholder("Pick a species to hatch…")
       .addOptions(PET_SPECIES.map(s => ({
         label: SPECIES_META[s].label,
@@ -477,55 +640,25 @@ export async function handlePetComponent(
         description: `Hatch a ${SPECIES_META[s].label.toLowerCase()}`,
       })));
     await interaction.reply({
-      content: "🥚 Choose a species — then name your egg:",
+      content: "🥚 Choose a species — then name your egg (UnbelievaBoat cash may apply):",
       components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(speciesSelect)],
       ...EPHEMERAL,
     });
     return;
   }
 
-  if (id.startsWith("pet:accept:") && interaction.isButton()) {
-    const challengeId = Number(parts[2]);
-    await interaction.deferUpdate();
-    try {
-      const { winner, loser, challenge } = await resolveChallenge(challengeId, interaction.user.id);
-      const challengerPet = winner.userId === challenge.challengerId ? winner : loser;
-      const opponentPet = winner.userId === challenge.opponentId ? winner : loser;
-      const fight = await renderChallengeGif(challengerPet, opponentPet, winner.userId);
-      const files: AttachmentBuilder[] = [];
-      const embed = new EmbedBuilder()
-        .setColor(0xf59e0b)
-        .setTitle("⚔️ Pet Challenge Result")
-        .setDescription(`**${winner.name}** defeated **${loser.name}**!${challenge.wager ? `\nWager: **${challenge.wager}** UB cash` : ""}`);
-      if (fight?.buffer) {
-        files.push(new AttachmentBuilder(fight.buffer, { name: "fight.gif" }));
-        embed.setImage("attachment://fight.gif");
-      }
-      await interaction.editReply({ content: null, embeds: [embed], components: [], files });
-    } catch (err) {
-      await interaction.followUp({
-        content: `❌ ${err instanceof Error ? err.message : "Could not resolve."}`,
-        ...EPHEMERAL,
-      });
+  if (action === "myhub" && interaction.isButton()) {
+    await interaction.deferReply(EPHEMERAL);
+    const mine = await getPet(guildId, interaction.user.id);
+    if (!mine) {
+      await interaction.editReply("You don't have a pet yet — run `/pet hub`.");
+      return;
     }
+    await replyWithPet(interaction, await tickPet(mine), { ownerId: interaction.user.id });
     return;
   }
 
-  if (id.startsWith("pet:decline:") && interaction.isButton()) {
-    const challengeId = Number(parts[2]);
-    try {
-      await cancelChallenge(challengeId, interaction.user.id);
-      await interaction.update({ content: "Challenge declined.", embeds: [], components: [] });
-    } catch (err) {
-      await interaction.reply({
-        content: `❌ ${err instanceof Error ? err.message : "Failed."}`,
-        ...EPHEMERAL,
-      });
-    }
-    return;
-  }
-
-  if (id === "pet:top" && interaction.isButton()) {
+  if (action === "top" && interaction.isButton()) {
     await interaction.deferReply(EPHEMERAL);
     const rows = await petLeaderboard(guildId, 10);
     const lines = rows.map((r, i) => {
@@ -533,14 +666,20 @@ export async function handlePetComponent(
       return `**${i + 1}.** ${em} **${r.name}** — <@${r.userId}> · ${r.power} PWR`;
     }).join("\n") || "_Empty_";
     await interaction.editReply({
-      embeds: [new EmbedBuilder().setColor(0xf59e0b).setTitle("🏆 Top Pets").setDescription(lines)],
+      embeds: [
+        new EmbedBuilder()
+          .setColor(0xf59e0b)
+          .setAuthor(UB_AUTHOR)
+          .setTitle("🏆 Top Pets")
+          .setDescription(lines),
+      ],
     });
     return;
   }
 
-  if (id === "pet:challenge" && interaction.isButton()) {
+  if (action === "challenge" && interaction.isButton()) {
     const menu = new UserSelectMenuBuilder()
-      .setCustomId("pet:challenge_user")
+      .setCustomId(petId("challenge_user", ownerId))
       .setPlaceholder("Pick someone to challenge…")
       .setMaxValues(1);
     await interaction.reply({
@@ -551,7 +690,7 @@ export async function handlePetComponent(
     return;
   }
 
-  if (id === "pet:challenge_user" && interaction.isUserSelectMenu()) {
+  if (action === "challenge_user" && interaction.isUserSelectMenu()) {
     const opponentId = interaction.values[0]!;
     await interaction.deferUpdate();
     try {
@@ -562,7 +701,9 @@ export async function handlePetComponent(
         new ButtonBuilder().setCustomId(`pet:decline:${cid}`).setLabel("Decline").setStyle(ButtonStyle.Secondary),
       );
       await interaction.followUp({
-        content: `⚔️ <@${interaction.user.id}> challenges <@${opponentId}>'s pet${settings.challengeWager ? ` for **${settings.challengeWager}** UB` : ""}!`,
+        content: `⚔️ <@${interaction.user.id}> challenges <@${opponentId}>'s pet${
+          settings.challengeWager ? ` for **${settings.challengeWager}** UnbelievaBoat cash` : ""
+        }!`,
         components: [row],
       });
     } catch (err) {
@@ -574,7 +715,7 @@ export async function handlePetComponent(
     return;
   }
 
-  if (id === "pet:shop" && interaction.isButton()) {
+  if (action === "shop" && interaction.isButton()) {
     const catalog = await listCatalog(guildId, { forPets: true });
     const items = [
       ...DEFAULT_SHOP,
@@ -587,7 +728,7 @@ export async function handlePetComponent(
       })),
     ];
     const menu = new StringSelectMenuBuilder()
-      .setCustomId("pet:buy")
+      .setCustomId(petId("buy", ownerId))
       .setPlaceholder("Buy with UnbelievaBoat cash…")
       .addOptions(items.slice(0, 25).map(i => ({
         label: `${i.label} — ${i.price} cash`,
@@ -596,20 +737,19 @@ export async function handlePetComponent(
         emoji: i.emoji,
       })));
     await interaction.reply({
-      content: "🛒 **Pet Shop** — purchases deduct UnbelievaBoat cash when `UNBELIEVABOAT_TOKEN` is set.",
+      content: "🛒 **Pet Shop** — prices are **UnbelievaBoat cash** (when the API token is authorized).",
       components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu)],
       ...EPHEMERAL,
     });
     return;
   }
 
-  if (id === "pet:buy" && interaction.isStringSelectMenu()) {
+  if (action === "buy" && interaction.isStringSelectMenu()) {
     await interaction.deferUpdate();
     const key = interaction.values[0]!;
     const shopItem = DEFAULT_SHOP.find(i => i.key === key);
     try {
       if (!shopItem) {
-        // Catalog item — treat as generic inventory key.
         const catalog = await listCatalog(guildId, { forPets: true });
         const cid = Number(key.replace("cat:", ""));
         const item = catalog.find(c => c.id === cid);
@@ -624,7 +764,7 @@ export async function handlePetComponent(
         await buyPetItem(guildId, interaction.user.id, shopItem);
       }
       const pet = await getPet(guildId, interaction.user.id);
-      if (pet) await replyWithPet(interaction, pet, { content: `🛒 Purchased! Check inventory.` });
+      if (pet) await replyWithPet(interaction, pet, { content: `🛒 Purchased with UnbelievaBoat cash!`, ownerId });
       else await interaction.followUp({ content: "Purchased.", ...EPHEMERAL });
     } catch (err) {
       await interaction.followUp({
@@ -635,7 +775,7 @@ export async function handlePetComponent(
     return;
   }
 
-  if (id === "pet:inv" && interaction.isButton()) {
+  if (action === "inv" && interaction.isButton()) {
     const pet = await getPet(guildId, interaction.user.id);
     if (!pet) {
       await interaction.reply({ content: "No pet.", ...EPHEMERAL });
@@ -647,7 +787,7 @@ export async function handlePetComponent(
       return;
     }
     const menu = new StringSelectMenuBuilder()
-      .setCustomId("pet:use")
+      .setCustomId(petId("use", ownerId))
       .setPlaceholder("Use an item…")
       .addOptions(entries.slice(0, 25).map(([k, n]) => ({
         label: `${k} ×${n}`,
@@ -660,13 +800,13 @@ export async function handlePetComponent(
     return;
   }
 
-  if (id === "pet:use" && interaction.isStringSelectMenu()) {
+  if (action === "use" && interaction.isStringSelectMenu()) {
     await interaction.deferUpdate();
     try {
       let pet = await getPet(guildId, interaction.user.id);
       if (!pet) throw new Error("No pet.");
       pet = await usePetItem(await tickPet(pet), interaction.values[0]!);
-      await replyWithPet(interaction, pet);
+      await replyWithPet(interaction, pet, { ownerId });
     } catch (err) {
       await interaction.followUp({
         content: `❌ ${err instanceof Error ? err.message : "Failed."}`,
@@ -676,41 +816,51 @@ export async function handlePetComponent(
     return;
   }
 
-  // Care actions + refresh
-  await interaction.deferUpdate().catch(() => {});
-  try {
-    let pet = await getPet(guildId, interaction.user.id);
-    if (!pet) {
-      await interaction.followUp({ content: "Hatch a pet first with `/pet hatch`.", ...EPHEMERAL });
-      return;
+  // Care actions + refresh — always load the PANEL OWNER's pet, never the clicker's
+  // if they somehow bypassed (assertPetOwner already enforced clicker === owner).
+  if (action === "feed" || action === "clean" || action === "play" || action === "refresh") {
+    await interaction.deferUpdate().catch(() => {});
+    try {
+      let pet = await getPet(guildId, ownerId);
+      if (!pet) {
+        await interaction.followUp({ content: "Hatch a pet first with `/pet hatch`.", ...EPHEMERAL });
+        return;
+      }
+      pet = await tickPet(pet);
+      if (action === "feed") pet = await feedPet(pet);
+      else if (action === "clean") pet = await cleanPet(pet);
+      else if (action === "play") pet = await playWithPet(pet);
+      await replyWithPet(interaction, pet, { ownerId });
+    } catch (err) {
+      await interaction.followUp({
+        content: `❌ ${err instanceof Error ? err.message : "Action failed."}`,
+        ...EPHEMERAL,
+      });
     }
-    pet = await tickPet(pet);
-    if (id === "pet:feed") pet = await feedPet(pet);
-    else if (id === "pet:clean") pet = await cleanPet(pet);
-    else if (id === "pet:play") pet = await playWithPet(pet);
-    // pet:refresh just re-renders after tick
-    await replyWithPet(interaction, pet);
-  } catch (err) {
-    await interaction.followUp({
-      content: `❌ ${err instanceof Error ? err.message : "Action failed."}`,
-      ...EPHEMERAL,
-    });
+    return;
   }
+
+  await interaction.reply({
+    content: "Unknown pet action — run `/pet hub` again.",
+    ...EPHEMERAL,
+  }).catch(() => {});
 }
 
-/** Modal submit: pet:hatch_modal:<species> */
+/** Modal submit: pet:hatch_modal:<species>:<ownerId> */
 export async function handlePetModal(interaction: ModalSubmitInteraction): Promise<void> {
   const guildId = interaction.guildId;
   if (!guildId) {
     await interaction.reply({ content: "Server only.", ...EPHEMERAL });
     return;
   }
-  const parts = interaction.customId.split(":");
-  if (parts[1] !== "hatch_modal") {
+  const parsed = parsePetId(interaction.customId);
+  if (!parsed || parsed.action !== "hatch_modal") {
     await interaction.reply({ content: "Unknown pet form.", ...EPHEMERAL });
     return;
   }
-  const species = parts[2] as PetSpecies;
+  if (!(await assertPetOwner(interaction, parsed.ownerId))) return;
+
+  const species = parsed.extra as PetSpecies;
   if (!PET_SPECIES.includes(species)) {
     await interaction.reply({ content: "Unknown species.", ...EPHEMERAL });
     return;
@@ -728,7 +878,7 @@ export async function handlePetModal(interaction: ModalSubmitInteraction): Promi
       hatchAnim: true,
       tutorial: true,
       content: charged > 0
-        ? `🎉 **${pet.name}** hatched! (−${charged} UB cash)\nStart with **Feed → Clean → Play**.`
+        ? `🎉 **${pet.name}** hatched! (−${charged} UnbelievaBoat cash)\nStart with **Feed → Clean → Play**.`
         : `🎉 **${pet.name}** hatched!\nStart with **Feed → Clean → Play**. Hearts drop over real time.`,
     });
   } catch (err) {
