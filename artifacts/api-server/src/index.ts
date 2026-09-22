@@ -999,6 +999,172 @@ async function runBootMigrations() {
   await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS pack_presentation text NOT NULL DEFAULT 'animated_image'`);
   await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS pack_fallback text NOT NULL DEFAULT 'animated_image'`);
 
+  // ── UnbelievaBoat addon + Tamagotchi pets (additive; IF NOT EXISTS only) ───
+  // Production DBs already have guild_settings, so ensureBaseSchema skips
+  // drizzle-kit push. These CREATE TABLE IF NOT EXISTS statements are the
+  // path that adds pet_* / ub_* on the next Railway deploy without touching
+  // existing DN Cards tables. See docs/unbelievaboat.md.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS ub_settings (
+      id                SERIAL PRIMARY KEY,
+      guild_id          TEXT NOT NULL UNIQUE,
+      ub_guild_id       TEXT NOT NULL,
+      enabled           BOOLEAN NOT NULL DEFAULT TRUE,
+      leaderboard_sort  TEXT NOT NULL DEFAULT 'total',
+      pets_spend_ub     BOOLEAN NOT NULL DEFAULT TRUE,
+      currency_label    TEXT,
+      created_at        TIMESTAMP NOT NULL DEFAULT NOW(),
+      updated_at        TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS ub_role_links (
+      id                SERIAL PRIMARY KEY,
+      guild_id          TEXT NOT NULL,
+      discord_role_id   TEXT,
+      name              TEXT NOT NULL,
+      description       TEXT,
+      ub_item_id        TEXT,
+      price             INTEGER NOT NULL DEFAULT 0,
+      grant_cash        INTEGER NOT NULL DEFAULT 0,
+      category          TEXT NOT NULL DEFAULT 'custom',
+      emoji             TEXT,
+      enabled           BOOLEAN NOT NULL DEFAULT TRUE,
+      meta              JSONB NOT NULL DEFAULT '{}'::jsonb,
+      created_at        TIMESTAMP NOT NULL DEFAULT NOW(),
+      updated_at        TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS ub_role_links_guild_idx ON ub_role_links (guild_id)`);
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS ub_role_links_guild_role_uidx ON ub_role_links (guild_id, discord_role_id)`);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS ub_store_catalog (
+      id                SERIAL PRIMARY KEY,
+      guild_id          TEXT NOT NULL,
+      name              TEXT NOT NULL,
+      description       TEXT,
+      price             INTEGER NOT NULL DEFAULT 0,
+      emoji             TEXT,
+      category          TEXT NOT NULL DEFAULT 'general',
+      ub_item_id        TEXT,
+      grant_role_id     TEXT,
+      is_inventory      BOOLEAN NOT NULL DEFAULT TRUE,
+      is_usable         BOOLEAN NOT NULL DEFAULT TRUE,
+      is_sellable       BOOLEAN NOT NULL DEFAULT TRUE,
+      unlimited_stock   BOOLEAN NOT NULL DEFAULT TRUE,
+      stock_remaining   INTEGER,
+      listed            BOOLEAN NOT NULL DEFAULT TRUE,
+      for_pets          BOOLEAN NOT NULL DEFAULT FALSE,
+      pet_effect        TEXT,
+      pet_effect_value  INTEGER NOT NULL DEFAULT 0,
+      meta              JSONB NOT NULL DEFAULT '{}'::jsonb,
+      created_at        TIMESTAMP NOT NULL DEFAULT NOW(),
+      updated_at        TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS ub_store_catalog_guild_idx ON ub_store_catalog (guild_id)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS ub_store_catalog_ub_item_idx ON ub_store_catalog (ub_item_id)`);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS ub_audit_log (
+      id                SERIAL PRIMARY KEY,
+      guild_id          TEXT NOT NULL,
+      actor_id          TEXT NOT NULL,
+      target_user_id    TEXT,
+      action            TEXT NOT NULL,
+      detail            JSONB NOT NULL DEFAULT '{}'::jsonb,
+      created_at        TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS ub_audit_log_guild_idx ON ub_audit_log (guild_id)`);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS pet_settings (
+      id                          SERIAL PRIMARY KEY,
+      guild_id                    TEXT NOT NULL UNIQUE,
+      enabled                     BOOLEAN NOT NULL DEFAULT TRUE,
+      growth_hours                INTEGER NOT NULL DEFAULT 24,
+      max_neglects                INTEGER NOT NULL DEFAULT 5,
+      hunger_decay_per_hour       INTEGER NOT NULL DEFAULT 4,
+      cleanliness_decay_per_hour  INTEGER NOT NULL DEFAULT 3,
+      happiness_decay_per_hour    INTEGER NOT NULL DEFAULT 3,
+      hatch_cost                  INTEGER NOT NULL DEFAULT 250,
+      challenge_wager             INTEGER NOT NULL DEFAULT 50,
+      created_at                  TIMESTAMP NOT NULL DEFAULT NOW(),
+      updated_at                  TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS pets (
+      id                  SERIAL PRIMARY KEY,
+      guild_id            TEXT NOT NULL,
+      user_id             TEXT NOT NULL,
+      name                TEXT NOT NULL,
+      species             TEXT NOT NULL,
+      stage               TEXT NOT NULL DEFAULT 'egg',
+      variant             INTEGER NOT NULL DEFAULT 0,
+      hunger              INTEGER NOT NULL DEFAULT 80,
+      cleanliness         INTEGER NOT NULL DEFAULT 80,
+      happiness           INTEGER NOT NULL DEFAULT 80,
+      health              INTEGER NOT NULL DEFAULT 100,
+      level               INTEGER NOT NULL DEFAULT 1,
+      xp                  INTEGER NOT NULL DEFAULT 0,
+      power               INTEGER NOT NULL DEFAULT 10,
+      wins                INTEGER NOT NULL DEFAULT 0,
+      losses              INTEGER NOT NULL DEFAULT 0,
+      neglect_count       INTEGER NOT NULL DEFAULT 0,
+      is_dead             BOOLEAN NOT NULL DEFAULT FALSE,
+      died_at             TIMESTAMP,
+      cosmetics           JSONB NOT NULL DEFAULT '[]'::jsonb,
+      active_cosmetic     TEXT,
+      inventory           JSONB NOT NULL DEFAULT '{}'::jsonb,
+      last_fed_at         TIMESTAMP,
+      last_cleaned_at     TIMESTAMP,
+      last_played_at      TIMESTAMP,
+      last_tick_at        TIMESTAMP NOT NULL DEFAULT NOW(),
+      stage_started_at    TIMESTAMP NOT NULL DEFAULT NOW(),
+      hatched_at          TIMESTAMP,
+      created_at          TIMESTAMP NOT NULL DEFAULT NOW(),
+      updated_at          TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `);
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS pets_guild_user_uidx ON pets (guild_id, user_id)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS pets_guild_power_idx ON pets (guild_id, power)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS pets_guild_alive_idx ON pets (guild_id, is_dead)`);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS pet_challenges (
+      id                SERIAL PRIMARY KEY,
+      guild_id          TEXT NOT NULL,
+      challenger_id     TEXT NOT NULL,
+      opponent_id       TEXT NOT NULL,
+      wager             INTEGER NOT NULL DEFAULT 0,
+      status            TEXT NOT NULL DEFAULT 'pending',
+      winner_id         TEXT,
+      result            JSONB NOT NULL DEFAULT '{}'::jsonb,
+      created_at        TIMESTAMP NOT NULL DEFAULT NOW(),
+      resolved_at       TIMESTAMP
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS pet_challenges_guild_idx ON pet_challenges (guild_id)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS pet_challenges_status_idx ON pet_challenges (guild_id, status)`);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS pet_care_log (
+      id                SERIAL PRIMARY KEY,
+      guild_id          TEXT NOT NULL,
+      pet_id            INTEGER NOT NULL,
+      user_id           TEXT NOT NULL,
+      action            TEXT NOT NULL,
+      detail            JSONB NOT NULL DEFAULT '{}'::jsonb,
+      created_at        TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS pet_care_log_pet_idx ON pet_care_log (pet_id)`);
+
   logger.info("Boot migrations applied");
 }
 
