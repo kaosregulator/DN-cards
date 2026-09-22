@@ -47,6 +47,7 @@ Postgres database and your usual secrets (bot token, guild id, session secret).
 | `DISCORD_OAUTH_REDIRECT_URI` | `https://YOUR-DOMAIN/api/oauth/discord/callback` |
 | `ANTHROPIC_API_KEY` | Bob AI talk |
 | `ADMIN_TOKEN` | Break-glass dashboard admin header |
+| `UNBELIEVABOAT_TOKEN` | UnbelievaBoat API token from https://unbelievaboat.com/applications (raw token, no `Bearer`). Enables the `/admin/unbelievaboat` hub + pet shop cash spends. Alias: `UNB_TOKEN`. |
 | `AFK_PRESENCE_INTENT` | `1` only if Presence Intent is enabled in the Developer Portal |
 | `DATABASE_SSL` | Force `require` / `disable` if auto TLS detection is wrong. Prefer leaving unset — the app uses `rejectUnauthorized: false` for managed hosts (needed for Railway). |
 | `AUTO_DB_PUSH` | Unset = push schema only when tables are missing. `1` = always push on start. `0` = never. |

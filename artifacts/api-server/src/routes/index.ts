@@ -12,6 +12,7 @@ import oauthRouter from "./oauth";
 import adminSiteRouter from "./admin-site";
 import activityRouter from "./activity";
 import emojiAdminRouter from "./emoji-admin";
+import unbelievaboatAdminRouter from "./unbelievaboat-admin";
 
 const router: IRouter = Router();
 
@@ -23,6 +24,7 @@ router.use("/activity", activityRouter);
 router.use("/dashboard/users", dashboardUsersRouter);
 router.use("/admin", adminSiteRouter);
 router.use("/admin", emojiAdminRouter);
+router.use("/admin", unbelievaboatAdminRouter);
 router.use("/admin", adminRouter);
 router.use(storageRouter);
 router.use(newsRouter);

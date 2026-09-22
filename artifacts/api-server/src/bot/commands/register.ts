@@ -6,6 +6,7 @@ import {
 import { buildAfkCommandJson, buildAfkSetupCommandJson } from "../afk/commands.js";
 import { buildEmojiCommandJson, buildPostboardCommandJson } from "../emoji/commands/definition.js";
 import { buildQuoteCommandJson, buildQuoteContextMenuJson } from "../quote/definition.js";
+import { buildPetCommandJson, buildPetAdminCommandJson } from "../pets/command.js";
 import { getRaidFrames } from "../cards/frames.js";
 import {
   buildMaterialChoices, buildWallpaperChoices, buildCanvasChoices, BUILD_LIMITS,
@@ -54,6 +55,8 @@ function buildLegacyCommands() {
     buildPostboardCommandJson(),
     buildQuoteCommandJson(),
     buildQuoteContextMenuJson(),
+    buildPetCommandJson(),
+    buildPetAdminCommandJson(),
 
     cmd("info", "Details, worth, and drop chance", s => s
       .addStringOption(o => o.setName("name").setDescription("Name to look up").setRequired(true).setAutocomplete(true))),
