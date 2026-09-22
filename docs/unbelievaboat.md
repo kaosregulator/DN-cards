@@ -13,13 +13,19 @@ Addon for DN Cards — does **not** replace shards, packs, Bob, or the existing 
    - Audit log of hub actions
 
 2. **Discord Tamagotchi** — `/pet` + `/petadmin`
-   - Species: dragon, cat, dog, hamster
-   - Stages: egg → hatchling → juvenile → adult (real-time growth)
+   - Species: dragon, cat, dog, hamster (mystery — rolled when an egg finishes, not when you buy it)
+   - Discoveries: normal, shiny (gold + sparkles), exotic (violet/cyan). Not DN Cards rarities.
+   - Eggs are inventory: keep, incubate (wall-clock, works offline), hatch, sell, or trade
+   - Eight shop eggs plus one daily **limited** egg. Supply is hardcoded at **3**. Admins cannot mint or raise it. Sold out or hatched means trade only.
+   - `/pet replay` plays the hatch cinematic again (“hatched you on this day”)
+   - Stable holds every companion; the newest hatch becomes active
+   - A small UB trade tax is sunk so trading is not a free hatch loop
+   - Stages: hatchling → juvenile → adult (real-time growth, optional UB skip)
    - Needs: hunger, cleanliness, happiness, health (decay while AFK)
    - Neglect cycles → eventual death (animated)
-   - Shop spends UnbelievaBoat cash when the API token is set
+   - Shop spends UnbelievaBoat cash when the API token is set. Limited eggs require a real charge.
    - Competitive `/pet challenge` with optional wager + clash GIF
-   - Procedural animated GIFs (same canvas/GIF pipeline as pack/battle/`/emoji`)
+   - Frostwindz pixel eggs + Onocentaur crack frames (same canvas/GIF pipeline)
 
 ## Railway secrets
 
@@ -38,13 +44,13 @@ All under `/api/admin/ub/*` (dashboard auth required). Client: `artifacts/api-se
 
 | Command | Who | Purpose |
 | --- | --- | --- |
-| `/pet` · hub / hatch / view / challenge / top | Everyone | Care hub + competitive pet game |
-| `/petadmin` | Admins | Toggle + hatch cost / growth / neglect |
+| `/pet` · hub / shop / eggs / hatch / dex / stable / replay / view / challenge / top | Everyone | Care hub, egg counter, petdex |
+| `/petadmin` | Admins | Toggle + hatch cost / growth / neglect. Cannot mint limited eggs. |
 
 ## Schema
 
 - `lib/db/src/schema/unbelievaboat.ts` — settings, role links, catalog, audit
-- `lib/db/src/schema/pets.ts` — settings, pets, challenges, care log
+- `lib/db/src/schema/pets.ts` — settings, pets, challenges, care log, owned eggs, dex, limited drops, trades
 
 ### Production (Railway) table creation
 

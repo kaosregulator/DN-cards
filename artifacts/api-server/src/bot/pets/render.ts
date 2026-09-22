@@ -8,7 +8,9 @@ import type { Pet } from "@workspace/db";
 import { SPECIES_META, moodOf, isDirty, isHungry, type PetSpecies } from "./engine.js";
 import {
   loadEggSheet, loadPetBackground, blitEggTile, eggFrameAt, eggCol, eggRowFor,
+  loadFrostEgg, blitFrostEgg, blitFrostHalf,
 } from "./sprites.js";
+import { eggDef, VARIANT_LABEL, type DiscoveryVariant } from "./catalog.js";
 
 /** Bigger canvas so Discord mobile users can actually see the pet. */
 export const PET_CANVAS = { width: 480, height: 400 } as const;
@@ -35,8 +37,16 @@ function roundRect(ctx: Ctx, x: number, y: number, w: number, h: number, r: numb
 function palette(pet: Pet) {
   const sp = (pet.species as PetSpecies) in SPECIES_META ? (pet.species as PetSpecies) : "cat";
   const hues = SPECIES_META[sp].hues;
-  const [body, accent] = hues[pet.variant % hues.length]!;
-  return { body, accent, species: sp };
+  let [body, accent] = hues[pet.variant % hues.length]!;
+  const discovery = (pet.discoveryVariant ?? "normal") as DiscoveryVariant;
+  if (discovery === "shiny") {
+    body = "#f6c945";
+    accent = "#fff4b0";
+  } else if (discovery === "exotic") {
+    body = "#6d28d9";
+    accent = "#22d3ee";
+  }
+  return { body, accent, species: sp, discovery };
 }
 
 /** Soft pastel device shell + LCD window (original — not Bandai art).
@@ -243,6 +253,20 @@ function drawChibi(ctx: Ctx, pet: Pet, cx: number, feetY: number, t: number, sca
     ctx.fillStyle = "#e8f0ff";
     ellipse(ctx, 18 * s, headY - 50 * s - t * 30, 8 * s, 12 * s);
     ctx.fill();
+  }
+
+  if (!pet.isDead && (p.discovery === "shiny" || p.discovery === "exotic")) {
+    ctx.fillStyle = p.discovery === "shiny" ? "#ffe566" : "#67e8f9";
+    const n = p.discovery === "exotic" ? 7 : 4;
+    for (let i = 0; i < n; i++) {
+      const ang = t * 6 + i * ((Math.PI * 2) / n);
+      const r = 40 * s + (i % 2) * 12;
+      ctx.fillRect(Math.round(Math.cos(ang) * r) - 2, Math.round(headY + Math.sin(ang) * r * 0.55) - 2, 4, 4);
+    }
+    if (p.discovery === "exotic") {
+      ctx.fillStyle = "#f472b6";
+      ctx.fillRect(Math.round(Math.sin(t * 9) * 48 * s), Math.round(headY - 20 * s), 3, 3);
+    }
   }
 
   ctx.restore();
@@ -571,8 +595,10 @@ function drawHudInside(ctx: Ctx, pet: Pet, lx: number, ly: number, lw: number) {
   ctx.fillText(title, lx + 12, ly + 48);
   ctx.font = "10px Early GameBoy, monospace";
   ctx.fillStyle = "#5a6578";
+  const discovery = (pet.discoveryVariant ?? "normal") as DiscoveryVariant;
+  const badge = discovery === "normal" ? "" : `  ${VARIANT_LABEL[discovery].toUpperCase()}`;
   ctx.fillText(
-    `${(sp?.label ?? pet.species).toUpperCase()}  ${pet.stage.toUpperCase()}  Lv${pet.level}  PWR ${pet.power}`,
+    `${(sp?.label ?? pet.species).toUpperCase()}${badge}  ${pet.stage.toUpperCase()}  Lv${pet.level}`,
     lx + 12,
     ly + 64,
   );
@@ -581,6 +607,24 @@ function drawHudInside(ctx: Ctx, pet: Pet, lx: number, ly: number, lw: number) {
   drawHearts(ctx, lx + 100, ly + 82, pet.hunger, "HUN", "#fbbf24");
   drawHearts(ctx, lx + 188, ly + 82, pet.cleanliness, "CLN", "#60a5fa");
   drawHearts(ctx, lx + 276, ly + 82, pet.happiness, "HAP", "#f472b6");
+}
+
+function drawCrackMarks(ctx: Ctx, cx: number, cy: number, size: number, frame: ReturnType<typeof eggFrameAt>) {
+  if (frame === "idle" || frame === "open") return;
+  ctx.strokeStyle = "#1a1420";
+  ctx.lineWidth = frame === "crack3" ? 4 : frame === "crack2" ? 3 : 2;
+  ctx.beginPath();
+  ctx.moveTo(cx - size * 0.08, cy - size * 0.22);
+  ctx.lineTo(cx + size * 0.04, cy - size * 0.02);
+  ctx.lineTo(cx - size * 0.1, cy + size * 0.2);
+  ctx.stroke();
+  if (frame !== "crack1") {
+    ctx.beginPath();
+    ctx.moveTo(cx + size * 0.12, cy - size * 0.16);
+    ctx.lineTo(cx + size * 0.02, cy + size * 0.02);
+    ctx.lineTo(cx + size * 0.16, cy + size * 0.18);
+    ctx.stroke();
+  }
 }
 
 async function drawEggSprite(
@@ -593,10 +637,24 @@ async function drawEggSprite(
   /** Integer pixel nudge only — never rotate (GIF destroys rotated pixels). */
   shakeX = 0,
 ) {
-  const sheet = await loadEggSheet();
-  const row = eggRowFor(pet.species, pet.variant);
   const dx = Math.round(cx + shakeX);
   const dy = Math.round(cy);
+  const frostFile = pet.eggKey ? eggDef(pet.eggKey)?.sprite : undefined;
+  if (frostFile) {
+    const img = await loadFrostEgg(frostFile);
+    if (img) {
+      if (frame === "open") {
+        blitFrostHalf(ctx, img, "top", dx - size / 2, dy - size * 0.95, size);
+        blitFrostHalf(ctx, img, "bottom", dx - size / 2, dy - size * 0.05, size);
+      } else {
+        blitFrostEgg(ctx, img, dx - size / 2, dy - size / 2, size);
+        drawCrackMarks(ctx, dx, dy, size, frame);
+      }
+      return;
+    }
+  }
+  const sheet = await loadEggSheet();
+  const row = eggRowFor(pet.species, pet.variant);
   if (!sheet) {
     ellipse(ctx, dx, dy, size * 0.35, size * 0.45);
     ctx.fillStyle = "#f5efe6";
@@ -607,7 +665,6 @@ async function drawEggSprite(
     return;
   }
   if (frame === "open") {
-    // Top shell floats up; bottom sits as a nest
     blitEggTile(ctx, sheet, row, eggCol("top"), dx - size / 2, dy - size * 0.95, size);
     blitEggTile(ctx, sheet, row, eggCol("bottom"), dx - size / 2, dy - size * 0.1, size);
   } else {
@@ -615,8 +672,41 @@ async function drawEggSprite(
   }
 }
 
+function drawCareProp(ctx: Ctx, prop: "food" | "soap" | "toy", cx: number, feetY: number, t: number) {
+  if (prop === "food") {
+    ctx.fillStyle = "#b45309";
+    roundRect(ctx, cx - 70, feetY - 28, 36, 16, 4);
+    ctx.fill();
+    ctx.fillStyle = "#fbbf24";
+    ellipse(ctx, cx - 52, feetY - 30, 8, 6);
+    ctx.fill();
+    ctx.fillStyle = "#ef4444";
+    ellipse(ctx, cx - 40, feetY - 34, 5, 4);
+    ctx.fill();
+  } else if (prop === "soap") {
+    ctx.fillStyle = "#e0f2fe";
+    for (let i = 0; i < 5; i++) {
+      const by = feetY - 40 - ((t * 40 + i * 18) % 70);
+      const bx = cx + 50 + (i % 2) * 14;
+      ellipse(ctx, bx, by, 6, 6);
+      ctx.fill();
+    }
+    ctx.fillStyle = "#7dd3fc";
+    roundRect(ctx, cx + 46, feetY - 26, 22, 14, 4);
+    ctx.fill();
+  } else {
+    const bounce = Math.round(Math.abs(Math.sin(t * Math.PI * 4)) * 28);
+    ctx.fillStyle = "#ef4444";
+    ellipse(ctx, cx + 62, feetY - 16 - bounce, 10, 10);
+    ctx.fill();
+    ctx.fillStyle = "#fee2e2";
+    ellipse(ctx, cx + 58, feetY - 20 - bounce, 3, 3);
+    ctx.fill();
+  }
+}
+
 /** Idle / care loop for the hub — big device frame. */
-export async function renderPetGif(pet: Pet, opts?: { durationMs?: number }): Promise<AnimationResult | null> {
+export async function renderPetGif(pet: Pet, opts?: { durationMs?: number; prop?: "food" | "soap" | "toy" }): Promise<AnimationResult | null> {
   const { width, height } = PET_CANVAS;
   const mood = moodOf(pet);
   const durationMs = opts?.durationMs ?? (mood === "dead" ? 2400 : 2000);
@@ -645,6 +735,7 @@ export async function renderPetGif(pet: Pet, opts?: { durationMs?: number }): Pr
         ctx.textAlign = "left";
       } else {
         drawChibi(ctx, pet, cx, feetY, t, 1.15);
+        if (opts?.prop) drawCareProp(ctx, opts.prop, cx, feetY, t);
       }
       ctx.restore();
     },
@@ -712,20 +803,27 @@ export async function renderHatchGif(pet: Pet): Promise<AnimationResult | null> 
       } else {
         // Birth: bottom nest + peeking baby + top shell flying away
         const birth = (hatchT - 0.68) / 0.32;
-        const sheet = await loadEggSheet();
-        const row = eggRowFor(pet.species, pet.variant);
         const shellSize = 96;
-        if (sheet) {
-          const topLift = Math.round(birth * 70);
-          const topDrift = Math.round(birth * 40);
-          blitEggTile(ctx, sheet, row, eggCol("top"), cx - shellSize / 2 + topDrift, cy - shellSize * 0.85 - topLift, shellSize);
-          blitEggTile(ctx, sheet, row, eggCol("bottom"), cx - shellSize / 2, cy + 8, shellSize);
+        const topLift = Math.round(birth * 70);
+        const topDrift = Math.round(birth * 40);
+        const frostFile = pet.eggKey ? eggDef(pet.eggKey)?.sprite : undefined;
+        const frost = frostFile ? await loadFrostEgg(frostFile) : null;
+        if (frost) {
+          blitFrostHalf(ctx, frost, "top", cx - shellSize / 2 + topDrift, cy - shellSize * 0.85 - topLift, shellSize);
+          blitFrostHalf(ctx, frost, "bottom", cx - shellSize / 2, cy + 8, shellSize);
+        } else {
+          const sheet = await loadEggSheet();
+          const row = eggRowFor(pet.species, pet.variant);
+          if (sheet) {
+            blitEggTile(ctx, sheet, row, eggCol("top"), cx - shellSize / 2 + topDrift, cy - shellSize * 0.85 - topLift, shellSize);
+            blitEggTile(ctx, sheet, row, eggCol("bottom"), cx - shellSize / 2, cy + 8, shellSize);
+          }
         }
         const baby = { ...pet, stage: "hatchling" as const };
         drawChibi(ctx, baby, cx, cy + 28, t, 0.95 + birth * 0.25);
 
-        // Burst stars (opaque squares)
-        ctx.fillStyle = "#e8b830";
+        const discovery = (pet.discoveryVariant ?? "normal") as DiscoveryVariant;
+        ctx.fillStyle = discovery === "exotic" ? "#22d3ee" : "#e8b830";
         for (let i = 0; i < 10; i++) {
           const ang = (i / 10) * Math.PI * 2 + t * 3;
           const r = 30 + birth * 90;
@@ -736,12 +834,27 @@ export async function renderHatchGif(pet: Pet): Promise<AnimationResult | null> 
           );
         }
 
-        ctx.fillStyle = "#2a3344";
+        const when = pet.hatchReplay?.hatchedAt ?? pet.hatchedAt?.toISOString() ?? "";
+        const day = when ? when.slice(0, 10) : "today";
+        const headline = discovery === "shiny"
+          ? "SHINY DISCOVERY"
+          : discovery === "exotic"
+            ? "EXOTIC DISCOVERY"
+            : `It's ${pet.name}!`;
+        ctx.fillStyle = discovery === "shiny" ? "#a16207" : discovery === "exotic" ? "#5b21b6" : "#2a3344";
         ctx.font = "bold 16px Early GameBoy, monospace";
         ctx.textAlign = "center";
-        ctx.fillText(`It's ${pet.name}!`, cx, screen.ly + 38);
+        ctx.fillText(headline, cx, screen.ly + 32);
         ctx.font = "11px Early GameBoy, monospace";
-        ctx.fillText(`A ${sp?.label ?? pet.species} was born!`, cx, screen.ly + 56);
+        ctx.fillStyle = "#2a3344";
+        ctx.fillText(
+          discovery === "normal"
+            ? `A ${sp?.label ?? pet.species} was born!`
+            : `${pet.name} the ${discovery} ${sp?.label ?? pet.species}!`,
+          cx,
+          screen.ly + 50,
+        );
+        ctx.fillText(`Hatched you on ${day}`, cx, screen.ly + 66);
         ctx.textAlign = "left";
       }
       ctx.restore();
@@ -766,25 +879,29 @@ export async function renderIntroGif(species?: PetSpecies): Promise<AnimationRes
       ctx.fillStyle = "#2a3344";
       ctx.font = "bold 16px Early GameBoy, monospace";
       ctx.textAlign = "center";
-      ctx.fillText("TAMAGOTCHI NURSERY", cx, screen.ly + 34);
+      ctx.fillText("HATCH & COLLECT", cx, screen.ly + 34);
       ctx.font = "11px Early GameBoy, monospace";
-      ctx.fillText("Pick a species · Name it · Hatch!", cx, screen.ly + 52);
+      ctx.fillText("Buy an egg · Mystery inside · Hatch later", cx, screen.ly + 52);
 
-      const kinds: PetSpecies[] = ["dragon", "cat", "dog", "hamster"];
-      kinds.forEach((k, i) => {
-        const ex = cx - 120 + i * 80;
-        const shake = Math.round(Math.sin(t * Math.PI * 3 + i) * 4);
-        if (sheet) {
-          blitEggTile(ctx, sheet, eggRowFor(k, 0), 0, ex - 28, cy - 28 + shake, 56);
+      const showcase = ["meadow", "ember", "candy", "relic"];
+      for (let i = 0; i < showcase.length; i++) {
+        const key = showcase[i]!;
+        const def = eggDef(key);
+        const ex = cx - 132 + i * 88;
+        const shake = Math.round(Math.sin(t * Math.PI * 3 + i) * 5);
+        if (def) {
+          const img = await loadFrostEgg(def.sprite);
+          if (img) blitFrostEgg(ctx, img, ex - 26, cy - 36 + shake, 52);
+          else if (sheet) blitEggTile(ctx, sheet, eggRowFor("cat", i), 0, ex - 26, cy - 36 + shake, 52);
         }
-        ctx.fillStyle = species === k ? "#b45309" : "#2a3344";
+        ctx.fillStyle = "#2a3344";
         ctx.font = "bold 10px Early GameBoy, monospace";
-        ctx.fillText(SPECIES_META[k].label, ex, cy + 44);
-      });
+        ctx.fillText(def?.label.replace(" Egg", "") ?? key, ex, cy + 36);
+      }
 
       ctx.fillStyle = "#5a6578";
       ctx.font = "10px Early GameBoy, monospace";
-      ctx.fillText("Feed · Clean · Play — or it may leave you…", cx, screen.ly + screen.lh - 16);
+      ctx.fillText("Three limited eggs a day — then trade only", cx, screen.ly + screen.lh - 16);
       ctx.textAlign = "left";
       ctx.restore();
     },
@@ -822,6 +939,71 @@ export async function renderChallengeGif(
       } else {
         ctx.fillText("VS", screen.lx + screen.lw / 2, screen.ly + screen.lh / 2);
       }
+      ctx.textAlign = "left";
+      ctx.restore();
+    },
+  });
+}
+
+/** One Frostwindz egg wobbling on the device — shop focus and incubating eggs. */
+export async function renderEggFocusGif(spriteFile: string, caption: string, sub = ""): Promise<AnimationResult | null> {
+  const { width, height } = PET_CANVAS;
+  const img = await loadFrostEgg(spriteFile);
+  return encodeAnimation({
+    width, height, speed: "normal", durationMs: 1800, maxFrames: 16, quality: 3, renderScale: 1,
+    render: (frame) => {
+      const { ctx, t } = frame;
+      const screen = drawDevice(ctx, width, height, t);
+      clipScreen(ctx, screen.lx, screen.ly, screen.lw, screen.lh);
+      const cx = screen.lx + screen.lw / 2;
+      const cy = screen.ly + screen.lh / 2;
+      const shake = Math.round(Math.sin(t * Math.PI * 4) * 6);
+      const bob = Math.round(Math.sin(t * Math.PI * 2) * 4);
+      if (img) blitFrostEgg(ctx, img, cx - 56 + shake, cy - 70 + bob, 112);
+      ctx.fillStyle = "#e8b830";
+      for (let i = 0; i < 5; i++) {
+        const ang = t * 5 + i * 1.3;
+        ctx.fillRect(Math.round(cx + Math.cos(ang) * 70), Math.round(cy + Math.sin(ang) * 40), 4, 4);
+      }
+      ctx.fillStyle = "#2a3344";
+      ctx.font = "bold 14px Early GameBoy, monospace";
+      ctx.textAlign = "center";
+      ctx.fillText(caption, cx, screen.ly + 36);
+      if (sub) {
+        ctx.font = "11px Early GameBoy, monospace";
+        ctx.fillText(sub, cx, screen.ly + screen.lh - 16);
+      }
+      ctx.textAlign = "left";
+      ctx.restore();
+    },
+  });
+}
+
+/** Shelf of shop eggs so the counter feels worth opening again. */
+export async function renderShopGif(spriteFiles: string[]): Promise<AnimationResult | null> {
+  const { width, height } = PET_CANVAS;
+  const files = spriteFiles.slice(0, 4);
+  const imgs = await Promise.all(files.map(f => loadFrostEgg(f)));
+  return encodeAnimation({
+    width, height, speed: "normal", durationMs: 2000, maxFrames: 16, quality: 3, renderScale: 1,
+    render: (frame) => {
+      const { ctx, t } = frame;
+      const screen = drawDevice(ctx, width, height, t);
+      clipScreen(ctx, screen.lx, screen.ly, screen.lw, screen.lh);
+      const cx = screen.lx + screen.lw / 2;
+      ctx.fillStyle = "#2a3344";
+      ctx.font = "bold 15px Early GameBoy, monospace";
+      ctx.textAlign = "center";
+      ctx.fillText("EGG COUNTER", cx, screen.ly + 36);
+      imgs.forEach((img, i) => {
+        if (!img) return;
+        const ex = cx - 132 + i * 88;
+        const bob = Math.round(Math.sin(t * Math.PI * 3 + i * 0.7) * 6);
+        blitFrostEgg(ctx, img, ex - 28, screen.ly + 90 + bob, 64);
+      });
+      ctx.font = "11px Early GameBoy, monospace";
+      ctx.fillStyle = "#5a6578";
+      ctx.fillText("Mystery until it cracks", cx, screen.ly + screen.lh - 18);
       ctx.textAlign = "left";
       ctx.restore();
     },

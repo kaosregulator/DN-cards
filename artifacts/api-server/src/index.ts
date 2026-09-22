@@ -1131,7 +1131,7 @@ async function runBootMigrations() {
       updated_at          TIMESTAMP NOT NULL DEFAULT NOW()
     )
   `);
-  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS pets_guild_user_uidx ON pets (guild_id, user_id)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS pets_guild_user_idx ON pets (guild_id, user_id)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS pets_guild_power_idx ON pets (guild_id, power)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS pets_guild_alive_idx ON pets (guild_id, is_dead)`);
 
@@ -1164,6 +1164,97 @@ async function runBootMigrations() {
     )
   `);
   await pool.query(`CREATE INDEX IF NOT EXISTS pet_care_log_pet_idx ON pet_care_log (pet_id)`);
+
+  // Endless hatch: many pets per member, one active. Egg contents roll at hatch time.
+  await pool.query(`ALTER TABLE pets ADD COLUMN IF NOT EXISTS discovery_variant TEXT NOT NULL DEFAULT 'normal'`);
+  await pool.query(`ALTER TABLE pets ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT FALSE`);
+  await pool.query(`ALTER TABLE pets ADD COLUMN IF NOT EXISTS egg_key TEXT`);
+  await pool.query(`ALTER TABLE pets ADD COLUMN IF NOT EXISTS hatch_replay JSONB`);
+  await pool.query(`
+    UPDATE pets p SET is_active = TRUE
+    WHERE NOT EXISTS (
+      SELECT 1 FROM pets o
+      WHERE o.guild_id = p.guild_id AND o.user_id = p.user_id AND o.is_active
+    )
+    AND p.id = (
+      SELECT p2.id FROM pets p2
+      WHERE p2.guild_id = p.guild_id AND p2.user_id = p.user_id
+      ORDER BY p2.is_dead ASC, p2.id ASC
+      LIMIT 1
+    )
+  `);
+  await pool.query(`DROP INDEX IF EXISTS pets_guild_user_uidx`);
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS pets_one_active_uidx ON pets (guild_id, user_id) WHERE is_active`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS pets_active_idx ON pets (guild_id, user_id, is_active)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS pets_guild_user_idx ON pets (guild_id, user_id)`);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS pet_owned_eggs (
+      id                   SERIAL PRIMARY KEY,
+      guild_id             TEXT NOT NULL,
+      owner_id             TEXT NOT NULL,
+      egg_key              TEXT NOT NULL,
+      status               TEXT NOT NULL DEFAULT 'held',
+      pending_name         TEXT,
+      obtained_at          TIMESTAMP NOT NULL DEFAULT NOW(),
+      incubate_started_at  TIMESTAMP,
+      ready_at             TIMESTAMP,
+      hatched_pet_id       INTEGER,
+      limited_date         TEXT,
+      sell_value           INTEGER NOT NULL DEFAULT 0
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS pet_owned_eggs_owner_idx ON pet_owned_eggs (guild_id, owner_id, status)`);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS pet_dex (
+      id                  SERIAL PRIMARY KEY,
+      guild_id            TEXT NOT NULL,
+      user_id             TEXT NOT NULL,
+      species             TEXT NOT NULL,
+      discovery_variant   TEXT NOT NULL,
+      owned_count         INTEGER NOT NULL DEFAULT 0,
+      first_hatched_at    TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `);
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS pet_dex_uidx ON pet_dex (guild_id, user_id, species, discovery_variant)`);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS pet_user_items (
+      id          SERIAL PRIMARY KEY,
+      guild_id    TEXT NOT NULL,
+      user_id     TEXT NOT NULL,
+      item_key    TEXT NOT NULL,
+      qty         INTEGER NOT NULL DEFAULT 0
+    )
+  `);
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS pet_user_items_uidx ON pet_user_items (guild_id, user_id, item_key)`);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS pet_limited_drops (
+      id             SERIAL PRIMARY KEY,
+      guild_id       TEXT NOT NULL,
+      release_date   TEXT NOT NULL,
+      egg_key        TEXT NOT NULL,
+      total_supply   INTEGER NOT NULL,
+      claimed        INTEGER NOT NULL DEFAULT 0
+    )
+  `);
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS pet_limited_drops_uidx ON pet_limited_drops (guild_id, release_date)`);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS pet_egg_offers (
+      id          SERIAL PRIMARY KEY,
+      guild_id    TEXT NOT NULL,
+      egg_id      INTEGER NOT NULL,
+      from_id     TEXT NOT NULL,
+      to_id       TEXT NOT NULL,
+      tax         INTEGER NOT NULL DEFAULT 0,
+      status      TEXT NOT NULL DEFAULT 'pending',
+      created_at  TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS pet_egg_offers_to_idx ON pet_egg_offers (guild_id, to_id, status)`);
 
   logger.info("Boot migrations applied");
 }
