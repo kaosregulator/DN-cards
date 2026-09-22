@@ -45,3 +45,12 @@ All under `/api/admin/ub/*` (dashboard auth required). Client: `artifacts/api-se
 
 - `lib/db/src/schema/unbelievaboat.ts` — settings, role links, catalog, audit
 - `lib/db/src/schema/pets.ts` — settings, pets, challenges, care log
+
+### Production (Railway) table creation
+
+Existing Railway databases already have `guild_settings`, so `ensureBaseSchema`
+skips `drizzle-kit push`. New addon tables are created automatically on every
+deploy by the idempotent boot migration in
+`artifacts/api-server/src/index.ts` (`CREATE TABLE IF NOT EXISTS` for `ub_*`
+and `pet_*`). No Railway Shell or manual SQL is required — push to GitHub and
+deploy; migrations run before the Discord bot starts handling `/pet`.
