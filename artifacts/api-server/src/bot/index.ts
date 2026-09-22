@@ -272,6 +272,21 @@ export async function startBot() {
         return;
       }
 
+      // ── UnbelievaBoat Discord mini dashboard (ubadmin:*) ───────────────────
+      if (
+        (interaction.isButton() || interaction.isStringSelectMenu() || interaction.isUserSelectMenu()) &&
+        interaction.customId.startsWith("ubadmin:")
+      ) {
+        const { handleUbAdminComponent } = await import("./unbelievaboat/discord-admin.js");
+        await handleUbAdminComponent(interaction);
+        return;
+      }
+      if (interaction.isModalSubmit() && interaction.customId.startsWith("ubadmin:")) {
+        const { handleUbAdminModal } = await import("./unbelievaboat/discord-admin.js");
+        await handleUbAdminModal(interaction);
+        return;
+      }
+
       // ── Wild Mini-Game gameplay buttons (mg:* customIds) ───────────────────
       // Routed early so the encounter owns its own buttons. `mg:` is distinct
       // from the `minigames:` admin panel prefix below.
@@ -962,6 +977,9 @@ export async function startBot() {
       } else if (cmd === "petadmin") {
         const { handlePetAdminCommand } = await import("./pets/command.js");
         await handlePetAdminCommand(interaction);
+      } else if (cmd === "ubadmin") {
+        const { handleUbAdminCommand } = await import("./unbelievaboat/discord-admin.js");
+        await handleUbAdminCommand(interaction);
       } else if (USER_HUB_COMMANDS.has(cmd)) {
         // Flattened player commands (/burn, /daily, …) + standalone player
         // commands that carry their own subcommands (/sets, /rep, …).
@@ -995,7 +1013,7 @@ export async function startBot() {
     "whisper", "adminsecret", "echo", "afk", "afksetup", "begin", "show_shiny",
     "quote",
     "collection_hub", "hq", "hqadmin", "hqbuild",
-    "pet", "petadmin",
+    "pet", "petadmin", "ubadmin",
     "valuehelp", "valuelist", "info_mttv", "giveall", "editpack", "postcalculator",
     "postboard", "massrole", "emoji",
   ]);

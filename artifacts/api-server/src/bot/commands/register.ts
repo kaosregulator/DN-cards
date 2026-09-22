@@ -7,6 +7,7 @@ import { buildAfkCommandJson, buildAfkSetupCommandJson } from "../afk/commands.j
 import { buildEmojiCommandJson, buildPostboardCommandJson } from "../emoji/commands/definition.js";
 import { buildQuoteCommandJson, buildQuoteContextMenuJson } from "../quote/definition.js";
 import { buildPetCommandJson, buildPetAdminCommandJson } from "../pets/command.js";
+import { buildUbAdminCommandJson } from "../unbelievaboat/discord-admin.js";
 import { getRaidFrames } from "../cards/frames.js";
 import {
   buildMaterialChoices, buildWallpaperChoices, buildCanvasChoices, BUILD_LIMITS,
@@ -57,6 +58,7 @@ function buildLegacyCommands() {
     buildQuoteContextMenuJson(),
     buildPetCommandJson(),
     buildPetAdminCommandJson(),
+    buildUbAdminCommandJson(),
 
     cmd("info", "Details, worth, and drop chance", s => s
       .addStringOption(o => o.setName("name").setDescription("Name to look up").setRequired(true).setAutocomplete(true))),
