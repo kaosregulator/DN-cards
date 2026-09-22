@@ -82,11 +82,22 @@ export async function updatePetSettings(
   return row!;
 }
 
+/** Active living pet, else the latest living companion, else the most recent row. */
 export async function getPet(guildId: string, userId: string): Promise<Pet | null> {
   const rows = await db.select().from(petsTable)
     .where(and(eq(petsTable.guildId, guildId), eq(petsTable.userId, userId)))
-    .limit(1);
-  return rows[0] ?? null;
+    .orderBy(desc(petsTable.isActive), desc(petsTable.updatedAt))
+    .limit(40);
+  return rows.find(r => r.isActive && !r.isDead)
+    ?? rows.find(r => !r.isDead)
+    ?? rows[0]
+    ?? null;
+}
+
+export async function listUserPets(guildId: string, userId: string): Promise<Pet[]> {
+  return db.select().from(petsTable)
+    .where(and(eq(petsTable.guildId, guildId), eq(petsTable.userId, userId)))
+    .orderBy(desc(petsTable.isActive), desc(petsTable.hatchedAt));
 }
 
 export async function getPetById(id: number): Promise<Pet | null> {
@@ -226,9 +237,11 @@ export async function hatchPet(
   }
 
   const variant = Math.floor(Math.random() * 4);
+  await db.update(petsTable).set({ isActive: false, updatedAt: new Date() }).where(
+    and(eq(petsTable.guildId, guildId), eq(petsTable.userId, userId), eq(petsTable.isActive, true)),
+  );
   // Birth ritual: the hatch GIF shows egg→crack→baby; the stored pet starts
-  // as a hatchling so the player immediately has something to care for
-  // (classic Connection still has a short egg, but Discord needs a clear payoff).
+  // as a hatchling so the player immediately has something to care for.
   const values = {
     guildId,
     userId,
@@ -236,6 +249,15 @@ export async function hatchPet(
     species: opts.species,
     variant,
     stage: "hatchling" as const,
+    discoveryVariant: "normal",
+    isActive: true,
+    hatchReplay: {
+      eggKey: "",
+      species: opts.species,
+      discoveryVariant: "normal",
+      name: opts.name.slice(0, 24),
+      hatchedAt: new Date().toISOString(),
+    },
     hunger: 85,
     cleanliness: 90,
     happiness: 90,
@@ -254,19 +276,9 @@ export async function hatchPet(
   };
 
   let pet: Pet;
-  if (existing?.isDead) {
-    const [row] = await db.update(petsTable).set({
-      ...values,
-      wins: 0,
-      losses: 0,
-      activeCosmetic: null,
-      updatedAt: new Date(),
-    }).where(eq(petsTable.id, existing.id)).returning();
-    pet = row!;
-  } else {
-    const [row] = await db.insert(petsTable).values(values).returning();
-    pet = row!;
-  }
+  // Keep a dead companion in the stable and start a new active pet.
+  const [row] = await db.insert(petsTable).values(values).returning();
+  pet = row!;
 
   await logCare(guildId, pet.id, userId, "hatch", { species: opts.species, charged });
   return { pet, charged };
@@ -292,6 +304,10 @@ export async function adminDeletePet(
   );
 
   await db.delete(petsTable).where(eq(petsTable.id, pet.id));
+  const next = await getPet(guildId, userId);
+  if (next && !next.isDead && !next.isActive) {
+    await db.update(petsTable).set({ isActive: true, updatedAt: new Date() }).where(eq(petsTable.id, next.id));
+  }
   await logCare(guildId, pet.id, userId, "admin_reset", { name: pet.name, stage: pet.stage });
   return { deleted: pet };
 }
@@ -331,7 +347,7 @@ export async function adminCrackEgg(
   return row!;
 }
 
-async function chargeUbCash(guildId: string, userId: string, amount: number, reason: string): Promise<number> {
+export async function chargeUbCash(guildId: string, userId: string, amount: number, reason: string): Promise<number> {
   if (amount <= 0) return 0;
   const ub = await getOrCreateUbSettings(guildId);
   if (!ub.petsSpendUb || !isUbConfigured()) {
@@ -343,6 +359,15 @@ async function chargeUbCash(guildId: string, userId: string, amount: number, rea
     throw new Error(`Not enough UnbelievaBoat cash. Need ${amount}, have ${bal.cash ?? 0}.`);
   }
   await ubApi.patchUserBalance(ub.ubGuildId, userId, { cash: -amount, reason });
+  return amount;
+}
+
+/** Pay UnbelievaBoat cash back. Returns 0 when the token is not live (no printed money). */
+export async function creditUbCash(guildId: string, userId: string, amount: number, reason: string): Promise<number> {
+  if (amount <= 0) return 0;
+  const ub = await getOrCreateUbSettings(guildId);
+  if (!ub.petsSpendUb || !isUbConfigured()) return 0;
+  await ubApi.patchUserBalance(ub.ubGuildId, userId, { cash: amount, reason });
   return amount;
 }
 

@@ -34,6 +34,7 @@ let _sheet: SheetImage | null | undefined;
 let _bg: SheetImage | null | undefined;
 let _mod: CanvasMod | null = null;
 const _tileCache = new Map<string, TileCanvas>();
+const _frost = new Map<string, SheetImage | null>();
 
 function assetsDir(): string | null {
   const candidates = [
@@ -167,4 +168,65 @@ export function blitEggTile(
 export function eggRowFor(species: string, variant = 0): number {
   const base = SPECIES_EGG_ROW[(species as PetSpecies)] ?? 0;
   return (base + (variant % 3) * 8) % 32;
+}
+
+/** Frostwindz fantasy pixel eggs — 64×64, nearest-neighbor, same on-screen scale as Onocentaur tiles. */
+export async function loadFrostEgg(file: string): Promise<SheetImage | null> {
+  if (_frost.has(file)) return _frost.get(file) ?? null;
+  const mod = await canvasMod();
+  const dir = assetsDir();
+  if (!mod || !dir) {
+    _frost.set(file, null);
+    return null;
+  }
+  const path = join(dir, "eggs", "frostwindz", file);
+  if (!existsSync(path)) {
+    _frost.set(file, null);
+    return null;
+  }
+  try {
+    const img = await mod.loadImage(path);
+    _frost.set(file, img);
+    return img;
+  } catch {
+    _frost.set(file, null);
+    return null;
+  }
+}
+
+export function blitFrostEgg(
+  ctx: Ctx,
+  img: SheetImage,
+  dx: number,
+  dy: number,
+  size: number,
+): void {
+  const anyCtx = ctx as unknown as {
+    drawImage: (...a: unknown[]) => void;
+    imageSmoothingEnabled?: boolean;
+  };
+  const prev = anyCtx.imageSmoothingEnabled;
+  anyCtx.imageSmoothingEnabled = false;
+  anyCtx.drawImage(img, Math.round(dx), Math.round(dy), size, size);
+  if (prev !== undefined) anyCtx.imageSmoothingEnabled = prev;
+}
+
+/** Split a 64×64 egg into top/bottom halves for the birth frame. */
+export function blitFrostHalf(
+  ctx: Ctx,
+  img: SheetImage,
+  half: "top" | "bottom",
+  dx: number,
+  dy: number,
+  size: number,
+): void {
+  const anyCtx = ctx as unknown as {
+    drawImage: (...a: unknown[]) => void;
+    imageSmoothingEnabled?: boolean;
+  };
+  const prev = anyCtx.imageSmoothingEnabled;
+  anyCtx.imageSmoothingEnabled = false;
+  const sy = half === "top" ? 0 : 32;
+  anyCtx.drawImage(img, 0, sy, 64, 32, Math.round(dx), Math.round(dy), size, Math.round(size / 2));
+  if (prev !== undefined) anyCtx.imageSmoothingEnabled = prev;
 }

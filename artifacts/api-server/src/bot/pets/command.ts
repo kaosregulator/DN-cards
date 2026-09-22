@@ -48,6 +48,22 @@ import {
 import { renderPetGif, renderHatchGif, renderChallengeGif, renderIntroGif } from "./render.js";
 import type { Pet } from "@workspace/db";
 import { listCatalog } from "../../lib/unbelievaboat/db.js";
+import {
+  applyHatchItem,
+  buyEgg,
+  buyHatchItem,
+  completeHatch,
+  declineOffer,
+  acceptOffer,
+  offerEgg,
+  sellEgg,
+  setActivePet,
+  skipStage,
+  startIncubate,
+  listEggs,
+} from "./collect.js";
+import { eggDef, HATCH_ITEMS, LIMITED_SUPPLY, VARIANT_LABEL, type DiscoveryVariant } from "./catalog.js";
+import { dexPayload, eggsPayload, shopPayload, stablePayload } from "./panels.js";
 
 const EPHEMERAL = { flags: MessageFlags.Ephemeral } as const;
 
@@ -97,7 +113,7 @@ function parsePetId(customId: string): { action: string; ownerId: string; extra?
   if (parts[0] !== "pet" || parts.length < 2) return null;
   const action = parts[1]!;
   // Challenge accept/decline: pet:accept:<challengeId>
-  if (action === "accept" || action === "decline") {
+  if (action === "accept" || action === "decline" || action === "eggok" || action === "eggnah") {
     return { action, ownerId: "", extra: parts[2] };
   }
   // Modal: pet:hatch_modal:<ownerId>:<species>
@@ -136,15 +152,24 @@ export function buildPetCommandJson() {
       .setDescription("Open your pet care hub (animated)"))
     .addSubcommand(sc => sc
       .setName("hatch")
-      .setDescription("Hatch a new pet (egg)")
-      .addStringOption(o => o.setName("species").setDescription("Creature type").setRequired(true)
-        .addChoices(
-          { name: "🐉 Dragon", value: "dragon" },
-          { name: "🐱 Cat", value: "cat" },
-          { name: "🐶 Dog", value: "dog" },
-          { name: "🐹 Hamster", value: "hamster" },
-        ))
-      .addStringOption(o => o.setName("name").setDescription("Pet name").setRequired(true).setMaxLength(24)))
+      .setDescription("Name a ready egg and crack it (mystery species)")
+      .addIntegerOption(o => o.setName("egg").setDescription("Egg id from /pet eggs").setMinValue(1))
+      .addStringOption(o => o.setName("name").setDescription("Hatchling name").setMaxLength(24)))
+    .addSubcommand(sc => sc
+      .setName("eggs")
+      .setDescription("Your egg bag — incubate, sell, or trade"))
+    .addSubcommand(sc => sc
+      .setName("shop")
+      .setDescription("Egg counter — shop eggs plus today's limited drop"))
+    .addSubcommand(sc => sc
+      .setName("dex")
+      .setDescription("Petdex — species and shiny / exotic discoveries"))
+    .addSubcommand(sc => sc
+      .setName("stable")
+      .setDescription("Switch your active pet"))
+    .addSubcommand(sc => sc
+      .setName("replay")
+      .setDescription("Replay the hatch cinematic — hatched you on this day"))
     .addSubcommand(sc => sc
       .setName("challenge")
       .setDescription("Challenge another member's pet")
@@ -220,7 +245,11 @@ function petEmbed(pet: Pet, title?: string): EmbedBuilder {
     .setDescription(
       pet.isDead
         ? `**${pet.name}** has passed on after too much neglect.\nHatch a new companion with \`/pet hatch\`.`
-        : `**${stageLabel(pet.stage)}** ${sp?.label ?? pet.species} · Level **${pet.level}** · Power **${pet.power}**\nMood: **${mood}** · Record ${pet.wins}W / ${pet.losses}L`,
+        : `**${stageLabel(pet.stage)}** ${sp?.label ?? pet.species}${
+            pet.discoveryVariant && pet.discoveryVariant !== "normal"
+              ? ` · ${VARIANT_LABEL[pet.discoveryVariant as DiscoveryVariant] ?? pet.discoveryVariant}`
+              : ""
+          } · Level **${pet.level}** · Power **${pet.power}**\nMood: **${mood}** · Record ${pet.wins}W / ${pet.losses}L`,
     )
     .addFields(
       { name: "Needs", value: bars(pet), inline: false },
@@ -258,7 +287,7 @@ function careRows(ownerId: string, pet: Pet, opts?: { tutorial?: boolean; readOn
   if (pet.isDead) {
     return [
       new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder().setCustomId(petId("hatchmenu", ownerId)).setLabel("Hatch new pet").setEmoji("🥚").setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId(petId("eggshop", ownerId)).setLabel("Buy an egg").setEmoji("🥚").setStyle(ButtonStyle.Primary),
         new ButtonBuilder().setCustomId(petId("top", ownerId)).setLabel("Leaderboard").setEmoji("🏆").setStyle(ButtonStyle.Secondary),
       ),
     ];
@@ -276,17 +305,24 @@ function careRows(ownerId: string, pet: Pet, opts?: { tutorial?: boolean; readOn
     new ButtonBuilder().setCustomId(petId("top", ownerId)).setLabel("Top pets").setEmoji("🏆").setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId(petId("inv", ownerId)).setLabel("Use item").setEmoji("🎒").setStyle(ButtonStyle.Secondary),
   );
-  return [care, extra];
+  const collect = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId(petId("eggs", ownerId)).setLabel("Eggs").setEmoji("🧺").setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId(petId("eggshop", ownerId)).setLabel("Egg shop").setEmoji("🥚").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId(petId("dex", ownerId)).setLabel("Dex").setEmoji("📖").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(petId("stable", ownerId)).setLabel("Stable").setEmoji("🏠").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(petId("replay", ownerId)).setLabel("Replay").setEmoji("🎬").setStyle(ButtonStyle.Secondary),
+  );
+  return [care, extra, collect];
 }
 
 async function replyWithPet(
   interaction: ChatInputCommandInteraction | ButtonInteraction | StringSelectMenuInteraction | UserSelectMenuInteraction | ModalSubmitInteraction,
   pet: Pet,
-  opts?: { hatchAnim?: boolean; content?: string; tutorial?: boolean; readOnly?: boolean; ownerId?: string },
+  opts?: { hatchAnim?: boolean; content?: string; tutorial?: boolean; readOnly?: boolean; ownerId?: string; prop?: "food" | "soap" | "toy" },
 ) {
   const live = await tickPet(pet);
   const ownerId = opts?.ownerId ?? interaction.user.id;
-  const anim = opts?.hatchAnim ? await renderHatchGif(live) : await renderPetGif(live);
+  const anim = opts?.hatchAnim ? await renderHatchGif(live) : await renderPetGif(live, { prop: opts?.prop });
   const files: AttachmentBuilder[] = [];
   const embed = petEmbed(live);
   if (opts?.tutorial) {
@@ -346,22 +382,82 @@ export async function handlePetCommand(interaction: ChatInputCommandInteraction)
     return;
   }
 
+  if (sub === "shop") {
+    await interaction.deferReply();
+    const payload = await shopPayload(guildId, interaction.user.id);
+    await interaction.editReply(payload);
+    await afterPetMessage(interaction);
+    return;
+  }
+
+  if (sub === "eggs") {
+    await interaction.deferReply();
+    const payload = await eggsPayload(guildId, interaction.user.id);
+    await interaction.editReply(payload);
+    await afterPetMessage(interaction);
+    return;
+  }
+
+  if (sub === "dex") {
+    await interaction.deferReply();
+    await interaction.editReply(await dexPayload(guildId, interaction.user.id));
+    await afterPetMessage(interaction);
+    return;
+  }
+
+  if (sub === "stable") {
+    await interaction.deferReply();
+    await interaction.editReply(await stablePayload(guildId, interaction.user.id));
+    await afterPetMessage(interaction);
+    return;
+  }
+
+  if (sub === "replay") {
+    await interaction.deferReply();
+    const pet = await getPet(guildId, interaction.user.id);
+    if (!pet) {
+      await interaction.editReply("Hatch something first — then you can replay that day.");
+      return;
+    }
+    await replyWithPet(interaction, pet, {
+      hatchAnim: true,
+      ownerId: interaction.user.id,
+      content: pet.hatchReplay?.hatchedAt
+        ? `🎬 Hatched you on **${pet.hatchReplay.hatchedAt.slice(0, 10)}**.`
+        : "🎬 Replay of your active companion.",
+    });
+    return;
+  }
+
   if (sub === "hatch") {
     await interaction.deferReply();
     if (!settings.enabled) {
       await interaction.editReply("Pets are disabled on this server.");
       return;
     }
-    const species = interaction.options.getString("species", true) as PetSpecies;
-    const name = interaction.options.getString("name", true);
+    const eggId = interaction.options.getInteger("egg");
+    const name = interaction.options.getString("name");
+    if (!eggId || !name) {
+      const eggs = await listEggs(guildId, interaction.user.id);
+      const payload = eggs.length
+        ? await eggsPayload(guildId, interaction.user.id)
+        : await shopPayload(guildId, interaction.user.id);
+      await interaction.editReply({
+        content: eggs.length
+          ? "Pick a **ready** egg and give it a name. `/pet hatch egg:<id> name:<name>`"
+          : "Buy an egg first. The creature inside is a surprise.",
+        ...payload,
+      });
+      await afterPetMessage(interaction);
+      return;
+    }
     try {
-      const { pet, charged } = await hatchPet(guildId, interaction.user.id, { name, species });
+      const { pet, discovery } = await completeHatch(guildId, interaction.user.id, eggId, name);
+      const tag = discovery === "normal" ? "" : ` **${VARIANT_LABEL[discovery]}!**`;
       await replyWithPet(interaction, pet, {
         hatchAnim: true,
         tutorial: true,
-        content: charged > 0
-          ? `🎉 **${pet.name}** hatched! (−${charged} UnbelievaBoat cash)\nYou're a caretaker now — start with **Feed → Clean → Play**.`
-          : `🎉 **${pet.name}** hatched!\nYou're a caretaker now — start with **Feed → Clean → Play**. Hearts drop over real time.`,
+        content: `🎉 **${pet.name}** hatched!${tag}\nYou're a caretaker now — **Feed → Clean → Play**.`,
       });
     } catch (err) {
       await interaction.editReply(`❌ ${err instanceof Error ? err.message : "Hatch failed."}`);
@@ -412,36 +508,28 @@ export async function handlePetCommand(interaction: ChatInputCommandInteraction)
       .setTitle("🥚 Welcome to the Tamagotchi Nursery")
       .setDescription(
         [
-          "**How it works (classic style):**",
-          "① Pick a **species** below",
-          "② Give your pet a **name**",
-          "③ Watch the **egg crack** and meet your hatchling",
+          "**How it works:**",
+          "① Buy an **egg** (mystery inside)",
+          "② Let the **wall-clock timer** finish — it runs while you're offline",
+          "③ Name it and watch the **crack**",
           "④ Keep hearts full — **Feed · Clean · Play**",
           "",
-          "Neglect them too long and they can **truly leave**…",
-          "Shop & hatch spend **UnbelievaBoat** cash · Challenge friends for glory.",
+          "Three **limited** eggs exist each day. Once they're gone, trade is the only way.",
+          "Shiny and exotic look different. Replay the hatch any time.",
         ].join("\n"),
       )
-      .setFooter({ text: "Tip: /pet hatch · idle panels close after 1 minute" });
+      .setFooter({ text: "Tip: /pet shop · idle panels close after 1 minute" });
     if (intro?.buffer) {
       files.push(new AttachmentBuilder(intro.buffer, { name: "nursery.gif" }));
       embed.setImage("attachment://nursery.gif");
     }
-    const speciesSelect = new StringSelectMenuBuilder()
-      .setCustomId(petId("species", ownerId))
-      .setPlaceholder("① Pick a species to begin…")
-      .addOptions(PET_SPECIES.map(s => ({
-        label: SPECIES_META[s].label,
-        value: s,
-        emoji: SPECIES_META[s].emoji,
-        description: `Hatch a ${SPECIES_META[s].label.toLowerCase()} egg`,
-      })));
     await interaction.editReply({
       embeds: [embed],
       files,
       components: [
-        new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(speciesSelect),
         new ActionRowBuilder<ButtonBuilder>().addComponents(
+          new ButtonBuilder().setCustomId(petId("eggshop", ownerId)).setLabel("Egg counter").setEmoji("🥚").setStyle(ButtonStyle.Primary),
+          new ButtonBuilder().setCustomId(petId("eggs", ownerId)).setLabel("My eggs").setEmoji("🧺").setStyle(ButtonStyle.Success),
           new ButtonBuilder().setCustomId(petId("top", ownerId)).setLabel("Leaderboard").setEmoji("🏆").setStyle(ButtonStyle.Secondary),
         ),
       ],
@@ -598,6 +686,37 @@ export async function handlePetComponent(
       await interaction.reply({
         content: `❌ ${err instanceof Error ? err.message : "Failed."}`,
         ...EPHEMERAL,
+      });
+    }
+    return;
+  }
+
+  if ((action === "eggok" || action === "eggnah") && interaction.isButton()) {
+    const offerId = Number(extra);
+    try {
+      if (action === "eggnah") {
+        await declineOffer(offerId, interaction.user.id);
+        await interaction.update({ content: "Trade declined.", embeds: [], components: [], files: [] });
+        return;
+      }
+      await interaction.deferUpdate();
+      const { egg, tax } = await acceptOffer(offerId, interaction.user.id);
+      const label = eggDef(egg.eggKey)?.label ?? "Egg";
+      await interaction.editReply({
+        content: `🤝 You received **${label}**${tax > 0 ? ` (trade tax **${tax}** UnbelievaBoat cash sunk)` : ""}. It's in \`/pet eggs\`.`,
+        embeds: [],
+        components: [],
+        files: [],
+      });
+    } catch (err) {
+      await interaction.reply({
+        content: `❌ ${err instanceof Error ? err.message : "Trade failed."}`,
+        ...EPHEMERAL,
+      }).catch(async () => {
+        await interaction.followUp({
+          content: `❌ ${err instanceof Error ? err.message : "Trade failed."}`,
+          ...EPHEMERAL,
+        }).catch(() => {});
       });
     }
     return;
@@ -827,15 +946,232 @@ export async function handlePetComponent(
         return;
       }
       pet = await tickPet(pet);
-      if (action === "feed") pet = await feedPet(pet);
-      else if (action === "clean") pet = await cleanPet(pet);
-      else if (action === "play") pet = await playWithPet(pet);
-      await replyWithPet(interaction, pet, { ownerId });
+      let prop: "food" | "soap" | "toy" | undefined;
+      if (action === "feed") { pet = await feedPet(pet); prop = "food"; }
+      else if (action === "clean") { pet = await cleanPet(pet); prop = "soap"; }
+      else if (action === "play") { pet = await playWithPet(pet); prop = "toy"; }
+      await replyWithPet(interaction, pet, { ownerId, prop });
     } catch (err) {
       await interaction.followUp({
         content: `❌ ${err instanceof Error ? err.message : "Action failed."}`,
         ...EPHEMERAL,
       });
+    }
+    return;
+  }
+
+  if (action === "eggshop" && interaction.isButton()) {
+    await interaction.deferUpdate().catch(() => {});
+    const payload = await shopPayload(guildId, ownerId);
+    await interaction.editReply(payload);
+    await afterPetMessage(interaction);
+    return;
+  }
+
+  if (action === "eggs" && interaction.isButton()) {
+    await interaction.deferUpdate().catch(() => {});
+    await interaction.editReply(await eggsPayload(guildId, ownerId));
+    await afterPetMessage(interaction);
+    return;
+  }
+
+  if (action === "dex" && interaction.isButton()) {
+    await interaction.deferUpdate().catch(() => {});
+    await interaction.editReply(await dexPayload(guildId, ownerId));
+    await afterPetMessage(interaction);
+    return;
+  }
+
+  if (action === "stable" && interaction.isButton()) {
+    await interaction.deferUpdate().catch(() => {});
+    await interaction.editReply(await stablePayload(guildId, ownerId));
+    await afterPetMessage(interaction);
+    return;
+  }
+
+  if (action === "replay" && interaction.isButton()) {
+    await interaction.deferUpdate().catch(() => {});
+    const pet = await getPet(guildId, ownerId);
+    if (!pet) {
+      await interaction.followUp({ content: "No pet to replay.", ...EPHEMERAL });
+      return;
+    }
+    await replyWithPet(interaction, pet, {
+      hatchAnim: true,
+      ownerId,
+      content: pet.hatchReplay?.hatchedAt
+        ? `🎬 Hatched you on **${pet.hatchReplay.hatchedAt.slice(0, 10)}**.`
+        : "🎬 Replay of your active companion.",
+    });
+    return;
+  }
+
+  if (action === "pickegg" && interaction.isStringSelectMenu()) {
+    await interaction.deferUpdate().catch(() => {});
+    const eggId = Number(interaction.values[0]);
+    await interaction.editReply(await eggsPayload(guildId, ownerId, eggId));
+    await afterPetMessage(interaction);
+    return;
+  }
+
+  if (action === "buyegg" && interaction.isStringSelectMenu()) {
+    await interaction.deferUpdate().catch(() => {});
+    const value = interaction.values[0] ?? "";
+    try {
+      if (value.startsWith("egg:") || value.startsWith("lim:")) {
+        const key = value.slice(value.indexOf(":") + 1);
+        const { egg, charged, def } = await buyEgg(guildId, interaction.user.id, key);
+        const note = def.limited
+          ? `Limited. Only ${LIMITED_SUPPLY} exist today — once this hatches, trade is the only way to get another.`
+          : "What's inside is still a secret.";
+        await interaction.followUp({
+          content: `🥚 **${def.label}** is in your bag as #${egg.id}${charged > 0 ? ` (−${charged} cash)` : ""}. ${note}`,
+          ...EPHEMERAL,
+        });
+      } else if (value === "item:stage_skip") {
+        const { pet, charged } = await skipStage(guildId, interaction.user.id);
+        await interaction.followUp({
+          content: `⏩ **${pet.name}** is now a **${pet.stage}**${charged > 0 ? ` (−${charged} cash)` : ""}.`,
+          ...EPHEMERAL,
+        });
+      } else if (value.startsWith("item:")) {
+        const key = value.slice(5) as "time_sand" | "instant_crack";
+        const item = HATCH_ITEMS.find(i => i.key === key);
+        if (!item) throw new Error("Unknown item.");
+        const charged = await buyHatchItem(guildId, interaction.user.id, key, item.price, item.label);
+        await interaction.followUp({
+          content: `⏳ **${item.label}** added${charged > 0 ? ` (−${charged} cash)` : ""}. Use it from your egg bag.`,
+          ...EPHEMERAL,
+        });
+      } else {
+        throw new Error("Unknown purchase.");
+      }
+      await interaction.editReply(await shopPayload(guildId, ownerId));
+      await afterPetMessage(interaction);
+    } catch (err) {
+      await interaction.followUp({
+        content: `❌ ${err instanceof Error ? err.message : "Purchase failed."}`,
+        ...EPHEMERAL,
+      });
+    }
+    return;
+  }
+
+  if (action === "incubate" && interaction.isButton()) {
+    await interaction.deferUpdate().catch(() => {});
+    try {
+      const egg = await startIncubate(guildId, ownerId, Number(extra));
+      await interaction.editReply(await eggsPayload(guildId, ownerId, egg.id));
+      await afterPetMessage(interaction);
+    } catch (err) {
+      await interaction.followUp({ content: `❌ ${err instanceof Error ? err.message : "Failed."}`, ...EPHEMERAL });
+    }
+    return;
+  }
+
+  if ((action === "sand" || action === "crackitem") && interaction.isButton()) {
+    await interaction.deferUpdate().catch(() => {});
+    try {
+      const key = action === "sand" ? "time_sand" : "instant_crack";
+      const egg = await applyHatchItem(guildId, ownerId, Number(extra), key);
+      await interaction.editReply(await eggsPayload(guildId, ownerId, egg.id));
+      await afterPetMessage(interaction);
+    } catch (err) {
+      await interaction.followUp({ content: `❌ ${err instanceof Error ? err.message : "Failed."}`, ...EPHEMERAL });
+    }
+    return;
+  }
+
+  if (action === "sellask" && interaction.isButton()) {
+    await interaction.reply({
+      content: "Sell this egg for its catalog value? Limited eggs sold this way are **gone** — they do not go back on the counter.",
+      components: [
+        new ActionRowBuilder<ButtonBuilder>().addComponents(
+          new ButtonBuilder().setCustomId(petId("sellok", ownerId, extra)).setLabel("Sell it").setStyle(ButtonStyle.Danger),
+        ),
+      ],
+      ...EPHEMERAL,
+    });
+    return;
+  }
+
+  if (action === "sellok" && interaction.isButton()) {
+    await interaction.deferUpdate().catch(() => {});
+    try {
+      const { paid, label } = await sellEgg(guildId, ownerId, Number(extra));
+      await interaction.followUp({
+        content: `💰 Sold **${label}**${paid > 0 ? ` for **${paid}** UnbelievaBoat cash` : ""}.`,
+        ...EPHEMERAL,
+      });
+      if (interaction.message?.reference) {
+        /* parent message stays */
+      }
+    } catch (err) {
+      await interaction.followUp({ content: `❌ ${err instanceof Error ? err.message : "Sell failed."}`, ...EPHEMERAL });
+    }
+    return;
+  }
+
+  if (action === "tradeask" && interaction.isButton()) {
+    const menu = new UserSelectMenuBuilder()
+      .setCustomId(petId("tradeuser", ownerId, extra))
+      .setPlaceholder("Who gets this egg?")
+      .setMaxValues(1);
+    await interaction.reply({
+      content: "They pay a small UnbelievaBoat tax (sunk, not paid to you). The egg changes hands.",
+      components: [new ActionRowBuilder<UserSelectMenuBuilder>().addComponents(menu)],
+      ...EPHEMERAL,
+    });
+    return;
+  }
+
+  if (action === "tradeuser" && interaction.isUserSelectMenu()) {
+    await interaction.deferUpdate().catch(() => {});
+    try {
+      const toId = interaction.values[0]!;
+      const offer = await offerEgg(guildId, ownerId, toId, Number(extra));
+      await interaction.followUp({
+        content: `🤝 Offered egg #${extra} to <@${toId}>. Tax if they accept: **${offer.tax}** cash.`,
+        components: [
+          new ActionRowBuilder<ButtonBuilder>().addComponents(
+            new ButtonBuilder().setCustomId(`pet:eggok:${offer.id}`).setLabel("Accept trade").setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId(`pet:eggnah:${offer.id}`).setLabel("Decline").setStyle(ButtonStyle.Secondary),
+          ),
+        ],
+      });
+    } catch (err) {
+      await interaction.followUp({ content: `❌ ${err instanceof Error ? err.message : "Trade failed."}`, ...EPHEMERAL });
+    }
+    return;
+  }
+
+  if (action === "hatchgo" && interaction.isButton()) {
+    const modal = new ModalBuilder()
+      .setCustomId(petId("name_egg", ownerId, extra))
+      .setTitle("Name your hatchling");
+    modal.addComponents(
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder()
+          .setCustomId("name")
+          .setLabel("Name")
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+          .setMinLength(1)
+          .setMaxLength(24)
+          .setPlaceholder("You won't know the species until it cracks"),
+      ),
+    );
+    await interaction.showModal(modal);
+    return;
+  }
+
+  if (action === "activate" && interaction.isStringSelectMenu()) {
+    await interaction.deferUpdate().catch(() => {});
+    try {
+      const pet = await setActivePet(guildId, ownerId, Number(interaction.values[0]));
+      await replyWithPet(interaction, pet, { ownerId, content: `★ **${pet.name}** is your active pet.` });
+    } catch (err) {
+      await interaction.followUp({ content: `❌ ${err instanceof Error ? err.message : "Failed."}`, ...EPHEMERAL });
     }
     return;
   }
@@ -854,11 +1190,29 @@ export async function handlePetModal(interaction: ModalSubmitInteraction): Promi
     return;
   }
   const parsed = parsePetId(interaction.customId);
-  if (!parsed || parsed.action !== "hatch_modal") {
+  if (!parsed || (parsed.action !== "hatch_modal" && parsed.action !== "name_egg")) {
     await interaction.reply({ content: "Unknown pet form.", ...EPHEMERAL });
     return;
   }
   if (!(await assertPetOwner(interaction, parsed.ownerId))) return;
+
+  if (parsed.action === "name_egg") {
+    const name = interaction.fields.getTextInputValue("name").trim();
+    const eggId = Number(parsed.extra);
+    await interaction.deferReply();
+    try {
+      const { pet, discovery } = await completeHatch(guildId, interaction.user.id, eggId, name);
+      const tag = discovery === "normal" ? "" : ` **${VARIANT_LABEL[discovery]}!**`;
+      await replyWithPet(interaction, pet, {
+        hatchAnim: true,
+        tutorial: true,
+        content: `🎉 **${pet.name}** hatched!${tag}\nStart with **Feed → Clean → Play**. Replay this any time.`,
+      });
+    } catch (err) {
+      await interaction.editReply(`❌ ${err instanceof Error ? err.message : "Hatch failed."}`);
+    }
+    return;
+  }
 
   const species = parsed.extra as PetSpecies;
   if (!PET_SPECIES.includes(species)) {
