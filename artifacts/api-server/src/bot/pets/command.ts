@@ -104,6 +104,14 @@ export function buildPetAdminCommandJson() {
       .addIntegerOption(o => o.setName("growth_hours").setDescription("Hours per growth stage").setMinValue(1).setMaxValue(168))
       .addIntegerOption(o => o.setName("max_neglects").setDescription("Neglects before death").setMinValue(1).setMaxValue(20))
       .addIntegerOption(o => o.setName("challenge_wager").setDescription("Default challenge wager").setMinValue(0)))
+    .addSubcommand(sc => sc
+      .setName("reset")
+      .setDescription("Delete a member's pet so they can hatch again")
+      .addUserOption(o => o.setName("user").setDescription("Member whose pet to wipe").setRequired(true)))
+    .addSubcommand(sc => sc
+      .setName("crack")
+      .setDescription("Force a stuck egg into a hatchling (keeps name)")
+      .addUserOption(o => o.setName("user").setDescription("Member with a stuck egg").setRequired(true)))
     .toJSON();
 }
 
@@ -397,6 +405,32 @@ export async function handlePetAdminCommand(interaction: ChatInputCommandInterac
     }
     await updatePetSettings(guildId, patch);
     await interaction.editReply("Pet settings updated.");
+    return;
+  }
+  if (sub === "reset") {
+    const target = interaction.options.getUser("user", true);
+    const { adminDeletePet } = await import("./engine.js");
+    try {
+      const { deleted } = await adminDeletePet(guildId, target.id);
+      await interaction.editReply(
+        `Reset <@${target.id}>'s pet **${deleted.name}** (${deleted.stage}). They can \`/pet hatch\` again.`,
+      );
+    } catch (err) {
+      await interaction.editReply(`❌ ${err instanceof Error ? err.message : "Reset failed."}`);
+    }
+    return;
+  }
+  if (sub === "crack") {
+    const target = interaction.options.getUser("user", true);
+    const { adminCrackEgg } = await import("./engine.js");
+    try {
+      const pet = await adminCrackEgg(guildId, target.id);
+      await interaction.editReply(
+        `Cracked <@${target.id}>'s egg — **${pet.name}** is now a hatchling. They can care for it with \`/pet hub\`.`,
+      );
+    } catch (err) {
+      await interaction.editReply(`❌ ${err instanceof Error ? err.message : "Crack failed."}`);
+    }
   }
 }
 

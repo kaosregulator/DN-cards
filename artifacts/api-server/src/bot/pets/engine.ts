@@ -14,7 +14,7 @@ import {
   type PetSpecies,
   type PetStage,
 } from "@workspace/db";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, or } from "drizzle-orm";
 import { isUbConfigured, ubApi } from "../../lib/unbelievaboat/client.js";
 import { getOrCreateUbSettings } from "../../lib/unbelievaboat/db.js";
 
@@ -270,6 +270,65 @@ export async function hatchPet(
 
   await logCare(guildId, pet.id, userId, "hatch", { species: opts.species, charged });
   return { pet, charged };
+}
+
+/** Admin: delete a member's pet so they can `/pet hatch` again. */
+export async function adminDeletePet(
+  guildId: string,
+  userId: string,
+): Promise<{ deleted: Pet }> {
+  const pet = await getPet(guildId, userId);
+  if (!pet) throw new Error("That member has no pet to reset.");
+
+  await db.update(petChallengesTable).set({ status: "cancelled" }).where(
+    and(
+      eq(petChallengesTable.guildId, guildId),
+      eq(petChallengesTable.status, "pending"),
+      or(
+        eq(petChallengesTable.challengerId, userId),
+        eq(petChallengesTable.opponentId, userId),
+      ),
+    ),
+  );
+
+  await db.delete(petsTable).where(eq(petsTable.id, pet.id));
+  await logCare(guildId, pet.id, userId, "admin_reset", { name: pet.name, stage: pet.stage });
+  return { deleted: pet };
+}
+
+/** Admin: instantly crack a stuck egg into a hatchling (keeps name/species). */
+export async function adminCrackEgg(
+  guildId: string,
+  userId: string,
+): Promise<Pet> {
+  const pet = await getPet(guildId, userId);
+  if (!pet) throw new Error("That member has no pet.");
+  if (pet.isDead) throw new Error("That pet has passed on — use /petadmin reset so they can hatch again.");
+  if (pet.stage !== "egg") {
+    throw new Error(`Pet is already a ${pet.stage}, not an egg.`);
+  }
+
+  const inv = { ...(pet.inventory ?? {}) };
+  const [row] = await db.update(petsTable).set({
+    stage: "hatchling",
+    hatchedAt: new Date(),
+    stageStartedAt: new Date(),
+    hunger: Math.max(pet.hunger, 80),
+    cleanliness: Math.max(pet.cleanliness, 80),
+    happiness: Math.max(pet.happiness, 80),
+    health: Math.max(pet.health, 90),
+    inventory: {
+      ...inv,
+      food: Math.max(inv.food ?? 0, 2),
+      soap: Math.max(inv.soap ?? 0, 1),
+    },
+    power: Math.max(pet.power, 12),
+    xp: Math.max(pet.xp, 10),
+    updatedAt: new Date(),
+  }).where(eq(petsTable.id, pet.id)).returning();
+
+  await logCare(guildId, pet.id, userId, "admin_crack", { from: "egg", to: "hatchling" });
+  return row!;
 }
 
 async function chargeUbCash(guildId: string, userId: string, amount: number, reason: string): Promise<number> {
