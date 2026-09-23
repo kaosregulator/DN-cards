@@ -152,6 +152,9 @@ Slash names below are what Discord registers today. Prefer **`/help`** and **`/u
 | `/begin` | Onboarding |
 | `/afk` | AFK Secretary |
 | `/pet` | Pets (when enabled) |
+| `/cashcheck` · `/cashgames` · `/cashstore` | UnbelievaBoat Cash Check-In, mini-games, perk store (posts as UnbelievaBoat) |
+| `/roulette` · `/blackjack` · `/russian` · `/rob` | UnbelievaBoat cash games |
+| `/unbelievaboat` | Admin Discord dashboard for UnbelievaBoat cash / store / games |
 
 ### Staff / admin
 | Command | Description |

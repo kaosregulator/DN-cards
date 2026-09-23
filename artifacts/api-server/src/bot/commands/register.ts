@@ -12,6 +12,16 @@ import { buildEmojiCommandJson, buildPostboardCommandJson } from "../emoji/comma
 import { buildQuoteCommandJson, buildQuoteContextMenuJson } from "../quote/definition.js";
 import { buildPetCommandJson, buildPetAdminCommandJson } from "../pets/command.js";
 import { buildUbAdminCommandJson } from "../unbelievaboat/discord-admin.js";
+import {
+  buildCashCheckCommandJson,
+  buildCashGamesCommandJson,
+  buildRouletteCommandJson,
+  buildBlackjackCommandJson,
+  buildRussianCommandJson,
+  buildRobCommandJson,
+  buildSlutCommandJson,
+} from "../unbelievaboat/games.js";
+import { buildCashStoreCommandJson } from "../unbelievaboat/store.js";
 import { getRaidFrames } from "../cards/frames.js";
 import {
   buildMaterialChoices, buildWallpaperChoices, buildCanvasChoices, BUILD_LIMITS,
@@ -63,6 +73,14 @@ function buildLegacyCommands() {
     buildPetCommandJson(),
     buildPetAdminCommandJson(),
     buildUbAdminCommandJson(),
+    buildCashCheckCommandJson(),
+    buildCashGamesCommandJson(),
+    buildCashStoreCommandJson(),
+    buildRouletteCommandJson(),
+    buildBlackjackCommandJson(),
+    buildRussianCommandJson(),
+    buildRobCommandJson(),
+    buildSlutCommandJson(),
 
     cmd("info", "Details, worth, and drop chance", s => s
       .addStringOption(o => o.setName("name").setDescription("Name to look up").setRequired(true).setAutocomplete(true))),

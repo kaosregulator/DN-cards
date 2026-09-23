@@ -6,9 +6,11 @@ import {
   ubRoleLinksTable,
   ubStoreCatalogTable,
   ubAuditLogTable,
+  ubGameStateTable,
   type UbSettings,
   type UbRoleLink,
   type UbStoreCatalog,
+  type UbGameState,
 } from "@workspace/db";
 import { and, desc, eq } from "drizzle-orm";
 import { HOME_GUILD_ID } from "../../bot/home-guild.js";
@@ -26,7 +28,10 @@ export async function getOrCreateUbSettings(guildId: string): Promise<UbSettings
 
 export async function updateUbSettings(
   guildId: string,
-  patch: Partial<Pick<UbSettings, "ubGuildId" | "enabled" | "leaderboardSort" | "petsSpendUb" | "currencyLabel">>,
+  patch: Partial<Pick<UbSettings,
+    "ubGuildId" | "enabled" | "leaderboardSort" | "petsSpendUb" | "currencyLabel" |
+    "gamesEnabled" | "storeEnabled" | "dailyMin" | "dailyMax"
+  >>,
 ): Promise<UbSettings> {
   await getOrCreateUbSettings(guildId);
   const [row] = await db.update(ubSettingsTable)
@@ -122,6 +127,7 @@ export async function createCatalogItem(
     petEffect?: string | null;
     petEffectValue?: number;
     listed?: boolean;
+    meta?: Record<string, unknown>;
   },
 ): Promise<UbStoreCatalog> {
   const [row] = await db.insert(ubStoreCatalogTable).values({
@@ -136,6 +142,7 @@ export async function createCatalogItem(
     petEffect: data.petEffect ?? null,
     petEffectValue: data.petEffectValue ?? 0,
     listed: data.listed ?? true,
+    meta: data.meta ?? {},
   }).returning();
   return row!;
 }
@@ -198,4 +205,35 @@ export async function listUbAudit(guildId: string, limit = 50) {
     .where(eq(ubAuditLogTable.guildId, guildId))
     .orderBy(desc(ubAuditLogTable.id))
     .limit(limit);
+}
+
+export async function getOrCreateGameState(guildId: string, userId: string): Promise<UbGameState> {
+  const existing = await db.select().from(ubGameStateTable)
+    .where(and(eq(ubGameStateTable.guildId, guildId), eq(ubGameStateTable.userId, userId)))
+    .limit(1);
+  if (existing[0]) return existing[0];
+  const [row] = await db.insert(ubGameStateTable).values({ guildId, userId }).returning();
+  return row!;
+}
+
+export async function touchGameState(
+  guildId: string,
+  userId: string,
+  patch: Partial<{
+    lastDailyAt: Date | null;
+    lastRobAt: Date | null;
+    lastBegAt: Date | null;
+    lastRouletteAt: Date | null;
+    lastBlackjackAt: Date | null;
+    lastRussianAt: Date | null;
+    dailyStreak: number;
+    meta: Record<string, unknown>;
+  }>,
+): Promise<UbGameState> {
+  await getOrCreateGameState(guildId, userId);
+  const [row] = await db.update(ubGameStateTable)
+    .set({ ...patch, updatedAt: new Date() })
+    .where(and(eq(ubGameStateTable.guildId, guildId), eq(ubGameStateTable.userId, userId)))
+    .returning();
+  return row!;
 }

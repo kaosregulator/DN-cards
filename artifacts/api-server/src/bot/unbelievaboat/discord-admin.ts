@@ -6,6 +6,7 @@ import type {
   ButtonInteraction,
   StringSelectMenuInteraction,
   UserSelectMenuInteraction,
+  RoleSelectMenuInteraction,
   ModalSubmitInteraction,
 } from "discord.js";
 import {
@@ -20,6 +21,7 @@ import {
   TextInputStyle,
   MessageFlags,
   UserSelectMenuBuilder,
+  RoleSelectMenuBuilder,
 } from "discord.js";
 import { isUbConfigured, ubApi } from "../../lib/unbelievaboat/client.js";
 import {
@@ -29,6 +31,7 @@ import {
   listRoleLinks,
   listUbAudit,
   writeUbAudit,
+  createRoleLink,
 } from "../../lib/unbelievaboat/db.js";
 import {
   getOrCreatePetSettings,
@@ -44,8 +47,8 @@ const UB_ICON =
 
 export function buildUbAdminCommandJson() {
   return new SlashCommandBuilder()
-    .setName("ubadmin")
-    .setDescription("UnbelievaBoat mini dashboard — cash, pets, leaderboard")
+    .setName("unbelievaboat")
+    .setDescription("UnbelievaBoat Discord dashboard — cash, leaderboard, store, games")
     .setDMPermission(false)
     .setDefaultMemberPermissions(0x8)
     .toJSON();
@@ -55,14 +58,20 @@ function hubRows() {
   return [
     new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder().setCustomId("ubadmin:overview").setLabel("Overview").setEmoji("📋").setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId("ubadmin:leaderboard").setLabel("Cash board").setEmoji("💰").setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId("ubadmin:leaderboard").setLabel("Leaderboard").setEmoji("💰").setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId("ubadmin:pets").setLabel("Pets").setEmoji("🐾").setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId("ubadmin:store").setLabel("Catalog").setEmoji("🛒").setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId("ubadmin:store").setLabel("Store").setEmoji("🛒").setStyle(ButtonStyle.Secondary),
     ),
     new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder().setCustomId("ubadmin:toggle_ub").setLabel("Toggle UB link").setStyle(ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId("ubadmin:toggle_ub").setLabel("Toggle API link").setStyle(ButtonStyle.Danger),
       new ButtonBuilder().setCustomId("ubadmin:toggle_pets_spend").setLabel("Toggle pet spend").setStyle(ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId("ubadmin:toggle_games").setLabel("Toggle games").setStyle(ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId("ubadmin:toggle_store").setLabel("Toggle store").setStyle(ButtonStyle.Danger),
+    ),
+    new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder().setCustomId("ubadmin:adjust").setLabel("Adjust cash").setEmoji("✏️").setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId("ubadmin:set_cash").setLabel("Set cash").setEmoji("🔢").setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId("ubadmin:add_perk").setLabel("Add perk").setEmoji("✨").setStyle(ButtonStyle.Primary),
       new ButtonBuilder().setCustomId("ubadmin:pet_tools").setLabel("Pet tools").setEmoji("🛠️").setStyle(ButtonStyle.Secondary),
     ),
   ];
@@ -82,7 +91,7 @@ async function buildOverviewEmbed(guildId: string): Promise<EmbedBuilder> {
       const g = await ubApi.getGuild(settings.ubGuildId || guildId);
       guildLine = `**${g.name}** · ${fmt(g.member_count)} members · symbol ${g.symbol || "—"}`;
     } catch (err) {
-      apiErr = err instanceof Error ? err.message : "UB API error";
+      apiErr = err instanceof Error ? err.message : "UnbelievaBoat API error";
     }
   }
 
@@ -93,17 +102,20 @@ async function buildOverviewEmbed(guildId: string): Promise<EmbedBuilder> {
     .setDescription(
       [
         `Token configured: **${isUbConfigured() ? "yes" : "no"}**`,
-        `UB link enabled: **${settings.enabled ? "on" : "off"}**`,
-        `Pets spend UB cash: **${settings.petsSpendUb ? "on" : "off"}**`,
+        `UnbelievaBoat API link: **${settings.enabled ? "on" : "off"}**`,
+        `Pets spend cash: **${settings.petsSpendUb ? "on" : "off"}**`,
+        `Mini-games: **${settings.gamesEnabled !== false ? "on" : "off"}** · Perk store: **${settings.storeEnabled !== false ? "on" : "off"}**`,
+        `Cash Check-In range: **${settings.dailyMin ?? 100}–${settings.dailyMax ?? 250}**`,
         `Leaderboard sort: **${settings.leaderboardSort}**`,
-        `UB guild id: \`${settings.ubGuildId || guildId}\``,
+        `Linked guild id: \`${settings.ubGuildId || guildId}\``,
         "",
         guildLine,
         apiErr ? `⚠️ ${apiErr}` : null,
         "",
         `Pets enabled: **${petSettings.enabled ? "yes" : "no"}** · hatch **${petSettings.hatchCost}** · growth **${petSettings.growthHours}h** · neglect **${petSettings.maxNeglects}**`,
         "",
-        "_Website hub still at `/admin/unbelievaboat` for deep edits._",
+        "Player cmds: `/cashcheck` `/cashgames` `/cashstore` `/roulette` `/blackjack` `/russian` `/rob`",
+        "_Optional website mirror still at `/admin/unbelievaboat`._",
       ].filter(Boolean).join("\n"),
     )
     .setFooter({ text: "Admin only · UnbelievaBoat cash powers pet shop & hatch" });
@@ -120,7 +132,7 @@ export async function handleUbAdminCommand(interaction: ChatInputCommandInteract
 }
 
 export async function handleUbAdminComponent(
-  interaction: ButtonInteraction | StringSelectMenuInteraction | UserSelectMenuInteraction,
+  interaction: ButtonInteraction | StringSelectMenuInteraction | UserSelectMenuInteraction | RoleSelectMenuInteraction,
 ): Promise<void> {
   const guildId = interaction.guildId;
   if (!guildId) {
@@ -144,7 +156,7 @@ export async function handleUbAdminComponent(
   if (id === "ubadmin:leaderboard" && interaction.isButton()) {
     await interaction.deferUpdate();
     const settings = await getOrCreateUbSettings(guildId);
-    let lines = "_Configure `UNBELIEVABOAT_TOKEN` and enable the UB link._";
+    let lines = "_Configure `UNBELIEVABOAT_TOKEN` and enable the UnbelievaBoat API link._";
     if (isUbConfigured() && settings.enabled) {
       try {
         const raw = await ubApi.getLeaderboard(settings.ubGuildId, {
@@ -191,7 +203,7 @@ export async function handleUbAdminComponent(
     await updateUbSettings(guildId, { leaderboardSort: sort });
     await writeUbAudit(guildId, interaction.user.id, "discord_sort", { sort });
     const settings = await getOrCreateUbSettings(guildId);
-    let lines = "_Configure `UNBELIEVABOAT_TOKEN` and enable the UB link._";
+    let lines = "_Configure `UNBELIEVABOAT_TOKEN` and enable the UnbelievaBoat API link._";
     if (isUbConfigured() && settings.enabled) {
       try {
         const raw = await ubApi.getLeaderboard(settings.ubGuildId, { sort, limit: 10, page: 1 });
@@ -277,7 +289,7 @@ export async function handleUbAdminComponent(
         { name: "Role links", value: roleLines.slice(0, 1000) },
         { name: "Recent audit", value: auditLines.slice(0, 1000) },
       )
-      .setFooter({ text: "Edit items on the website hub if you need full forms" });
+      .setFooter({ text: "Use Add perk to create role goods here · players buy with /cashstore" });
     await interaction.editReply({ embeds: [embed], components: hubRows() });
     return;
   }
@@ -289,7 +301,7 @@ export async function handleUbAdminComponent(
     await updateUbSettings(guildId, { enabled: next });
     await writeUbAudit(guildId, interaction.user.id, "discord_toggle_ub", { enabled: next });
     const embed = await buildOverviewEmbed(guildId);
-    embed.setDescription(`${embed.data.description ?? ""}\n\n✅ UB link is now **${next ? "on" : "off"}**.`);
+    embed.setDescription(`${embed.data.description ?? ""}\n\n✅ UnbelievaBoat API link is now **${next ? "on" : "off"}**.`);
     await interaction.editReply({ embeds: [embed], components: hubRows() });
     return;
   }
@@ -301,8 +313,140 @@ export async function handleUbAdminComponent(
     await updateUbSettings(guildId, { petsSpendUb: next });
     await writeUbAudit(guildId, interaction.user.id, "discord_toggle_pets_spend", { petsSpendUb: next });
     const embed = await buildOverviewEmbed(guildId);
-    embed.setDescription(`${embed.data.description ?? ""}\n\n✅ Pet shop/hatch UB spend is now **${next ? "on" : "off"}**.`);
+    embed.setDescription(`${embed.data.description ?? ""}\n\n✅ Pet shop/hatch cash spend is now **${next ? "on" : "off"}**.`);
     await interaction.editReply({ embeds: [embed], components: hubRows() });
+    return;
+  }
+
+  if (id === "ubadmin:toggle_games" && interaction.isButton()) {
+    await interaction.deferUpdate();
+    const s = await getOrCreateUbSettings(guildId);
+    const next = !(s.gamesEnabled !== false);
+    await updateUbSettings(guildId, { gamesEnabled: next });
+    await writeUbAudit(guildId, interaction.user.id, "discord_toggle_games", { gamesEnabled: next });
+    const embed = await buildOverviewEmbed(guildId);
+    embed.setDescription(`${embed.data.description ?? ""}\n\n✅ Mini-games are now **${next ? "on" : "off"}**.`);
+    await interaction.editReply({ embeds: [embed], components: hubRows() });
+    return;
+  }
+
+  if (id === "ubadmin:toggle_store" && interaction.isButton()) {
+    await interaction.deferUpdate();
+    const s = await getOrCreateUbSettings(guildId);
+    const next = !(s.storeEnabled !== false);
+    await updateUbSettings(guildId, { storeEnabled: next });
+    await writeUbAudit(guildId, interaction.user.id, "discord_toggle_store", { storeEnabled: next });
+    const embed = await buildOverviewEmbed(guildId);
+    embed.setDescription(`${embed.data.description ?? ""}\n\n✅ Perk store is now **${next ? "on" : "off"}**.`);
+    await interaction.editReply({ embeds: [embed], components: hubRows() });
+    return;
+  }
+
+  if (id === "ubadmin:set_cash" && interaction.isButton()) {
+    const menu = new UserSelectMenuBuilder()
+      .setCustomId("ubadmin:set_user")
+      .setPlaceholder("Whose cash to SET (absolute)?")
+      .setMaxValues(1);
+    await interaction.reply({
+      content: "Pick a member, then enter the absolute cash balance.",
+      components: [new ActionRowBuilder<UserSelectMenuBuilder>().addComponents(menu)],
+      ...EPHEMERAL,
+    });
+    return;
+  }
+
+  if (id === "ubadmin:set_user" && interaction.isUserSelectMenu()) {
+    const userId = interaction.values[0]!;
+    const modal = new ModalBuilder()
+      .setCustomId(`ubadmin:set_modal:${userId}`)
+      .setTitle("Set UnbelievaBoat cash");
+    modal.addComponents(
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder()
+          .setCustomId("cash")
+          .setLabel("Absolute cash amount")
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+          .setMaxLength(12),
+      ),
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder()
+          .setCustomId("reason")
+          .setLabel("Reason")
+          .setStyle(TextInputStyle.Short)
+          .setRequired(false)
+          .setMaxLength(80)
+          .setPlaceholder("Discord /unbelievaboat set"),
+      ),
+    );
+    await interaction.showModal(modal);
+    return;
+  }
+
+  if (id === "ubadmin:add_perk" && interaction.isButton()) {
+    const roleMenu = new RoleSelectMenuBuilder()
+      .setCustomId("ubadmin:perk_role")
+      .setPlaceholder("Which Discord role should this perk grant?")
+      .setMaxValues(1);
+    await interaction.reply({
+      content: "Pick the role for the perk store item:",
+      components: [new ActionRowBuilder<RoleSelectMenuBuilder>().addComponents(roleMenu)],
+      ...EPHEMERAL,
+    });
+    return;
+  }
+
+  if (id === "ubadmin:perk_role" && interaction.isRoleSelectMenu()) {
+    const roleId = interaction.values[0]!;
+    const role = interaction.guild?.roles.cache.get(roleId);
+    const modal = new ModalBuilder()
+      .setCustomId(`ubadmin:perk_modal:${roleId}`)
+      .setTitle("New perk store item");
+    modal.addComponents(
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder()
+          .setCustomId("name")
+          .setLabel("Display name")
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+          .setMaxLength(80)
+          .setValue(role?.name?.slice(0, 80) ?? ""),
+      ),
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder()
+          .setCustomId("price")
+          .setLabel("Price in UnbelievaBoat cash")
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+          .setMaxLength(10)
+          .setValue("500"),
+      ),
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder()
+          .setCustomId("description")
+          .setLabel("Short description")
+          .setStyle(TextInputStyle.Paragraph)
+          .setRequired(false)
+          .setMaxLength(200),
+      ),
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder()
+          .setCustomId("image")
+          .setLabel("Store icon image/GIF URL (optional)")
+          .setStyle(TextInputStyle.Short)
+          .setRequired(false)
+          .setMaxLength(300),
+      ),
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder()
+          .setCustomId("purchase_msg")
+          .setLabel("Message shown on purchase (optional)")
+          .setStyle(TextInputStyle.Paragraph)
+          .setRequired(false)
+          .setMaxLength(300),
+      ),
+    );
+    await interaction.showModal(modal);
     return;
   }
 
@@ -340,7 +484,7 @@ export async function handleUbAdminComponent(
           .setStyle(TextInputStyle.Short)
           .setRequired(false)
           .setMaxLength(80)
-          .setPlaceholder("Discord /ubadmin adjust"),
+          .setPlaceholder("Discord /unbelievaboat adjust"),
       ),
     );
     await interaction.showModal(modal);
@@ -436,32 +580,78 @@ export async function handleUbAdminModal(interaction: ModalSubmitInteraction): P
     return;
   }
   const parts = interaction.customId.split(":");
-  if (parts[1] !== "adjust_modal" || !parts[2]) {
-    await interaction.reply({ content: "Unknown form.", ...EPHEMERAL });
-    return;
-  }
-  const userId = parts[2];
-  const cashRaw = interaction.fields.getTextInputValue("cash").trim();
-  const reason = interaction.fields.getTextInputValue("reason")?.trim() || "Discord /ubadmin adjust";
-  const cash = Number(cashRaw);
-  if (!Number.isFinite(cash) || cash === 0) {
-    await interaction.reply({ content: "Enter a non-zero cash delta.", ...EPHEMERAL });
+
+  if (parts[1] === "perk_modal" && parts[2]) {
+    const roleId = parts[2];
+    const name = interaction.fields.getTextInputValue("name").trim();
+    const price = Number(interaction.fields.getTextInputValue("price").trim());
+    const description = interaction.fields.getTextInputValue("description")?.trim() || null;
+    const image = interaction.fields.getTextInputValue("image")?.trim() || "";
+    const purchaseMessage = interaction.fields.getTextInputValue("purchase_msg")?.trim() || "";
+    if (!name || !Number.isFinite(price) || price < 0) {
+      await interaction.reply({ content: "Need a name and a non-negative price.", ...EPHEMERAL });
+      return;
+    }
+    await interaction.deferReply(EPHEMERAL);
+    const meta: Record<string, unknown> = {};
+    if (image) meta.imageUrl = image;
+    if (purchaseMessage) meta.purchaseMessage = purchaseMessage;
+    const row = await createRoleLink(guildId, {
+      name,
+      description,
+      discordRoleId: roleId,
+      price: Math.floor(price),
+      enabled: true,
+      emoji: "✨",
+    });
+    // Attach meta via update
+    const { updateRoleLink } = await import("../../lib/unbelievaboat/db.js");
+    await updateRoleLink(guildId, row.id, { meta });
+    await writeUbAudit(guildId, interaction.user.id, "discord_perk_create", { roleId, name, price, meta });
+    await interaction.editReply(
+      `Created perk **${name}** → <@&${roleId}> for **${fmt(price)}** cash.\nPlayers buy it with \`/cashstore\`.`,
+    );
     return;
   }
 
-  await interaction.deferReply(EPHEMERAL);
-  const settings = await getOrCreateUbSettings(guildId);
-  if (!isUbConfigured() || !settings.enabled) {
-    await interaction.editReply("UnbelievaBoat token missing or UB link disabled — flip it on in `/ubadmin`.");
+  if ((parts[1] === "adjust_modal" || parts[1] === "set_modal") && parts[2]) {
+    const userId = parts[2];
+    const cashRaw = interaction.fields.getTextInputValue("cash").trim();
+    const reason = interaction.fields.getTextInputValue("reason")?.trim()
+      || (parts[1] === "set_modal" ? "Discord /unbelievaboat set" : "Discord /unbelievaboat adjust");
+    const cash = Number(cashRaw);
+    if (!Number.isFinite(cash) || (parts[1] === "adjust_modal" && cash === 0)) {
+      await interaction.reply({ content: "Enter a valid cash number.", ...EPHEMERAL });
+      return;
+    }
+    if (parts[1] === "set_modal" && cash < 0) {
+      await interaction.reply({ content: "Absolute cash cannot be negative.", ...EPHEMERAL });
+      return;
+    }
+
+    await interaction.deferReply(EPHEMERAL);
+    const settings = await getOrCreateUbSettings(guildId);
+    if (!isUbConfigured() || !settings.enabled) {
+      await interaction.editReply("UnbelievaBoat token missing or API link disabled — flip it on in `/unbelievaboat`.");
+      return;
+    }
+    try {
+      const bal = parts[1] === "set_modal"
+        ? await ubApi.setUserBalance(settings.ubGuildId, userId, { cash, reason })
+        : await ubApi.patchUserBalance(settings.ubGuildId, userId, { cash, reason });
+      await writeUbAudit(guildId, interaction.user.id,
+        parts[1] === "set_modal" ? "discord_cash_set" : "discord_cash_adjust",
+        { userId, cash, reason, bal });
+      await interaction.editReply(
+        parts[1] === "set_modal"
+          ? `Set <@${userId}> cash to **${fmt(bal.cash)}**.\nBank **${fmt(bal.bank)}** · total **${fmt(bal.total)}**.`
+          : `Adjusted <@${userId}> by **${cash > 0 ? "+" : ""}${fmt(cash)}** cash.\nNow: cash **${fmt(bal.cash)}** · bank **${fmt(bal.bank)}** · total **${fmt(bal.total)}.`,
+      );
+    } catch (err) {
+      await interaction.editReply(`❌ ${err instanceof Error ? err.message : "Balance edit failed."}`);
+    }
     return;
   }
-  try {
-    const bal = await ubApi.patchUserBalance(settings.ubGuildId, userId, { cash, reason });
-    await writeUbAudit(guildId, interaction.user.id, "discord_cash_adjust", { userId, cash, reason, bal });
-    await interaction.editReply(
-      `Adjusted <@${userId}> by **${cash > 0 ? "+" : ""}${fmt(cash)}** cash.\nNow: cash **${fmt(bal.cash)}** · bank **${fmt(bal.bank)}** · total **${fmt(bal.total)}**.`,
-    );
-  } catch (err) {
-    await interaction.editReply(`❌ ${err instanceof Error ? err.message : "Adjust failed."}`);
-  }
+
+  await interaction.reply({ content: "Unknown form.", ...EPHEMERAL });
 }
