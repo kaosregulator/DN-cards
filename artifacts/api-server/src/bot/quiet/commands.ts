@@ -28,7 +28,7 @@ import {
 //
 //   /quiet | /vacation | /loa — enter (or leave if already in)
 //   /quiet user:@x            — staff toggle: place in OR force out
-//   /quietsetup               — config, ensure_room, rename modes, audio
+//   /quiet_setup               — config, ensure_room, rename modes, audio
 // ─────────────────────────────────────────────────────────────────────────────
 
 const MODE_CHOICES = DEFAULT_SANCTUARY_MODES.map(m => ({
@@ -439,7 +439,7 @@ export async function handleQuietSetupCommand(interaction: ChatInputCommandInter
           `**Role name:** ${m.roleName}\n` +
           `**Channel name:** #${m.channelName}\n` +
           `**Enabled:** ${m.enabled ? "yes" : "no"}\n\n` +
-          `Run \`/quietsetup ensure_room\` to apply renames to Discord.`,
+          `Run \`/quiet_setup ensure_room\` to apply renames to Discord.`,
         )],
     });
     return;
@@ -501,7 +501,7 @@ export async function handleQuietSetupCommand(interaction: ChatInputCommandInter
         .setColor(QUIET_BRAND.COLOR_SOFT)
         .setTitle(`${QUIET_EMOJI.MIC} Quiet audio library`)
         .setDescription(lines.join("\n").slice(0, 4000))
-        .setFooter({ text: "Toggle: /quietsetup audio id:<id> enabled:true|false" })],
+        .setFooter({ text: "Toggle: /quiet_setup audio id:<id> enabled:true|false" })],
     });
     return;
   }

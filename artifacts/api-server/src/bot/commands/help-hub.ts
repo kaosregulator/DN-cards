@@ -313,9 +313,9 @@ const PAGES: Record<HelpSection, PageFn> = {
           "`/afk_setup` — (admin) configure the Secretary — incl. **Reply As Member** (answer with your name + avatar)" },
         { name: "🌙 Sanctuary (Quiet / Vacation / LOA)", value:
           "`/quiet` `[mode]` — silent one-channel room (Quiet, Vacation, LOA, or Step Away)\n" +
-          "`/vacation` · `/loa` — same isolation, different labels (servers can rename via `/quietsetup rename`)\n" +
+          "`/vacation` · `/loa` — same isolation, different labels (servers can rename via `/quiet_setup rename`)\n" +
           "`/quiet` again — emergency exit · staff: `/quiet user:@Member` **force out**\n" +
-          "`/quietsetup ensure_room` — sync rooms + quarantine roles + hides\n" +
+          "`/quiet_setup ensure_room` — sync rooms + quarantine roles + hides\n" +
           "Includes **Stones in the Water** — a short click-through release exercise. Outsiders can't see the room." },
       );
   },
@@ -350,7 +350,7 @@ const PAGES: Record<HelpSection, PageFn> = {
           "`/raid_admin create|edit|list|enable|delete` — co-op raid bosses\n" +
           "`/giveaway` → **⚙️ Admin** — quick-create, manage, end, cancel & reroll giveaways\n" +
           "`/echo …` — Echo-Whisper viewer roles, override & stats\n" +
-          "`/quietsetup` — sanctuary rooms/roles/renames · `/quiet` `/vacation` `/loa` — place **or force out**" },
+          "`/quiet_setup` — sanctuary rooms/roles/renames · `/quiet` `/vacation` `/loa` — place **or force out**" },
         { name: "🌐 Website", value: `Public: **[${site}](${site})** · Admin dashboard: run \`/dashboard\` for your login link.` },
       );
   },

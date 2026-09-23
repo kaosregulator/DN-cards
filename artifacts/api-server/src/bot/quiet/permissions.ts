@@ -575,28 +575,28 @@ function buildCapabilityNote(opts: {
       if (opts.botIsAdmin) {
         parts.push(
           "The bot **already has Administrator** (via its bot role). " +
-          "Re-run `/quietsetup ensure_room`, then `/quiet` again so hides re-sync. " +
+          "Re-run `/quiet_setup ensure_room`, then `/quiet` again so hides re-sync. " +
           "Confirm the **Quiet** role sits **below** the bot role (DN Bot / your bot), " +
           "and that this member is not themselves an Administrator.",
         );
       } else {
         parts.push(
           "Grant the bot **Administrator** on its bot role (or Manage Roles + Manage Channels with the bot role above Quiet), " +
-          "then re-run `/quietsetup ensure_room` and `/quiet` again.",
+          "then re-run `/quiet_setup ensure_room` and `/quiet` again.",
         );
       }
     } else if (opts.isolationMode === "partial") {
       parts.push(
         opts.botIsAdmin
-          ? "Isolation used a mixed path. Re-run `/quietsetup ensure_room` then `/quiet` to fully re-sync hides."
+          ? "Isolation used a mixed path. Re-run `/quiet_setup ensure_room` then `/quiet` to fully re-sync hides."
           : "Some hides were applied via member overwrites only. Grant the bot **Administrator** on its bot role for the most reliable empty-server quarantine.",
       );
     } else {
       parts.push(
         opts.botIsAdmin
-          ? "Only Quiet Room access was granted this pass. Re-run `/quietsetup ensure_room` then `/quiet`."
+          ? "Only Quiet Room access was granted this pass. Re-run `/quiet_setup ensure_room` then `/quiet`."
           : "Only Quiet Room access was granted — other channels were **not** hidden. " +
-            "Grant the bot **Administrator** on its bot role (or Manage Roles + Manage Channels), then `/quietsetup ensure_room`.",
+            "Grant the bot **Administrator** on its bot role (or Manage Roles + Manage Channels), then `/quiet_setup ensure_room`.",
       );
     }
   }

@@ -1,8 +1,8 @@
 # DN Cards
 
-🎴 **DarkNight's collectible military trading card game for Discord & Roblox communities**
+🎴 **DarkNight's collectible military trading card game for Discord**
 
-A fully-featured Discord bot for collecting, trading, and battling with military-themed cards. Features random spawns, pack stores, daily rewards, trading systems, achievements, and more.
+Collect, trade, battle, and build — with a User Hub for daily profile flow, co-op raids, a Phaser Discord Activity, personal HQ, and sanctuary modes (Quiet / Vacation / LOA) when someone needs to step away without leaving the server.
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 [![Discord.js](https://img.shields.io/badge/discord.js-v14-5865F2?style=flat-square&logo=discord)](https://discord.js.org/)
@@ -12,42 +12,37 @@ A fully-featured Discord bot for collecting, trading, and battling with military
 
 ## Features
 
-### 🎮 Core Gameplay
-- **Random Card Spawns** — Cards appear at configured intervals in spawn channels
-- **Card Packs** — Purchase packs with in-game currency (Basic/Premium/Legendary tiers)
-- **Daily Rewards** — Claim daily shards with streak bonuses (up to 7 days)
-- **Trading System** — Propose and accept trades with fairness warnings
-- **Trade-In System** — Burn 5 cards of one rarity for 1 of the next tier
-- **Wishlist** — Get notified when your wishlist cards spawn
-- **Limited Events** — Admin-controlled spawn boosts for special cards
+### 🎮 Collecting & economy
+- **Random card spawns** — timed drops in configured channels
+- **Packs** — `/pack` (Basic / Premium / Legendary) with shard economy
+- **Burn & fuse** — `/burn` for shards · `/card_recycle` for Card Fusion / star rank
+- **Trading** — `/trade`, `/trades`, accept/decline with fairness warnings
+- **Shinies, limited & event cards** — rare variants, copy caps, admin events (`/event`)
 
-### 🏆 Progression
-- **9 Collector Ranks** — Recruit → Dark Commander (based on unique cards owned)
-- **10 Achievements** — Unlock achievements for various milestones
-- **Leaderboards** — Top 10 net-worth rankings and stats
-- **Shiny Cards** — 0.5% chance on any acquisition (2× worth/burn value)
-- **Limited Editions** — Admin-created cards with copy caps
-- **Event Exclusive Cards** — Admin-drop only, never in random draws
+### 🧭 Player hubs
+- **`/user-hub`** — profile, collection, **daily claim**, calendar, quests, wishlist, market, squad, reputation (replaces old standalone `/daily`, `/collection`, `/wishlist`, etc.)
+- **`/collection-hub`** — browse/filter owned cards
+- **`/help`** — interactive command guide for the whole bot
 
-### ⚙️ Admin Tools
-- **Visual Config Panel** (`/config`) — Toggles, intervals, rates, pack settings
-- **Embed Customization** — Rebrand all bot embeds per server
-- **Custom Rarity Tiers** — Create new rarity levels beyond the 6 built-ins
-- **Per-Server Rarity Weights** — Override worth/burn/drop-weight per rarity
-- **Card Sets** — Manage spawn rotation and active card pools
-- **Giveaway System** — Run giveaways with custom prizes and entry requirements
-- **Interactive Setup Wizard** — `!setup` for guided first-time configuration
+### ⚔️ Battles, raids & live activity
+- **`/battle`** — fights, raids, sieges, profile, leaderboards, achievements
+- **`/battle phaser`** — Discord Embedded Activity (Phaser 4 duel / open world)
+- **`/raid`** · **`/battle_admin`** · **`/raid_admin`** — co-op bosses and admin tools
 
-### 🎨 Entertainment (Bob)
-- **Minigames** — Roulette, Duel, Coin Flip, Dice, Slots, and more
-- **Roasts & AI Talk** — Claude-powered conversations (optional)
-- **Levels & Cosmetics** — Independent progression with titles and rewards
-- **Leaderboards** — Richest players, best streaks, jackpot kings
+### 🏠 Headquarters
+- **`/hq`** · **`/hqbuild`** — personal base canvas; **`/hqadmin`** for staff
 
-### 🌙 Quiet Room
-- **`/quiet`** — silent one-channel corner; other channels hidden via a Quiet quarantine role
-- **Staff toggle** — `/quiet user:@Member` places them in, or **forces them out** if already quiet
-- Optional curated CC0 ambience / voice notes — see [`docs/quiet-mode.md`](./docs/quiet-mode.md)
+### 🌙 Sanctuary (Quiet / Vacation / LOA)
+- One-channel isolation via quarantine roles — disappear without leaving the server
+- **`/quiet`** · **`/vacation`** · **`/loa`** (renameable labels per server)
+- Staff force-out: `/quiet user:@Member` · setup: `/quiet_setup`
+- Optional CC0 ambience + **Stones in the Water** release exercise — see [`docs/quiet-mode.md`](./docs/quiet-mode.md)
+
+### ⚙️ Admin tools
+- **`/setup`** (and `!setup`) — guided configuration
+- **`/config`** — visual toggles, intervals, rates, pack settings
+- Sets, rarity, embeds, drops, giveaways — `/set_hub`, `/rarity`, `/embed`, `/drop`, `/giveaway`
+- **`/admin_hub`** · **`/admin_help`** — staff toolbox
 
 ---
 
@@ -89,7 +84,6 @@ SESSION_SECRET=long-random-string
 # Optional
 NODE_ENV=development
 PUBLIC_BASE_URL=https://your-public-host.example
-ANTHROPIC_API_KEY=for_claude_ai_features  # optional, enables /bob_talk AI
 UNBELIEVABOAT_TOKEN=your_unb_api_token    # optional — UnbelievaBoat hub + pet shop (see docs/unbelievaboat.md)
 ```
 
@@ -137,40 +131,52 @@ DN-cards/
 
 ## Core Commands
 
-### User Commands
-| Command | Description |
-|---------|-------------|
-| `/collection` | View your card collection with rank & net worth |
-| `/daily` | Claim daily shards (20h cooldown, streak bonus) |
-| `/pack` | Open a card pack (Basic/Premium/Legendary) |
-| `/burn` | Destroy a card for shards |
-| `/trade` | Propose a trade with another member |
-| `/wishlist` | Manage cards you want to be notified about |
-| `/info` | Card details, worth, burn value, drop chance |
-| `/giveaways` | View active giveaways and your progress |
-| `/bob` | Open Bob entertainment hub |
-| `/quiet` | Enter Quiet Room (run again to leave) |
-| `/help` | Interactive command hub |
+Slash names below are what Discord registers today. Prefer **`/help`** and **`/user-hub`** for the full surface — many older one-off commands were folded into hubs.
 
-### Admin Commands
+### Player
 | Command | Description |
 |---------|-------------|
+| `/user-hub` | Profile hub: daily claim, collection, quests, wishlist, market, squad, and more |
+| `/help` | Interactive command guide |
+| `/collection-hub` | Browse / filter your cards |
+| `/pack` | Open a card pack |
+| `/burn` | Burn cards for shards |
+| `/card_recycle` | Card Fusion / star-rank recycle |
+| `/trade` · `/trades` | Propose and manage trades |
+| `/info` · `/top` | Card details · leaderboards |
+| `/battle` | Fights, raids, sieges, profile — includes **`/battle phaser`** (live Activity) |
+| `/raid` | Co-op raid entry |
+| `/hq` · `/hqbuild` | Personal Headquarters |
+| `/giveaway` | Giveaway hub |
+| `/quiet` · `/vacation` · `/loa` | Sanctuary modes (run again to leave) |
+| `/begin` | Onboarding |
+| `/afk` | AFK Secretary |
+| `/pet` | Pets (when enabled) |
+
+### Staff / admin
+| Command | Description |
+|---------|-------------|
+| `/setup` · `!setup` | Guided server setup |
 | `/config` | Visual configuration panel |
-| `/drop` | Force-drop a specific card |
-| `/event start` | Boost a card's spawn weight temporarily |
-| `/giveaway_admin` | Create & manage giveaways |
-| `/sets_admin` | Manage card sets and spawn rotation |
-| `/rarity` | Override rarity tier properties |
-| `/embed` | Customize bot embed messages |
-| `/quiet user:@Member` | Staff: place into Quiet Mode **or force out** |
-| `/quietsetup` | Quiet Room / Quiet role / audio config |
+| `/admin_hub` · `/admin_help` | Admin toolbox / reference |
+| `/battle_admin` · `/raid_admin` | Combat admin |
+| `/set_hub` · `/set_admin` | Card sets / spawn rotation |
+| `/drop` · `/event` | Force drops · limited events |
+| `/rarity` · `/embed` | Rarity tiers · embed branding |
+| `/quiet_setup` | Sanctuary rooms, quarantine roles, renames, audio |
+| `/quiet user:@Member` | Place into sanctuary **or force out** |
+| `/hqadmin` | HQ staff tools |
 
-### Setup Commands (prefix `!`)
+### Prefix helpers (also available)
 | Command | Description |
 |---------|-------------|
 | `!setup` | Interactive setup wizard |
-| `!addcard` | Add a new card to the pool |
+| `!addcard` | Add a card to the pool |
 | `!settings` | View current server configuration |
+
+> **Moved into `/user-hub` (no longer standalone slash):** `/daily`, `/collection`, `/wishlist`, `/quests`, `/market`, `/squad`, and related profile shortcuts. Handlers may still exist in code for hub buttons — they are not registered as top-level slash commands.
+>
+> **Removed from the live bot:** Bob entertainment (`/bob`, minigames hub, `/bob_talk`). Schema leftovers may remain; the module is not registered.
 
 ---
 
