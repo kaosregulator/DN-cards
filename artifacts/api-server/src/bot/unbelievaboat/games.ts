@@ -312,12 +312,14 @@ export async function handleCashGamesHub(interaction: ChatInputCommandInteractio
     const cds = await getGuildCooldowns(interaction.guildId);
     const embed = brandEmbed("Casino Hub", [
       `Wallet: **${fmtCash(bal.cash)}** cash · **${fmtCash(bal.bank)}** bank ${bal.symbol}`,
-      `_Bets spend cash first, then bank._`,
+      `_Bets spend cash first, then bank. Deposit with \`/casino deposit\`._`,
       "",
-      "**Cards:** `/blackjack` (Hit/Stand) · `/higherlower` · `/redblack`",
-      "**Table:** `/roulette` · `/slots`",
-      "**Income:** `/cashcheck` · `/cashwork` · `/cashcrime`",
-      "**Chaos:** `/rob` · `/russian` · `/slut`",
+      "**Wallet:** `/casino balance` · `deposit` · `withdraw`",
+      "**Cards:** `/casino blackjack` · `higherlower` · `redblack` · `uno`",
+      "**Table:** `/casino roulette` · `slots`",
+      "**Income:** `/casino daily` · `collect` · `work` · `crime` · `beg`",
+      "**Chaos:** `/casino rob` · `russian`",
+      "**Board:** `/casino top` · **Store:** `/casino store`",
       "",
       `Game limit: **${cds.gameUses}** / **${cdText(cds.gameWindowSec * 1000)}** (edit in \`/unbelievaboat\`)`,
     ].join("\n"));
@@ -637,6 +639,20 @@ export async function handleRob(interaction: ChatInputCommandInteraction): Promi
       await interaction.editReply("Pick someone else.");
       return;
     }
+
+    // Rob immunity — Discord roles configured in /unbelievaboat → Immunity
+    const settings = await getOrCreateUbSettings(interaction.guildId);
+    const immuneIds = (settings.robImmuneRoleIds ?? []) as string[];
+    if (immuneIds.length && interaction.guild) {
+      const member = await interaction.guild.members.fetch(target.id).catch(() => null);
+      if (member && immuneIds.some(id => member.roles.cache.has(id))) {
+        await interaction.editReply(
+          `${target} has a **rob immunity** role and can’t be robbed.`,
+        );
+        return;
+      }
+    }
+
     const their = await getCashBalance(interaction.guildId, target.id);
     if ((their.cash ?? 0) + (their.bank ?? 0) < 50) {
       await interaction.editReply(`${target} is too broke to rob.`);
@@ -644,6 +660,7 @@ export async function handleRob(interaction: ChatInputCommandInteraction): Promi
     }
     const success = Math.random() < 0.4;
     await markIncomeCooldown(interaction.guildId, interaction.user.id, "rob");
+    const { logGameEvent } = await import("../logging/channel-log.js");
     if (success) {
       const amount = 25 + Math.floor(Math.random() * Math.min(500, Math.max(25, Math.floor(their.cash * 0.1))));
       await spendFunds(interaction.guildId, target.id, amount, `Robbed by ${interaction.user.id}`);
@@ -656,6 +673,9 @@ export async function handleRob(interaction: ChatInputCommandInteraction): Promi
       ].join("\n"));
       if (imageName) embed.setImage(`attachment://${imageName}`);
       await replyThenPostAsUnbelievaBoat(interaction, { embeds: [embed], files });
+      void logGameEvent(interaction.client, interaction.guildId, interaction.user, "Rob success",
+        `Stole ${fmtCash(amount)} from ${target.tag}`,
+        [{ name: "Target", value: `${target}`, inline: true }]);
     } else {
       const fine = 50 + Math.floor(Math.random() * 150);
       const spent = await spendFunds(interaction.guildId, interaction.user.id, fine, `Failed rob`);
@@ -667,6 +687,8 @@ export async function handleRob(interaction: ChatInputCommandInteraction): Promi
       ].join("\n"));
       if (imageName) embed.setImage(`attachment://${imageName}`);
       await replyThenPostAsUnbelievaBoat(interaction, { embeds: [embed], files });
+      void logGameEvent(interaction.client, interaction.guildId, interaction.user, "Rob failed",
+        `Fined trying to rob ${target.tag}`);
     }
   } catch (err) {
     await interaction.editReply(err instanceof CashError ? err.message : `Failed: ${err instanceof Error ? err.message : err}`);
@@ -708,6 +730,13 @@ export async function handleUnbGameComponent(interaction: ButtonInteraction): Pr
     return;
   }
 
+  // Mini UNO
+  if (id.startsWith("unbgame:uno:")) {
+    const { handleUnoComponent } = await import("./uno.js");
+    await handleUnoComponent(interaction);
+    return;
+  }
+
   // Blackjack moves
   if (id.startsWith("unbgame:bj:")) {
     const parts = id.split(":");
@@ -721,7 +750,7 @@ export async function handleUnbGameComponent(interaction: ButtonInteraction): Pr
     const session = bjSessions.get(key);
     if (!session || session.expires < Date.now()) {
       bjSessions.delete(key);
-      await interaction.reply({ content: "Hand expired — start `/blackjack` again.", ...EPHEMERAL });
+      await interaction.reply({ content: "Hand expired — start `/casino blackjack` again.", ...EPHEMERAL });
       return;
     }
     await interaction.deferUpdate();

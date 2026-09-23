@@ -1026,6 +1026,8 @@ async function runBootMigrations() {
   await pool.query(`ALTER TABLE ub_settings ADD COLUMN IF NOT EXISTS daily_min INTEGER NOT NULL DEFAULT 100`);
   await pool.query(`ALTER TABLE ub_settings ADD COLUMN IF NOT EXISTS daily_max INTEGER NOT NULL DEFAULT 250`);
   await pool.query(`ALTER TABLE ub_settings ADD COLUMN IF NOT EXISTS cooldowns JSONB NOT NULL DEFAULT '{}'::jsonb`);
+  await pool.query(`ALTER TABLE ub_settings ADD COLUMN IF NOT EXISTS log_channel_id TEXT`);
+  await pool.query(`ALTER TABLE ub_settings ADD COLUMN IF NOT EXISTS rob_immune_role_ids JSONB NOT NULL DEFAULT '[]'::jsonb`);
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS ub_game_state (
@@ -1040,6 +1042,7 @@ async function runBootMigrations() {
       last_roulette_at    TIMESTAMP,
       last_blackjack_at   TIMESTAMP,
       last_russian_at     TIMESTAMP,
+      last_collect_at     TIMESTAMP,
       daily_streak        INTEGER NOT NULL DEFAULT 0,
       meta                JSONB NOT NULL DEFAULT '{}'::jsonb,
       updated_at          TIMESTAMP NOT NULL DEFAULT NOW()
@@ -1047,6 +1050,7 @@ async function runBootMigrations() {
   `);
   await pool.query(`ALTER TABLE ub_game_state ADD COLUMN IF NOT EXISTS last_work_at TIMESTAMP`);
   await pool.query(`ALTER TABLE ub_game_state ADD COLUMN IF NOT EXISTS last_crime_at TIMESTAMP`);
+  await pool.query(`ALTER TABLE ub_game_state ADD COLUMN IF NOT EXISTS last_collect_at TIMESTAMP`);
   await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS ub_game_state_guild_user_uidx ON ub_game_state (guild_id, user_id)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS ub_game_state_guild_idx ON ub_game_state (guild_id)`);
 
@@ -1060,6 +1064,7 @@ async function runBootMigrations() {
       ub_item_id        TEXT,
       price             INTEGER NOT NULL DEFAULT 0,
       grant_cash        INTEGER NOT NULL DEFAULT 0,
+      income_amount     INTEGER NOT NULL DEFAULT 0,
       category          TEXT NOT NULL DEFAULT 'custom',
       emoji             TEXT,
       enabled           BOOLEAN NOT NULL DEFAULT TRUE,
@@ -1068,6 +1073,7 @@ async function runBootMigrations() {
       updated_at        TIMESTAMP NOT NULL DEFAULT NOW()
     )
   `);
+  await pool.query(`ALTER TABLE ub_role_links ADD COLUMN IF NOT EXISTS income_amount INTEGER NOT NULL DEFAULT 0`);
   await pool.query(`CREATE INDEX IF NOT EXISTS ub_role_links_guild_idx ON ub_role_links (guild_id)`);
   await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS ub_role_links_guild_role_uidx ON ub_role_links (guild_id, discord_role_id)`);
 

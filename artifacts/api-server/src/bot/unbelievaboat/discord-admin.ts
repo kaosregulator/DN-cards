@@ -7,6 +7,7 @@ import type {
   StringSelectMenuInteraction,
   UserSelectMenuInteraction,
   RoleSelectMenuInteraction,
+  ChannelSelectMenuInteraction,
   ModalSubmitInteraction,
 } from "discord.js";
 import {
@@ -22,6 +23,8 @@ import {
   MessageFlags,
   UserSelectMenuBuilder,
   RoleSelectMenuBuilder,
+  ChannelSelectMenuBuilder,
+  ChannelType,
 } from "discord.js";
 import { isUbConfigured, ubApi } from "../../lib/unbelievaboat/client.js";
 import {
@@ -75,6 +78,10 @@ function hubRows() {
       new ButtonBuilder().setCustomId("ubadmin:cooldowns").setLabel("Cooldowns").setEmoji("⏱️").setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId("ubadmin:pet_tools").setLabel("Pet tools").setEmoji("🛠️").setStyle(ButtonStyle.Secondary),
     ),
+    new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId("ubadmin:logs").setLabel("Log channel").setEmoji("📜").setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId("ubadmin:immunity").setLabel("Rob immunity").setEmoji("🛡️").setStyle(ButtonStyle.Secondary),
+    ),
   ];
 }
 
@@ -108,6 +115,8 @@ async function buildOverviewEmbed(guildId: string): Promise<EmbedBuilder> {
         `Mini-games: **${settings.gamesEnabled !== false ? "on" : "off"}** · Perk store: **${settings.storeEnabled !== false ? "on" : "off"}**`,
         `Cash Check-In range: **${settings.dailyMin ?? 100}–${settings.dailyMax ?? 250}**`,
         `Leaderboard sort: **${settings.leaderboardSort}**`,
+        `Log channel: **${settings.logChannelId ? `<#${settings.logChannelId}>` : "not set"}**`,
+        `Rob immunity roles: **${(settings.robImmuneRoleIds ?? []).length}**`,
         `Linked guild id: \`${settings.ubGuildId || guildId}\``,
         "",
         guildLine,
@@ -115,7 +124,7 @@ async function buildOverviewEmbed(guildId: string): Promise<EmbedBuilder> {
         "",
         `Pets enabled: **${petSettings.enabled ? "yes" : "no"}** · hatch **${petSettings.hatchCost}** · growth **${petSettings.growthHours}h** · neglect **${petSettings.maxNeglects}**`,
         "",
-        "Player cmds: `/cashcheck` `/cashgames` `/cashstore` `/roulette` `/blackjack` `/russian` `/rob`",
+        "Player hub: **`/casino`** (deposit · daily · collect · games · uno · top · store)",
         "_Optional website mirror still at `/admin/unbelievaboat`._",
       ].filter(Boolean).join("\n"),
     )
@@ -133,7 +142,7 @@ export async function handleUbAdminCommand(interaction: ChatInputCommandInteract
 }
 
 export async function handleUbAdminComponent(
-  interaction: ButtonInteraction | StringSelectMenuInteraction | UserSelectMenuInteraction | RoleSelectMenuInteraction,
+  interaction: ButtonInteraction | StringSelectMenuInteraction | UserSelectMenuInteraction | RoleSelectMenuInteraction | ChannelSelectMenuInteraction,
 ): Promise<void> {
   const guildId = interaction.guildId;
   if (!guildId) {
@@ -290,7 +299,123 @@ export async function handleUbAdminComponent(
         { name: "Role links", value: roleLines.slice(0, 1000) },
         { name: "Recent audit", value: auditLines.slice(0, 1000) },
       )
-      .setFooter({ text: "Use Add perk to create role goods here · players buy with /cashstore" });
+      .setFooter({ text: "Use Add perk to create role goods · players buy with /casino store" });
+    await interaction.editReply({ embeds: [embed], components: hubRows() });
+    return;
+  }
+
+  if (id === "ubadmin:logs" && interaction.isButton()) {
+    await interaction.deferUpdate();
+    const s = await getOrCreateUbSettings(guildId);
+    const embed = new EmbedBuilder()
+      .setColor(0xe91e8c)
+      .setAuthor({ name: "UnbelievaBoat logs", iconURL: UB_ICON })
+      .setTitle("Economy / casino log channel")
+      .setDescription(
+        [
+          `Current: **${s.logChannelId ? `<#${s.logChannelId}>` : "not set"}**`,
+          "",
+          "Posts clean logs with user avatar, time, and action for deposits, collects, games, rob, admin cash edits.",
+          "Pick a text channel below (or clear).",
+        ].join("\n"),
+      );
+    const pick = new ChannelSelectMenuBuilder()
+      .setCustomId("ubadmin:log_channel")
+      .setPlaceholder("Select log channel…")
+      .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
+      .setMaxValues(1);
+    const clear = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId("ubadmin:log_clear").setLabel("Clear log channel").setStyle(ButtonStyle.Danger),
+    );
+    await interaction.editReply({
+      embeds: [embed],
+      components: [
+        new ActionRowBuilder<ChannelSelectMenuBuilder>().addComponents(pick),
+        clear,
+        ...hubRows(),
+      ],
+    });
+    return;
+  }
+
+  if (id === "ubadmin:log_channel" && interaction.isChannelSelectMenu()) {
+    await interaction.deferUpdate();
+    const channelId = interaction.values[0]!;
+    await updateUbSettings(guildId, { logChannelId: channelId });
+    await writeUbAudit(guildId, interaction.user.id, "discord_log_channel", { channelId });
+    const embed = new EmbedBuilder()
+      .setColor(0xe91e8c)
+      .setAuthor({ name: "UnbelievaBoat logs", iconURL: UB_ICON })
+      .setTitle("Log channel set")
+      .setDescription(`Casino / economy logs → <#${channelId}>`);
+    await interaction.editReply({ embeds: [embed], components: hubRows() });
+    return;
+  }
+
+  if (id === "ubadmin:log_clear" && interaction.isButton()) {
+    await interaction.deferUpdate();
+    await updateUbSettings(guildId, { logChannelId: null });
+    await writeUbAudit(guildId, interaction.user.id, "discord_log_clear", {});
+    const embed = await buildOverviewEmbed(guildId);
+    embed.setDescription(`${embed.data.description ?? ""}\n\n✅ Log channel cleared.`);
+    await interaction.editReply({ embeds: [embed], components: hubRows() });
+    return;
+  }
+
+  if (id === "ubadmin:immunity" && interaction.isButton()) {
+    await interaction.deferUpdate();
+    const s = await getOrCreateUbSettings(guildId);
+    const ids = s.robImmuneRoleIds ?? [];
+    const embed = new EmbedBuilder()
+      .setColor(0xe91e8c)
+      .setAuthor({ name: "Rob immunity", iconURL: UB_ICON })
+      .setTitle("Roles that cannot be robbed")
+      .setDescription(
+        [
+          ids.length ? ids.map(r => `• <@&${r}>`).join("\n") : "_None yet._",
+          "",
+          "`/casino rob` checks these before a stick-up. Pick roles to **replace** the list.",
+        ].join("\n"),
+      );
+    const pick = new RoleSelectMenuBuilder()
+      .setCustomId("ubadmin:immune_roles")
+      .setPlaceholder("Select immunity roles…")
+      .setMinValues(1)
+      .setMaxValues(10);
+    const clear = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId("ubadmin:immune_clear").setLabel("Clear immunity").setStyle(ButtonStyle.Danger),
+    );
+    await interaction.editReply({
+      embeds: [embed],
+      components: [
+        new ActionRowBuilder<RoleSelectMenuBuilder>().addComponents(pick),
+        clear,
+        ...hubRows(),
+      ],
+    });
+    return;
+  }
+
+  if (id === "ubadmin:immune_roles" && interaction.isRoleSelectMenu()) {
+    await interaction.deferUpdate();
+    const ids = interaction.values;
+    await updateUbSettings(guildId, { robImmuneRoleIds: ids });
+    await writeUbAudit(guildId, interaction.user.id, "discord_rob_immunity", { ids });
+    const embed = new EmbedBuilder()
+      .setColor(0xe91e8c)
+      .setAuthor({ name: "Rob immunity", iconURL: UB_ICON })
+      .setTitle("Immunity updated")
+      .setDescription(ids.length ? ids.map(r => `• <@&${r}>`).join("\n") : "_Cleared._");
+    await interaction.editReply({ embeds: [embed], components: hubRows() });
+    return;
+  }
+
+  if (id === "ubadmin:immune_clear" && interaction.isButton()) {
+    await interaction.deferUpdate();
+    await updateUbSettings(guildId, { robImmuneRoleIds: [] });
+    await writeUbAudit(guildId, interaction.user.id, "discord_rob_immunity_clear", {});
+    const embed = await buildOverviewEmbed(guildId);
+    embed.setDescription(`${embed.data.description ?? ""}\n\n✅ Rob immunity roles cleared.`);
     await interaction.editReply({ embeds: [embed], components: hubRows() });
     return;
   }
@@ -357,13 +482,14 @@ export async function handleUbAdminComponent(
           "_UnbelievaBoat’s own `set-cooldown` settings are **not** on their public API — these are **our** Discord defaults (mirrored from their FAQ)._",
           "",
           `**Cash Check-In** · ${cdText(cds.dailySec * 1000)}`,
+          `**Role collect** · ${cdText(cds.collectSec * 1000)}`,
           `**Work** · ${cdText(cds.workSec * 1000)}`,
           `**Crime** · ${cdText(cds.crimeSec * 1000)}`,
-          `**Beg (/slut)** · ${cdText(cds.begSec * 1000)}`,
+          `**Beg** · ${cdText(cds.begSec * 1000)}`,
           `**Rob** · ${cdText(cds.robSec * 1000)}`,
           `**Games** · **${cds.gameUses}** plays / ${cdText(cds.gameWindowSec * 1000)} (gap ${cds.gameGapSec}s)`,
           "",
-          `Factory defaults: work/crime/beg 4h · rob 1d · games ${DEFAULT_COOLDOWNS.gameUses}/${DEFAULT_COOLDOWNS.gameWindowSec}s`,
+          `Factory defaults: work/crime/beg 4h · rob/collect 1d · games ${DEFAULT_COOLDOWNS.gameUses}/${DEFAULT_COOLDOWNS.gameWindowSec}s`,
         ].join("\n"),
       );
     const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -520,11 +646,12 @@ export async function handleUbAdminComponent(
       ),
       new ActionRowBuilder<TextInputBuilder>().addComponents(
         new TextInputBuilder()
-          .setCustomId("purchase_msg")
-          .setLabel("Message shown on purchase (optional)")
-          .setStyle(TextInputStyle.Paragraph)
-          .setRequired(false)
-          .setMaxLength(300),
+          .setCustomId("income")
+          .setLabel("Collect income per claim (0 = none)")
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+          .setMaxLength(10)
+          .setValue("0"),
       ),
     );
     await interaction.showModal(modal);
@@ -684,6 +811,7 @@ export async function handleUbAdminModal(interaction: ModalSubmitInteraction): P
       gameUses: Math.max(1, Math.floor(gameUses)),
       gameWindowSec: Math.max(30, Math.floor(gameWindow)),
       dailySec: prev.dailySec || DEFAULT_COOLDOWNS.dailySec,
+      collectSec: prev.collectSec || DEFAULT_COOLDOWNS.collectSec,
       begSec: prev.begSec || DEFAULT_COOLDOWNS.begSec,
       gameGapSec: prev.gameGapSec ?? DEFAULT_COOLDOWNS.gameGapSec,
     };
@@ -701,29 +829,36 @@ export async function handleUbAdminModal(interaction: ModalSubmitInteraction): P
     const price = Number(interaction.fields.getTextInputValue("price").trim());
     const description = interaction.fields.getTextInputValue("description")?.trim() || null;
     const image = interaction.fields.getTextInputValue("image")?.trim() || "";
-    const purchaseMessage = interaction.fields.getTextInputValue("purchase_msg")?.trim() || "";
+    const incomeRaw = interaction.fields.getTextInputValue("income")?.trim() || "0";
+    const incomeAmount = Number(incomeRaw);
     if (!name || !Number.isFinite(price) || price < 0) {
       await interaction.reply({ content: "Need a name and a non-negative price.", ...EPHEMERAL });
+      return;
+    }
+    if (!Number.isFinite(incomeAmount) || incomeAmount < 0) {
+      await interaction.reply({ content: "Income must be a non-negative number.", ...EPHEMERAL });
       return;
     }
     await interaction.deferReply(EPHEMERAL);
     const meta: Record<string, unknown> = {};
     if (image) meta.imageUrl = image;
-    if (purchaseMessage) meta.purchaseMessage = purchaseMessage;
     const row = await createRoleLink(guildId, {
       name,
       description,
       discordRoleId: roleId,
       price: Math.floor(price),
+      incomeAmount: Math.floor(incomeAmount),
       enabled: true,
       emoji: "✨",
     });
     // Attach meta via update
     const { updateRoleLink } = await import("../../lib/unbelievaboat/db.js");
     await updateRoleLink(guildId, row.id, { meta });
-    await writeUbAudit(guildId, interaction.user.id, "discord_perk_create", { roleId, name, price, meta });
+    await writeUbAudit(guildId, interaction.user.id, "discord_perk_create", { roleId, name, price, incomeAmount, meta });
     await interaction.editReply(
-      `Created perk **${name}** → <@&${roleId}> for **${fmt(price)}** cash.\nPlayers buy it with \`/cashstore\`.`,
+      `Created perk **${name}** → <@&${roleId}> for **${fmt(price)}** cash` +
+      (incomeAmount > 0 ? ` · collect income **${fmt(incomeAmount)}**/claim` : "") +
+      `.\nPlayers buy it with \`/casino store\` and claim with \`/casino collect\`.`,
     );
     return;
   }

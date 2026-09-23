@@ -36,6 +36,11 @@ export type Ctx = SKRSContext2D & {
   lineCap: string;
   setLineDash(segments: number[]): void;
   rect(x: number, y: number, w: number, h: number): void;
+  strokeRect(x: number, y: number, w: number, h: number): void;
+  ellipse(
+    x: number, y: number, radiusX: number, radiusY: number,
+    rotation: number, startAngle: number, endAngle: number,
+  ): void;
   shadowOffsetX: number;
   shadowOffsetY: number;
 };

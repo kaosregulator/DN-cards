@@ -12,21 +12,7 @@ import { buildEmojiCommandJson, buildPostboardCommandJson } from "../emoji/comma
 import { buildQuoteCommandJson, buildQuoteContextMenuJson } from "../quote/definition.js";
 import { buildPetCommandJson, buildPetAdminCommandJson } from "../pets/command.js";
 import { buildUbAdminCommandJson } from "../unbelievaboat/discord-admin.js";
-import {
-  buildCashCheckCommandJson,
-  buildCashGamesCommandJson,
-  buildRouletteCommandJson,
-  buildBlackjackCommandJson,
-  buildRussianCommandJson,
-  buildRobCommandJson,
-  buildSlutCommandJson,
-  buildHigherLowerCommandJson,
-  buildRedBlackCommandJson,
-  buildSlotsCommandJson,
-  buildWorkCommandJson,
-  buildCrimeCommandJson,
-} from "../unbelievaboat/games.js";
-import { buildCashStoreCommandJson } from "../unbelievaboat/store.js";
+import { buildCasinoCommandJson } from "../unbelievaboat/casino.js";
 import { getRaidFrames } from "../cards/frames.js";
 import {
   buildMaterialChoices, buildWallpaperChoices, buildCanvasChoices, BUILD_LIMITS,
@@ -78,19 +64,7 @@ function buildLegacyCommands() {
     buildPetCommandJson(),
     buildPetAdminCommandJson(),
     buildUbAdminCommandJson(),
-    buildCashCheckCommandJson(),
-    buildCashGamesCommandJson(),
-    buildCashStoreCommandJson(),
-    buildRouletteCommandJson(),
-    buildBlackjackCommandJson(),
-    buildHigherLowerCommandJson(),
-    buildRedBlackCommandJson(),
-    buildSlotsCommandJson(),
-    buildWorkCommandJson(),
-    buildCrimeCommandJson(),
-    buildRussianCommandJson(),
-    buildRobCommandJson(),
-    buildSlutCommandJson(),
+    buildCasinoCommandJson(),
 
     cmd("info", "Details, worth, and drop chance", s => s
       .addStringOption(o => o.setName("name").setDescription("Name to look up").setRequired(true).setAutocomplete(true))),
@@ -804,6 +778,10 @@ export const HUB_REPLACED_COMMANDS = new Set<string>([
   "market", "squad",
   // Now added as interactive User-Hub sections (Quests / Wishlist / Reputation / Search).
   "quests", "wishlist", "rep", "search",
+  // Folded into /casino (Discord 100 slash-command ceiling — was 101 before this hub).
+  "cashcheck", "cashgames", "cashstore",
+  "roulette", "blackjack", "higherlower", "redblack", "slots",
+  "cashwork", "cashcrime", "russian", "rob", "slut",
 ]);
 
 export function buildCommands() {

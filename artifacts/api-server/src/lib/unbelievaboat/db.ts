@@ -30,7 +30,8 @@ export async function updateUbSettings(
   guildId: string,
   patch: Partial<Pick<UbSettings,
     "ubGuildId" | "enabled" | "leaderboardSort" | "petsSpendUb" | "currencyLabel" |
-    "gamesEnabled" | "storeEnabled" | "dailyMin" | "dailyMax" | "cooldowns"
+    "gamesEnabled" | "storeEnabled" | "dailyMin" | "dailyMax" | "cooldowns" |
+    "logChannelId" | "robImmuneRoleIds"
   >>,
 ): Promise<UbSettings> {
   await getOrCreateUbSettings(guildId);
@@ -56,6 +57,7 @@ export async function createRoleLink(
     ubItemId?: string | null;
     price?: number;
     grantCash?: number;
+    incomeAmount?: number;
     category?: string;
     emoji?: string | null;
     enabled?: boolean;
@@ -69,6 +71,7 @@ export async function createRoleLink(
     ubItemId: data.ubItemId ?? null,
     price: data.price ?? 0,
     grantCash: data.grantCash ?? 0,
+    incomeAmount: data.incomeAmount ?? 0,
     category: data.category ?? "custom",
     emoji: data.emoji ?? null,
     enabled: data.enabled ?? true,
@@ -86,6 +89,7 @@ export async function updateRoleLink(
     ubItemId: string | null;
     price: number;
     grantCash: number;
+    incomeAmount: number;
     category: string;
     emoji: string | null;
     enabled: boolean;
@@ -228,6 +232,7 @@ export async function touchGameState(
     lastRouletteAt: Date | null;
     lastBlackjackAt: Date | null;
     lastRussianAt: Date | null;
+    lastCollectAt: Date | null;
     dailyStreak: number;
     meta: Record<string, unknown>;
   }>,
