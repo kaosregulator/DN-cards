@@ -261,15 +261,26 @@ export async function handleQuietSetupCommand(interaction: ChatInputCommandInter
 
   if (sub === "ensure_room") {
     try {
-      const { channel } = await ensureQuietRoom(interaction.guild);
+      const { channel, categoryId } = await ensureQuietRoom(interaction.guild);
       const roleResult = await ensureQuietRole(interaction.guild);
+      let hideCount = 0;
+      if (roleResult.role) {
+        const hidden = await syncQuietRoleHides(
+          interaction.guild,
+          roleResult.role,
+          channel.id,
+          categoryId,
+        );
+        hideCount = hidden.length;
+      }
       const me = interaction.guild.members.me;
       const botAdmin = Boolean(me?.permissions.has(PermissionFlagsBits.Administrator));
       const lines = [
         `Quiet Room ready: ${channel}`,
         roleResult.role
           ? `Quarantine role: <@&${roleResult.role.id}>` +
-            (roleResult.positionedHigh ? " (positioned high under the bot)" : " _(move bot role above Quiet if assign fails)_")
+            (roleResult.positionedHigh ? " (positioned high under the bot)" : " _(move bot role above Quiet if assign fails)_") +
+            `\nRole hides synced on **${hideCount}** categories/channels`
           : `Quarantine role: **not created** — ${roleResult.error ?? "missing Manage Roles"}`,
         botAdmin
           ? "Bot has **Administrator** — full empty-server Quiet Mode is available."
