@@ -234,7 +234,7 @@ async function handleCashStoreRebuildFind(interaction: StringSelectMenuInteracti
     }
   }
   if (!item) {
-    await interaction.editReply("That item is gone — open `/cashstore` again.");
+    await interaction.editReply("That item is gone — open `/casino store` again.");
     return;
   }
   await purchaseItem(interaction, item);

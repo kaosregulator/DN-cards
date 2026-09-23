@@ -98,6 +98,50 @@ export async function earnCash(
   return { ...next, symbol };
 }
 
+/** Move cash → bank (casino deposit). */
+export async function depositCash(
+  guildId: string,
+  userId: string,
+  amount: number,
+): Promise<UbUserBalance & { symbol: string }> {
+  if (amount <= 0) throw new CashError("Deposit amount must be positive.");
+  const { ubGuildId, symbol } = await requireEconomy(guildId);
+  const bal = await ubApi.getUserBalance(ubGuildId, userId);
+  if ((bal.cash ?? 0) < amount) {
+    throw new CashError(
+      `Not enough cash to deposit. Have **${fmtCash(bal.cash ?? 0)}** ${symbol}, need **${fmtCash(amount)}**.`,
+    );
+  }
+  const next = await ubApi.patchUserBalance(ubGuildId, userId, {
+    cash: -amount,
+    bank: amount,
+    reason: "Casino deposit",
+  });
+  return { ...next, symbol };
+}
+
+/** Move bank → cash (casino withdraw). */
+export async function withdrawCash(
+  guildId: string,
+  userId: string,
+  amount: number,
+): Promise<UbUserBalance & { symbol: string }> {
+  if (amount <= 0) throw new CashError("Withdraw amount must be positive.");
+  const { ubGuildId, symbol } = await requireEconomy(guildId);
+  const bal = await ubApi.getUserBalance(ubGuildId, userId);
+  if ((bal.bank ?? 0) < amount) {
+    throw new CashError(
+      `Not enough bank to withdraw. Have **${fmtCash(bal.bank ?? 0)}** ${symbol} in bank, need **${fmtCash(amount)}**.`,
+    );
+  }
+  const next = await ubApi.patchUserBalance(ubGuildId, userId, {
+    cash: amount,
+    bank: -amount,
+    reason: "Casino withdraw",
+  });
+  return { ...next, symbol };
+}
+
 export function fmtCash(n: number): string {
   return new Intl.NumberFormat().format(Math.trunc(n));
 }

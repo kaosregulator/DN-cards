@@ -35,6 +35,10 @@ export const ubSettingsTable = pgTable("ub_settings", {
   dailyMax: integer("daily_max").notNull().default(250),
   // Income + gambling cooldowns (UnbelievaBoat API does not expose theirs).
   cooldowns: jsonb("cooldowns").$type<Record<string, number>>().notNull().default({}),
+  // Discord log channel for economy / casino events (universal logger also checks guild bot_log).
+  logChannelId: text("log_channel_id"),
+  // Roles that cannot be robbed (Discord role snowflakes).
+  robImmuneRoleIds: jsonb("rob_immune_role_ids").$type<string[]>().notNull().default([]),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -55,11 +59,13 @@ export const ubRoleLinksTable = pgTable("ub_role_links", {
   price: integer("price").notNull().default(0),
   // When purchased/assigned: also grant this much UB cash (0 = none).
   grantCash: integer("grant_cash").notNull().default(0),
+  // Recurring role income claimed via /casino collect (UnbelievaBoat-style).
+  incomeAmount: integer("income_amount").notNull().default(0),
   // Soft category for the hub UI (vip, perk, cosmetic, custom, …).
   category: text("category").notNull().default("custom"),
   emoji: text("emoji"),
   enabled: boolean("enabled").notNull().default(true),
-  // Free-form metadata (requirements notes, sync flags, etc.).
+  // Free-form metadata (requirements notes, sync flags, robImmune, …).
   meta: jsonb("meta").$type<Record<string, unknown>>().notNull().default({}),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -138,6 +144,7 @@ export const ubGameStateTable = pgTable("ub_game_state", {
   lastRouletteAt: timestamp("last_roulette_at"),
   lastBlackjackAt: timestamp("last_blackjack_at"),
   lastRussianAt: timestamp("last_russian_at"),
+  lastCollectAt: timestamp("last_collect_at"),
   dailyStreak: integer("daily_streak").notNull().default(0),
   meta: jsonb("meta").$type<Record<string, unknown>>().notNull().default({}),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),

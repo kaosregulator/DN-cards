@@ -23,10 +23,14 @@ async function makeSyntheticAvatarDataUrl(): Promise<string> {
   ctx.fillStyle = "#F2C9A0";
   ctx.fillRect(0, 0, size, size);
 
-  // Hair
+  // Hair (ellipse via scaled arc — napi-rs Ctx typing is sparse)
   ctx.fillStyle = "#2B1A12";
   ctx.beginPath();
-  ctx.ellipse(size / 2, size * 0.22, size * 0.42, size * 0.28, 0, 0, Math.PI * 2);
+  ctx.save();
+  ctx.translate(size / 2, size * 0.22);
+  ctx.scale(1, 0.28 / 0.42);
+  ctx.arc(0, 0, size * 0.42, 0, Math.PI * 2);
+  ctx.restore();
   ctx.fill();
 
   // Eyes

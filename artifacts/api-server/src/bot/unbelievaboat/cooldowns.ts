@@ -10,6 +10,7 @@ import { CashError } from "./cash.js";
 /** Defaults aligned with UnbelievaBoat FAQ (income + game window). */
 export const DEFAULT_COOLDOWNS = {
   dailySec: 20 * 60 * 60,       // Cash Check-In (our addon)
+  collectSec: 24 * 60 * 60,     // Role income collect
   workSec: 4 * 60 * 60,         // /work style
   crimeSec: 4 * 60 * 60,
   begSec: 4 * 60 * 60,          // /slut
@@ -23,6 +24,7 @@ export const DEFAULT_COOLDOWNS = {
 
 export type CooldownConfig = {
   dailySec: number;
+  collectSec: number;
   workSec: number;
   crimeSec: number;
   begSec: number;
@@ -43,6 +45,7 @@ export function readCooldowns(settings: UbSettings): CooldownConfig {
   };
   return {
     dailySec: n(src.dailySec, DEFAULT_COOLDOWNS.dailySec),
+    collectSec: n(src.collectSec, DEFAULT_COOLDOWNS.collectSec),
     workSec: n(src.workSec, DEFAULT_COOLDOWNS.workSec),
     crimeSec: n(src.crimeSec, DEFAULT_COOLDOWNS.crimeSec),
     begSec: n(src.begSec, DEFAULT_COOLDOWNS.begSec),
@@ -69,14 +72,15 @@ export function cdText(ms: number): string {
   return rm ? `${h}h ${rm}m` : `${h}h`;
 }
 
-type IncomeKey = "daily" | "work" | "crime" | "beg" | "rob";
+type IncomeKey = "daily" | "work" | "crime" | "beg" | "rob" | "collect";
 
-const INCOME_FIELD: Record<IncomeKey, "lastDailyAt" | "lastRobAt" | "lastBegAt" | "lastWorkAt" | "lastCrimeAt"> = {
+const INCOME_FIELD: Record<IncomeKey, "lastDailyAt" | "lastRobAt" | "lastBegAt" | "lastWorkAt" | "lastCrimeAt" | "lastCollectAt"> = {
   daily: "lastDailyAt",
   work: "lastWorkAt",
   crime: "lastCrimeAt",
   beg: "lastBegAt",
   rob: "lastRobAt",
+  collect: "lastCollectAt",
 };
 
 const INCOME_SEC: Record<IncomeKey, keyof CooldownConfig> = {
@@ -85,6 +89,7 @@ const INCOME_SEC: Record<IncomeKey, keyof CooldownConfig> = {
   crime: "crimeSec",
   beg: "begSec",
   rob: "robSec",
+  collect: "collectSec",
 };
 
 export async function assertIncomeCooldown(guildId: string, userId: string, kind: IncomeKey): Promise<void> {
