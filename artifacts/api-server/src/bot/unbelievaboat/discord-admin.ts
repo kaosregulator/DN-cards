@@ -72,6 +72,7 @@ function hubRows() {
       new ButtonBuilder().setCustomId("ubadmin:adjust").setLabel("Adjust cash").setEmoji("✏️").setStyle(ButtonStyle.Success),
       new ButtonBuilder().setCustomId("ubadmin:set_cash").setLabel("Set cash").setEmoji("🔢").setStyle(ButtonStyle.Success),
       new ButtonBuilder().setCustomId("ubadmin:add_perk").setLabel("Add perk").setEmoji("✨").setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId("ubadmin:cooldowns").setLabel("Cooldowns").setEmoji("⏱️").setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId("ubadmin:pet_tools").setLabel("Pet tools").setEmoji("🛠️").setStyle(ButtonStyle.Secondary),
     ),
   ];
@@ -342,6 +343,86 @@ export async function handleUbAdminComponent(
     return;
   }
 
+  if (id === "ubadmin:cooldowns" && interaction.isButton()) {
+    await interaction.deferUpdate();
+    const { readCooldowns, DEFAULT_COOLDOWNS, cdText } = await import("./cooldowns.js");
+    const s = await getOrCreateUbSettings(guildId);
+    const cds = readCooldowns(s);
+    const embed = new EmbedBuilder()
+      .setColor(0xe91e8c)
+      .setAuthor({ name: "UnbelievaBoat cooldowns", iconURL: UB_ICON })
+      .setTitle("Income & game limits")
+      .setDescription(
+        [
+          "_UnbelievaBoat’s own `set-cooldown` settings are **not** on their public API — these are **our** Discord defaults (mirrored from their FAQ)._",
+          "",
+          `**Cash Check-In** · ${cdText(cds.dailySec * 1000)}`,
+          `**Work** · ${cdText(cds.workSec * 1000)}`,
+          `**Crime** · ${cdText(cds.crimeSec * 1000)}`,
+          `**Beg (/slut)** · ${cdText(cds.begSec * 1000)}`,
+          `**Rob** · ${cdText(cds.robSec * 1000)}`,
+          `**Games** · **${cds.gameUses}** plays / ${cdText(cds.gameWindowSec * 1000)} (gap ${cds.gameGapSec}s)`,
+          "",
+          `Factory defaults: work/crime/beg 4h · rob 1d · games ${DEFAULT_COOLDOWNS.gameUses}/${DEFAULT_COOLDOWNS.gameWindowSec}s`,
+        ].join("\n"),
+      );
+    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId("ubadmin:cd_edit").setLabel("Edit cooldowns").setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId("ubadmin:cd_reset").setLabel("Reset defaults").setStyle(ButtonStyle.Danger),
+    );
+    await interaction.editReply({ embeds: [embed], components: [row, ...hubRows()] });
+    return;
+  }
+
+  if (id === "ubadmin:cd_reset" && interaction.isButton()) {
+    await interaction.deferUpdate();
+    const { DEFAULT_COOLDOWNS, readCooldowns, cdText } = await import("./cooldowns.js");
+    await updateUbSettings(guildId, { cooldowns: { ...DEFAULT_COOLDOWNS } });
+    await writeUbAudit(guildId, interaction.user.id, "discord_cd_reset", {});
+    const s = await getOrCreateUbSettings(guildId);
+    const cds = readCooldowns(s);
+    const embed = new EmbedBuilder()
+      .setColor(0xe91e8c)
+      .setAuthor({ name: "UnbelievaBoat cooldowns", iconURL: UB_ICON })
+      .setTitle("Reset to defaults")
+      .setDescription(`Games **${cds.gameUses}** / ${cdText(cds.gameWindowSec * 1000)} · work ${cdText(cds.workSec * 1000)}`);
+    await interaction.editReply({ embeds: [embed], components: hubRows() });
+    return;
+  }
+
+  if (id === "ubadmin:cd_edit" && interaction.isButton()) {
+    const { readCooldowns } = await import("./cooldowns.js");
+    const s = await getOrCreateUbSettings(guildId);
+    const cds = readCooldowns(s);
+    const modal = new ModalBuilder()
+      .setCustomId("ubadmin:cd_modal")
+      .setTitle("Edit cooldowns (seconds)");
+    modal.addComponents(
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder().setCustomId("work").setLabel("Work cooldown (seconds)")
+          .setStyle(TextInputStyle.Short).setRequired(true).setValue(String(cds.workSec)),
+      ),
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder().setCustomId("crime").setLabel("Crime cooldown (seconds)")
+          .setStyle(TextInputStyle.Short).setRequired(true).setValue(String(cds.crimeSec)),
+      ),
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder().setCustomId("rob").setLabel("Rob cooldown (seconds)")
+          .setStyle(TextInputStyle.Short).setRequired(true).setValue(String(cds.robSec)),
+      ),
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder().setCustomId("game_uses").setLabel("Game uses per window")
+          .setStyle(TextInputStyle.Short).setRequired(true).setValue(String(cds.gameUses)),
+      ),
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder().setCustomId("game_window").setLabel("Game window (seconds)")
+          .setStyle(TextInputStyle.Short).setRequired(true).setValue(String(cds.gameWindowSec)),
+      ),
+    );
+    await interaction.showModal(modal);
+    return;
+  }
+
   if (id === "ubadmin:set_cash" && interaction.isButton()) {
     const menu = new UserSelectMenuBuilder()
       .setCustomId("ubadmin:set_user")
@@ -580,6 +661,39 @@ export async function handleUbAdminModal(interaction: ModalSubmitInteraction): P
     return;
   }
   const parts = interaction.customId.split(":");
+
+  if (parts[1] === "cd_modal") {
+    const work = Number(interaction.fields.getTextInputValue("work"));
+    const crime = Number(interaction.fields.getTextInputValue("crime"));
+    const rob = Number(interaction.fields.getTextInputValue("rob"));
+    const gameUses = Number(interaction.fields.getTextInputValue("game_uses"));
+    const gameWindow = Number(interaction.fields.getTextInputValue("game_window"));
+    if (![work, crime, rob, gameUses, gameWindow].every(n => Number.isFinite(n) && n >= 0)) {
+      await interaction.reply({ content: "All values must be non-negative numbers.", ...EPHEMERAL });
+      return;
+    }
+    await interaction.deferReply(EPHEMERAL);
+    const { readCooldowns, DEFAULT_COOLDOWNS } = await import("./cooldowns.js");
+    const s = await getOrCreateUbSettings(guildId);
+    const prev = readCooldowns(s);
+    const next = {
+      ...prev,
+      workSec: Math.floor(work),
+      crimeSec: Math.floor(crime),
+      robSec: Math.floor(rob),
+      gameUses: Math.max(1, Math.floor(gameUses)),
+      gameWindowSec: Math.max(30, Math.floor(gameWindow)),
+      dailySec: prev.dailySec || DEFAULT_COOLDOWNS.dailySec,
+      begSec: prev.begSec || DEFAULT_COOLDOWNS.begSec,
+      gameGapSec: prev.gameGapSec ?? DEFAULT_COOLDOWNS.gameGapSec,
+    };
+    await updateUbSettings(guildId, { cooldowns: next });
+    await writeUbAudit(guildId, interaction.user.id, "discord_cd_edit", next);
+    await interaction.editReply(
+      `Updated cooldowns.\nWork **${next.workSec}s** · crime **${next.crimeSec}s** · rob **${next.robSec}s**\nGames **${next.gameUses}** / **${next.gameWindowSec}s**`,
+    );
+    return;
+  }
 
   if (parts[1] === "perk_modal" && parts[2]) {
     const roleId = parts[2];

@@ -30,7 +30,7 @@ export async function updateUbSettings(
   guildId: string,
   patch: Partial<Pick<UbSettings,
     "ubGuildId" | "enabled" | "leaderboardSort" | "petsSpendUb" | "currencyLabel" |
-    "gamesEnabled" | "storeEnabled" | "dailyMin" | "dailyMax"
+    "gamesEnabled" | "storeEnabled" | "dailyMin" | "dailyMax" | "cooldowns"
   >>,
 ): Promise<UbSettings> {
   await getOrCreateUbSettings(guildId);
@@ -223,6 +223,8 @@ export async function touchGameState(
     lastDailyAt: Date | null;
     lastRobAt: Date | null;
     lastBegAt: Date | null;
+    lastWorkAt: Date | null;
+    lastCrimeAt: Date | null;
     lastRouletteAt: Date | null;
     lastBlackjackAt: Date | null;
     lastRussianAt: Date | null;

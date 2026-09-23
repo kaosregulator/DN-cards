@@ -33,6 +33,8 @@ export const ubSettingsTable = pgTable("ub_settings", {
   storeEnabled: boolean("store_enabled").notNull().default(true),
   dailyMin: integer("daily_min").notNull().default(100),
   dailyMax: integer("daily_max").notNull().default(250),
+  // Income + gambling cooldowns (UnbelievaBoat API does not expose theirs).
+  cooldowns: jsonb("cooldowns").$type<Record<string, number>>().notNull().default({}),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -131,6 +133,8 @@ export const ubGameStateTable = pgTable("ub_game_state", {
   lastDailyAt: timestamp("last_daily_at"),
   lastRobAt: timestamp("last_rob_at"),
   lastBegAt: timestamp("last_beg_at"),
+  lastWorkAt: timestamp("last_work_at"),
+  lastCrimeAt: timestamp("last_crime_at"),
   lastRouletteAt: timestamp("last_roulette_at"),
   lastBlackjackAt: timestamp("last_blackjack_at"),
   lastRussianAt: timestamp("last_russian_at"),

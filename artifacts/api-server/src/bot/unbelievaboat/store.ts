@@ -19,7 +19,9 @@ import {
   writeUbAudit,
 } from "../../lib/unbelievaboat/db.js";
 import { UNBELIEVABOAT_AUTHOR, UNBELIEVABOAT_COLOR } from "./branding.js";
-import { CashError, spendCash, fmtCash, requireEconomy } from "./cash.js";
+import {
+  CashError, spendFunds, fmtCash, requireEconomy, formatSpendNote,
+} from "./cash.js";
 import { replyThenPostAsUnbelievaBoat } from "./webhook.js";
 
 const EPHEMERAL = { flags: MessageFlags.Ephemeral } as const;
@@ -251,7 +253,8 @@ async function purchaseItem(interaction: StringSelectMenuInteraction, item: Stas
     return;
   }
 
-  const bal = await spendCash(guild.id, interaction.user.id, item.price, `Perk store: ${item.name}`);
+  const spent = await spendFunds(guild.id, interaction.user.id, item.price, `Perk store: ${item.name}`);
+  const bal = spent.balance;
   try {
     await member.roles.add(role, `UnbelievaBoat perk store: ${item.name}`);
   } catch {
@@ -264,6 +267,7 @@ async function purchaseItem(interaction: StringSelectMenuInteraction, item: Stas
 
   await writeUbAudit(guild.id, interaction.user.id, "store_purchase", {
     item: item.name, price: item.price, roleId: role.id,
+    fromCash: spent.fromCash, fromBank: spent.fromBank,
   });
 
   const purchaseEmbed = new EmbedBuilder()
@@ -273,9 +277,10 @@ async function purchaseItem(interaction: StringSelectMenuInteraction, item: Stas
     .setDescription(
       [
         `${interaction.user} bought **${item.name}** for **${fmtCash(item.price)}** ${bal.symbol}`,
+        formatSpendNote(spent.fromCash, spent.fromBank, bal.symbol),
         `Role granted: ${role}`,
         item.purchaseMessage ? `\n${item.purchaseMessage}` : null,
-        `\nCash left **${fmtCash(bal.cash)}** ${bal.symbol}`,
+        `\nCash **${fmtCash(bal.cash)}** · bank **${fmtCash(bal.bank)}** ${bal.symbol}`,
       ].filter(Boolean).join("\n"),
     );
   if (item.imageUrl) purchaseEmbed.setImage(item.imageUrl);

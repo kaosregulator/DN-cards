@@ -152,9 +152,10 @@ Slash names below are what Discord registers today. Prefer **`/help`** and **`/u
 | `/begin` | Onboarding |
 | `/afk` | AFK Secretary |
 | `/pet` | Pets (when enabled) |
-| `/cashcheck` · `/cashgames` · `/cashstore` | UnbelievaBoat Cash Check-In, mini-games, perk store (posts as UnbelievaBoat) |
-| `/roulette` · `/blackjack` · `/russian` · `/rob` | UnbelievaBoat cash games |
-| `/unbelievaboat` | Admin Discord dashboard for UnbelievaBoat cash / store / games |
+| `/cashcheck` · `/cashgames` · `/cashstore` | UnbelievaBoat Cash Check-In, casino hub, perk store (posts as UnbelievaBoat) |
+| `/blackjack` · `/higherlower` · `/redblack` · `/roulette` · `/slots` | Interactive + table games (cash then bank) |
+| `/cashwork` · `/cashcrime` · `/rob` · `/russian` | Income & chaos |
+| `/unbelievaboat` | Admin Discord dashboard (cooldowns, cash, store) |
 
 ### Staff / admin
 | Command | Description |
