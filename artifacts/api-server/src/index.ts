@@ -1278,6 +1278,18 @@ async function runBootMigrations() {
     ALTER TABLE quiet_guild_settings
       ADD COLUMN IF NOT EXISTS quiet_role_id TEXT
   `);
+  await pool.query(`
+    ALTER TABLE quiet_guild_settings
+      ADD COLUMN IF NOT EXISTS sanctuary_modes JSONB NOT NULL DEFAULT '[]'::jsonb
+  `);
+  await pool.query(`
+    ALTER TABLE quiet_state
+      ADD COLUMN IF NOT EXISTS mode_key TEXT NOT NULL DEFAULT 'quiet'
+  `);
+  await pool.query(`
+    ALTER TABLE quiet_state
+      ADD COLUMN IF NOT EXISTS quarantine_role_id TEXT
+  `);
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS quiet_state (

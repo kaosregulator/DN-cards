@@ -31,6 +31,11 @@ export const quietGuildSettingsTable = pgTable("quiet_guild_settings", {
   blacklistRoleId: text("blacklist_role_id"),
   /** Whether to send prepared Quiet Room audio / voice notes. */
   audioEnabled: boolean("audio_enabled").notNull().default(true),
+  /**
+   * Renameable sanctuary modes (quiet / vacation / loa / step_away / custom).
+   * JSON array of { key, label, roleName, channelName, topic, intro, enabled, roleId, channelId }.
+   */
+  sanctuaryModes: jsonb("sanctuary_modes").$type<unknown[]>().notNull().default([]),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
@@ -50,6 +55,10 @@ export const quietStateTable = pgTable("quiet_state", {
   enteredBy: text("entered_by").notNull(),
   /** Optional theme key when staff places someone (or self-picks). */
   theme: text("theme"),
+  /** Sanctuary mode key: quiet | vacation | loa | step_away | custom… */
+  modeKey: text("mode_key").notNull().default("quiet"),
+  /** Quarantine role assigned for this session (mode-specific). */
+  quarantineRoleId: text("quarantine_role_id"),
   quoteId: text("quote_id"),
   quoteText: text("quote_text"),
   audioId: text("audio_id"),

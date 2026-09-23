@@ -63,7 +63,10 @@ import { handleAfkInteraction } from "./afk/interactions.js";
 import { handleAfkMessage } from "./afk/message-hook.js";
 import { handleAfkPresence, startAfkSweeper } from "./afk/presence-hook.js";
 // ── Quiet Mode / Quiet Room (addon) ──────────────────────────────────────────
-import { handleQuietCommand, handleQuietSetupCommand } from "./quiet/commands.js";
+import {
+  handleQuietCommand, handleQuietSetupCommand,
+  handleVacationCommand, handleLoaCommand,
+} from "./quiet/commands.js";
 import { handleQuietInteraction } from "./quiet/interactions.js";
 import { startQuietRecovery } from "./quiet/recovery.js";
 import { startQuietAudioPrebuild } from "./quiet/audio/generate.js";
@@ -970,6 +973,10 @@ export async function startBot() {
         await handleAfkSetupCommand(interaction);
       } else if (cmd === "quiet") {
         await handleQuietCommand(interaction);
+      } else if (cmd === "vacation") {
+        await handleVacationCommand(interaction);
+      } else if (cmd === "loa") {
+        await handleLoaCommand(interaction);
       } else if (cmd === "quietsetup") {
         await handleQuietSetupCommand(interaction);
       } else if (cmd === "begin") {
@@ -1032,7 +1039,8 @@ export async function startBot() {
     // Explicitly routed in the interaction handler above.
     "battle", "battleadmin", "market", "squad", "raid", "raidadmin",
     "giveaway",
-    "whisper", "adminsecret", "echo", "afk", "afksetup", "quiet", "quietsetup",
+    "whisper", "adminsecret", "echo", "afk", "afksetup",
+    "quiet", "vacation", "loa", "quietsetup",
     "begin", "show_shiny",
     "quote",
     "collection_hub", "hq", "hqadmin", "hqbuild",

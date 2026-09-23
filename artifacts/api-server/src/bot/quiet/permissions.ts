@@ -28,6 +28,15 @@ const CONNECT = PermissionFlagsBits.Connect;
 const QUIET_ROLE_NAME = "Quiet";
 const QUIET_ROLE_COLOR = 0x1b2838;
 
+export interface SanctuaryRoleOpts {
+  /** Display / Discord role name (defaults to Quiet). */
+  roleName?: string;
+  /** Previously stored role id for this mode. */
+  preferRoleId?: string | null;
+  /** Persist newly created / resolved role id. */
+  persistRoleId?: (roleId: string) => Promise<void>;
+}
+
 const BOT_ROOM_PERMS = [
   PermissionFlagsBits.ViewChannel,
   PermissionFlagsBits.SendMessages,
@@ -101,7 +110,12 @@ export function memberHasAdminBypass(member: GuildMember): boolean {
   return member.permissions.has(PermissionFlagsBits.Administrator);
 }
 
-function botCapability(guild: Guild): {
+/**
+ * Detect bot powers. Administrator may live on an integration-managed role
+ * (e.g. "DN Bot") — we check computed perms AND each role's permission bit so
+ * we never tell owners to "grant Admin" when the bot role already has it.
+ */
+export function botCapability(guild: Guild): {
   me: GuildMember | null;
   isAdmin: boolean;
   canManageRoles: boolean;
@@ -111,13 +125,46 @@ function botCapability(guild: Guild): {
   if (!me) {
     return { me: null, isAdmin: false, canManageRoles: false, canManageChannels: false };
   }
-  const isAdmin = me.permissions.has(PermissionFlagsBits.Administrator);
+  const computedAdmin = me.permissions.has(PermissionFlagsBits.Administrator);
+  const roleAdmin = me.roles.cache.some(r =>
+    r.permissions.has(PermissionFlagsBits.Administrator),
+  );
+  const isAdmin = computedAdmin || roleAdmin;
   return {
     me,
     isAdmin,
     canManageRoles: isAdmin || me.permissions.has(PermissionFlagsBits.ManageRoles),
     canManageChannels: isAdmin || me.permissions.has(PermissionFlagsBits.ManageChannels),
   };
+}
+
+/** Ensure channel cache is complete before hide sync (partial cache = leaked channels). */
+async function refreshChannelCache(guild: Guild): Promise<void> {
+  try {
+    await guild.channels.fetch();
+  } catch (err) {
+    logger.debug({ err, guildId: guild.id }, "Quiet channel cache refresh failed — using cache");
+  }
+}
+
+async function applyMemberHides(
+  member: GuildMember,
+  quietChannelId: string,
+  quietCategoryId: string | null,
+): Promise<string[]> {
+  const applied: string[] = [];
+  const targets = collectHideTargets(member.guild, quietChannelId, quietCategoryId);
+  for (const ch of targets) {
+    try {
+      await ch.permissionOverwrites.edit(member.id, { ...QUIET_HIDE_OVERWRITE }, {
+        reason: "Quiet Mode: member isolation hide",
+      });
+      applied.push(ch.id);
+    } catch (err) {
+      logger.debug({ err, channelId: ch.id, userId: member.id }, "Quiet member hide skipped");
+    }
+  }
+  return applied;
 }
 
 /**
@@ -129,12 +176,23 @@ function maxQuietRolePosition(me: GuildMember): number {
   return Math.max(1, top.position - 1);
 }
 
-export async function ensureQuietRoom(guild: Guild): Promise<{
+export interface SanctuaryRoomOpts {
+  channelName?: string;
+  topic?: string;
+  preferChannelId?: string | null;
+  persistChannelId?: (channelId: string) => Promise<void>;
+}
+
+export async function ensureQuietRoom(guild: Guild, roomOpts?: SanctuaryRoomOpts): Promise<{
   channel: TextChannel;
   categoryId: string | null;
 }> {
   const settings = await getQuietSettings(guild.id);
   const { me } = botCapability(guild);
+  const channelName = (roomOpts?.channelName?.trim() || "quiet-room").slice(0, 100);
+  const topic = roomOpts?.topic?.trim()
+    || "Silent corner. One channel. No chat — just rest, then I'm Ready.";
+  const preferChannelId = roomOpts?.preferChannelId ?? settings.quietChannelId;
 
   let category: CategoryChannel | null = null;
   if (settings.quietCategoryId) {
@@ -159,8 +217,8 @@ export async function ensureQuietRoom(guild: Guild): Promise<{
   }
 
   let channel: TextChannel | null = null;
-  if (settings.quietChannelId) {
-    const existing = guild.channels.cache.get(settings.quietChannelId);
+  if (preferChannelId) {
+    const existing = guild.channels.cache.get(preferChannelId);
     if (existing?.isTextBased() && !existing.isThread() && existing.type === ChannelType.GuildText) {
       channel = existing as TextChannel;
     }
@@ -168,10 +226,10 @@ export async function ensureQuietRoom(guild: Guild): Promise<{
 
   if (!channel) {
     channel = await guild.channels.create({
-      name: "quiet-room",
+      name: channelName,
       type: ChannelType.GuildText,
       parent: category.id,
-      topic: "Silent corner. One channel. No chat — just rest, then I'm Ready.",
+      topic,
       permissionOverwrites: [
         {
           id: guild.roles.everyone.id,
@@ -179,11 +237,21 @@ export async function ensureQuietRoom(guild: Guild): Promise<{
         },
         ...(me ? [{ id: me.id, allow: BOT_ROOM_PERMS }] : []),
       ],
-      reason: "Quiet Mode: Quiet Room channel",
+      reason: `Sanctuary: ${channelName} channel`,
     });
-    await updateQuietSettings(guild.id, { quietChannelId: channel.id });
-  } else if (channel.parentId !== category.id) {
-    await channel.setParent(category.id, { lockPermissions: false }).catch(() => {});
+    if (roomOpts?.persistChannelId) {
+      await roomOpts.persistChannelId(channel.id);
+    } else {
+      await updateQuietSettings(guild.id, { quietChannelId: channel.id });
+    }
+  } else {
+    if (channel.parentId !== category.id) {
+      await channel.setParent(category.id, { lockPermissions: false }).catch(() => {});
+    }
+    if (channel.name !== channelName) {
+      await channel.setName(channelName, "Sanctuary: sync renameable mode channel").catch(() => {});
+    }
+    await channel.setTopic(topic).catch(() => {});
   }
 
   // Keep Quiet Room private from @everyone (outsiders never see who is quiet).
@@ -244,60 +312,72 @@ async function grantQuietRoleRoomAccess(
 }
 
 /**
- * Create or refresh the Quiet quarantine role, hoist it high under the bot.
+ * Create or refresh a sanctuary quarantine role (Quiet / Vacation / LOA / …),
+ * positioned high under the bot. Zero perms, never hoist, never mentionable.
  */
-export async function ensureQuietRole(guild: Guild): Promise<{
+export async function ensureQuietRole(guild: Guild, opts?: SanctuaryRoleOpts): Promise<{
   role: Role | null;
   positionedHigh: boolean;
   error?: string;
 }> {
   const settings = await getQuietSettings(guild.id);
   const { me, canManageRoles } = botCapability(guild);
+  const roleName = (opts?.roleName?.trim() || QUIET_ROLE_NAME).slice(0, 100);
+  const preferId = opts?.preferRoleId ?? settings.quietRoleId;
 
   if (!me || !canManageRoles) {
     return {
       role: null,
       positionedHigh: false,
       error:
-        "Bot needs **Administrator** (recommended) or **Manage Roles** to create the Quiet quarantine role.",
+        "Bot needs **Administrator** (on its bot role) or **Manage Roles** to create the quarantine role.",
     };
   }
 
   let role: Role | null = null;
-  if (settings.quietRoleId) {
-    role = guild.roles.cache.get(settings.quietRoleId) ?? null;
+  if (preferId) {
+    role = guild.roles.cache.get(preferId) ?? null;
     if (!role) {
-      role = await guild.roles.fetch(settings.quietRoleId).catch(() => null);
+      role = await guild.roles.fetch(preferId).catch(() => null);
     }
   }
 
   if (!role) {
     // Prefer an existing identically named unmanaged role we previously made.
     const byName = guild.roles.cache.find(
-      r => r.name === QUIET_ROLE_NAME && r.managed === false && r.id !== guild.id,
+      r => r.name === roleName && r.managed === false && r.id !== guild.id,
     );
     if (byName && byName.editable) {
       role = byName;
     } else {
       try {
         role = await guild.roles.create({
-          name: QUIET_ROLE_NAME,
+          name: roleName,
           color: QUIET_ROLE_COLOR,
           permissions: [],
           hoist: false,
           mentionable: false,
-          reason: "Quiet Mode: quarantine role — empty-server isolation",
+          reason: `Sanctuary: ${roleName} quarantine role — empty-server isolation`,
         });
       } catch (err) {
-        logger.warn({ err, guildId: guild.id }, "Quiet role create failed");
+        logger.warn({ err, guildId: guild.id, roleName }, "Sanctuary role create failed");
         return {
           role: null,
           positionedHigh: false,
-          error: "Couldn't create the Quiet role (need Manage Roles / Admin).",
+          error: `Couldn't create the **${roleName}** role (need Manage Roles / Admin on the bot role).`,
         };
       }
     }
-    await updateQuietSettings(guild.id, { quietRoleId: role.id });
+    if (opts?.persistRoleId) {
+      await opts.persistRoleId(role.id);
+    } else {
+      await updateQuietSettings(guild.id, { quietRoleId: role.id });
+    }
+  }
+
+  // Keep Discord name in sync when servers rename the mode's roleName.
+  if (role.name !== roleName && role.editable) {
+    await role.setName(roleName, "Sanctuary: sync renameable mode role name").catch(() => {});
   }
 
   let positionedHigh = false;
@@ -490,18 +570,33 @@ function buildCapabilityNote(opts: {
       const mentions = opts.stillVisible.map(id => `<#${id}>`).join(", ");
       parts.push(
         `**Still visible to this member (isolation incomplete):** ${mentions}` +
-        (opts.stillVisible.length >= 12 ? " _(and possibly more)_" : "") +
-        "\nGrant the bot **Administrator**, then re-run `/quietsetup ensure_room` and have them `/quiet` again.",
+        (opts.stillVisible.length >= 12 ? " _(and possibly more)_" : ""),
       );
+      if (opts.botIsAdmin) {
+        parts.push(
+          "The bot **already has Administrator** (via its bot role). " +
+          "Re-run `/quietsetup ensure_room`, then `/quiet` again so hides re-sync. " +
+          "Confirm the **Quiet** role sits **below** the bot role (DN Bot / your bot), " +
+          "and that this member is not themselves an Administrator.",
+        );
+      } else {
+        parts.push(
+          "Grant the bot **Administrator** on its bot role (or Manage Roles + Manage Channels with the bot role above Quiet), " +
+          "then re-run `/quietsetup ensure_room` and `/quiet` again.",
+        );
+      }
     } else if (opts.isolationMode === "partial") {
       parts.push(
-        "Some hides were applied via member overwrites only — less reliable than the Quiet role. " +
-        "Grant the bot **Administrator** for a true empty-server experience.",
+        opts.botIsAdmin
+          ? "Isolation used a mixed path. Re-run `/quietsetup ensure_room` then `/quiet` to fully re-sync hides."
+          : "Some hides were applied via member overwrites only. Grant the bot **Administrator** on its bot role for the most reliable empty-server quarantine.",
       );
     } else {
       parts.push(
-        "Only Quiet Room access was granted — other channels were **not** hidden. " +
-        "Grant the bot **Administrator** (or Manage Roles + Manage Channels), then `/quietsetup ensure_room`.",
+        opts.botIsAdmin
+          ? "Only Quiet Room access was granted this pass. Re-run `/quietsetup ensure_room` then `/quiet`."
+          : "Only Quiet Room access was granted — other channels were **not** hidden. " +
+            "Grant the bot **Administrator** on its bot role (or Manage Roles + Manage Channels), then `/quietsetup ensure_room`.",
       );
     }
   }
@@ -510,12 +605,18 @@ function buildCapabilityNote(opts: {
 }
 
 /**
- * Apply empty-server isolation: quarantine role (preferred) + Quiet Room allow.
+ * Apply empty-server isolation: quarantine role + member-level hides.
+ *
+ * Member denies are ALWAYS applied when the bot can manage channels — role
+ * overwrites alone can miss channels (partial cache / sync quirks), and we
+ * previously skipped member hides whenever the role path looked "full", which
+ * left people seeing the whole server even when the bot already had Admin.
  */
 export async function applyQuietIsolation(
   member: GuildMember,
   quietChannel: TextChannel,
   quietCategoryId: string | null,
+  roleOpts?: SanctuaryRoleOpts,
 ): Promise<QuietIsolationResult> {
   const guild = member.guild;
   const adminBypass = memberHasAdminBypass(member);
@@ -527,12 +628,14 @@ export async function applyQuietIsolation(
   let roleError: string | undefined;
   let isolationMode: QuietIsolationMode = "room_only";
 
+  await refreshChannelCache(guild);
+
   const category = quietCategoryId
     ? (guild.channels.cache.get(quietCategoryId) as CategoryChannel | undefined) ?? null
     : null;
 
   // ── 1) Quarantine role path ────────────────────────────────────────────────
-  const ensured = await ensureQuietRole(guild);
+  const ensured = await ensureQuietRole(guild, roleOpts);
   if (ensured.role) {
     roleId = ensured.role.id;
     positionedHigh = ensured.positionedHigh;
@@ -548,6 +651,12 @@ export async function applyQuietIsolation(
     if (canManageChannels) {
       const hidden = await syncQuietRoleHides(guild, ensured.role, quietChannel.id, quietCategoryId);
       applied.push(...hidden);
+      logger.info({
+        guildId: guild.id,
+        roleId: ensured.role.id,
+        hideCount: hidden.length,
+        botIsAdmin,
+      }, "Quiet role hides synced");
     }
 
     // Assign role (only if bot's highest role is above Quiet).
@@ -562,14 +671,9 @@ export async function applyQuietIsolation(
         roleError = "Couldn't add the Quiet role to this member (hierarchy or permissions).";
       }
     } else {
-      roleError =
-        "Bot role must sit **above** the Quiet role to assign it. Move the bot higher, or grant **Administrator**.";
-    }
-
-    if (roleAssigned && canManageChannels) {
-      isolationMode = "full";
-    } else if (roleAssigned || canManageChannels) {
-      isolationMode = "partial";
+      roleError = botIsAdmin
+        ? "Bot has Administrator but its **role position** is not above Quiet. Drag **DN Bot** (or your bot role) above **Quiet** in Server Settings → Roles."
+        : "Bot role must sit **above** the Quiet role to assign it. Move the bot higher, or grant **Administrator** on the bot role.";
     }
   } else {
     roleError = ensured.error;
@@ -597,28 +701,63 @@ export async function applyQuietIsolation(
     }
   }
 
-  // ── 3) Fallback member hides if role path incomplete ───────────────────────
-  if (isolationMode !== "full" && canManageChannels) {
-    const targets = collectHideTargets(guild, quietChannel.id, quietCategoryId);
-    for (const ch of targets) {
-      try {
-        await ch.permissionOverwrites.edit(member.id, { ...QUIET_HIDE_OVERWRITE });
-        applied.push(ch.id);
-      } catch (err) {
-        logger.debug({ err, channelId: ch.id }, "Quiet member hide overwrite skipped");
-      }
-    }
-    if (isolationMode === "room_only") isolationMode = "partial";
+  // ── 3) ALWAYS member-level hides when possible (beats other role allows) ───
+  if (canManageChannels) {
+    const memberHidden = await applyMemberHides(member, quietChannel.id, quietCategoryId);
+    applied.push(...memberHidden);
   }
 
-  // Re-fetch member roles for accurate visibility scan after role add.
-  const fresh = await guild.members.fetch(member.id).catch(() => member);
-  const stillVisibleChannelIds = adminBypass
+  if (roleAssigned && canManageChannels) {
+    isolationMode = "full";
+  } else if (roleAssigned || canManageChannels) {
+    isolationMode = "partial";
+  }
+
+  // Re-fetch member for accurate visibility scan after role + overwrites.
+  let fresh = await guild.members.fetch({ user: member.id, force: true }).catch(() => member);
+  let stillVisibleChannelIds = adminBypass
     ? []
     : listStillVisibleChannels(fresh, quietChannel.id, quietCategoryId);
 
+  // Second pass: hammer any leftovers with member denies (role path can miss).
+  if (!adminBypass && canManageChannels && stillVisibleChannelIds.length > 0) {
+    for (const id of stillVisibleChannelIds) {
+      const ch = guild.channels.cache.get(id);
+      if (!ch || !("permissionOverwrites" in ch)) continue;
+      try {
+        await ch.permissionOverwrites.edit(member.id, { ...QUIET_HIDE_OVERWRITE }, {
+          reason: "Quiet Mode: second-pass member hide",
+        });
+        applied.push(id);
+      } catch (err) {
+        logger.debug({ err, channelId: id }, "Quiet second-pass hide skipped");
+      }
+    }
+    // Also re-deny parent categories of leftovers.
+    for (const id of [...stillVisibleChannelIds]) {
+      const ch = guild.channels.cache.get(id);
+      const parentId = ch && "parentId" in ch ? ch.parentId : null;
+      if (!parentId || parentId === quietCategoryId) continue;
+      const parent = guild.channels.cache.get(parentId);
+      if (!parent || !("permissionOverwrites" in parent)) continue;
+      try {
+        await parent.permissionOverwrites.edit(member.id, { ...QUIET_HIDE_OVERWRITE }, {
+          reason: "Quiet Mode: second-pass category hide",
+        });
+        applied.push(parentId);
+      } catch { /* ignore */ }
+    }
+    fresh = await guild.members.fetch({ user: member.id, force: true }).catch(() => fresh);
+    stillVisibleChannelIds = listStillVisibleChannels(fresh, quietChannel.id, quietCategoryId);
+  }
+
   if (isolationMode === "full" && stillVisibleChannelIds.length > 0 && !adminBypass) {
     isolationMode = "partial";
+  }
+  if (isolationMode === "full" && stillVisibleChannelIds.length === 0) {
+    // keep full
+  } else if (canManageChannels && stillVisibleChannelIds.length === 0 && roleAssigned) {
+    isolationMode = "full";
   }
 
   const note = buildCapabilityNote({
@@ -632,6 +771,16 @@ export async function applyQuietIsolation(
     stillVisible: stillVisibleChannelIds,
     roleError,
   });
+
+  logger.info({
+    guildId: guild.id,
+    userId: member.id,
+    botIsAdmin,
+    roleAssigned,
+    isolationMode,
+    stillVisible: stillVisibleChannelIds.length,
+    applied: applied.length,
+  }, "Quiet isolation applied");
 
   return {
     targets: [...new Set(applied)],

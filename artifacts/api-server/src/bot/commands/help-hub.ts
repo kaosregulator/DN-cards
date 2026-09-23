@@ -311,12 +311,12 @@ const PAGES: Record<HelpSection, PageFn> = {
           "`/afk clear` — come back now, whatever return trigger you picked\n" +
           "`/afk messages` — read notes left while you were away\n" +
           "`/afk_setup` — (admin) configure the Secretary — incl. **Reply As Member** (answer with your name + avatar)" },
-        { name: "🌙 Quiet Room", value:
-          "`/quiet` — enter a silent one-channel Quiet Room (other channels hidden; no chat/reactions)\n" +
-          "`/quiet` again — emergency exit / bring yourself back (works after bot restarts)\n" +
-          "`/quiet user:@Member` — (staff) **toggle**: place them in, or **force them out** if already quiet\n" +
-          "`/quietsetup` — (admin) whitelist/blacklist roles, audio library, ensure Quiet Room + Quiet role\n" +
-          "Uses a Quiet quarantine role (not hoist/mentionable). Outsiders can't see the room. No public announcements." },
+        { name: "🌙 Sanctuary (Quiet / Vacation / LOA)", value:
+          "`/quiet` `[mode]` — silent one-channel room (Quiet, Vacation, LOA, or Step Away)\n" +
+          "`/vacation` · `/loa` — same isolation, different labels (servers can rename via `/quietsetup rename`)\n" +
+          "`/quiet` again — emergency exit · staff: `/quiet user:@Member` **force out**\n" +
+          "`/quietsetup ensure_room` — sync rooms + quarantine roles + hides\n" +
+          "Includes **Stones in the Water** — a short click-through release exercise. Outsiders can't see the room." },
       );
   },
 
@@ -350,7 +350,7 @@ const PAGES: Record<HelpSection, PageFn> = {
           "`/raid_admin create|edit|list|enable|delete` — co-op raid bosses\n" +
           "`/giveaway` → **⚙️ Admin** — quick-create, manage, end, cancel & reroll giveaways\n" +
           "`/echo …` — Echo-Whisper viewer roles, override & stats\n" +
-          "`/quietsetup` — Quiet Room + Quiet quarantine role · `/quiet user:@Member` — staff place **or force out**" },
+          "`/quietsetup` — sanctuary rooms/roles/renames · `/quiet` `/vacation` `/loa` — place **or force out**" },
         { name: "🌐 Website", value: `Public: **[${site}](${site})** · Admin dashboard: run \`/dashboard\` for your login link.` },
       );
   },

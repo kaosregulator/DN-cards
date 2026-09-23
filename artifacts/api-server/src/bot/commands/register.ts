@@ -4,7 +4,10 @@ import {
   type SlashCommandSubcommandsOnlyBuilder,
 } from "discord.js";
 import { buildAfkCommandJson, buildAfkSetupCommandJson } from "../afk/commands.js";
-import { buildQuietCommandJson, buildQuietSetupCommandJson } from "../quiet/commands.js";
+import {
+  buildQuietCommandJson, buildQuietSetupCommandJson,
+  buildVacationCommandJson, buildLoaCommandJson,
+} from "../quiet/commands.js";
 import { buildEmojiCommandJson, buildPostboardCommandJson } from "../emoji/commands/definition.js";
 import { buildQuoteCommandJson, buildQuoteContextMenuJson } from "../quote/definition.js";
 import { buildPetCommandJson, buildPetAdminCommandJson } from "../pets/command.js";
@@ -786,6 +789,8 @@ export function buildCommands() {
     buildAfkSetupCommandJson() as CommandJson,
     // ── Quiet Mode / Quiet Room (addon) ──────────────────────────────────────
     buildQuietCommandJson() as CommandJson,
+    buildVacationCommandJson() as CommandJson,
+    buildLoaCommandJson() as CommandJson,
     buildQuietSetupCommandJson() as CommandJson,
   ]
     // Drop Hub-consolidated duplicates from the registered set (handlers stay).

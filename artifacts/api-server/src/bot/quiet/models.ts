@@ -51,6 +51,7 @@ export async function updateQuietSettings(
     whitelistRoleId: string | null;
     blacklistRoleId: string | null;
     audioEnabled: boolean;
+    sanctuaryModes: unknown[];
   }>,
 ): Promise<QuietGuildSettingsRow> {
   await getQuietSettings(guildId);
@@ -92,6 +93,8 @@ export async function upsertQuietState(input: {
   userId: string;
   enteredBy: string;
   theme?: string | null;
+  modeKey?: string | null;
+  quarantineRoleId?: string | null;
   quoteId?: string | null;
   quoteText?: string | null;
   audioId?: string | null;
@@ -107,6 +110,8 @@ export async function upsertQuietState(input: {
       userId: input.userId,
       enteredBy: input.enteredBy,
       theme: input.theme ?? null,
+      modeKey: input.modeKey ?? "quiet",
+      quarantineRoleId: input.quarantineRoleId ?? null,
       quoteId: input.quoteId ?? null,
       quoteText: input.quoteText ?? null,
       audioId: input.audioId ?? null,
@@ -122,6 +127,8 @@ export async function upsertQuietState(input: {
       set: {
         enteredBy: input.enteredBy,
         theme: input.theme ?? null,
+        modeKey: input.modeKey ?? "quiet",
+        quarantineRoleId: input.quarantineRoleId ?? null,
         quoteId: input.quoteId ?? null,
         quoteText: input.quoteText ?? null,
         audioId: input.audioId ?? null,
@@ -143,6 +150,8 @@ export async function patchQuietState(
   patch: Partial<Pick<
     QuietStateRow,
     | "theme"
+    | "modeKey"
+    | "quarantineRoleId"
     | "quoteId"
     | "quoteText"
     | "audioId"
