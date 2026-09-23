@@ -176,7 +176,7 @@ Slash names below are what Discord registers today. Prefer **`/help`** and **`/u
 
 > **Moved into `/user-hub` (no longer standalone slash):** `/daily`, `/collection`, `/wishlist`, `/quests`, `/market`, `/squad`, and related profile shortcuts. Handlers may still exist in code for hub buttons — they are not registered as top-level slash commands.
 >
-> **Removed from the live bot:** Bob entertainment (`/bob`, minigames hub, `/bob_talk`). Schema leftovers may remain; the module is not registered.
+> **Removed from the live bot:** Bob entertainment (`/bob`, `/bob_*`, `/bob_admin`). Schema leftovers may remain; the module is not registered. (Unrelated: `/minigames` Wild Mini-Games admin panel is still live.)
 
 ---
 
@@ -237,7 +237,7 @@ tank · aircraft · ship · vehicle · infantry · boss · community · event ·
 | [`docs/headquarters.md`](./docs/headquarters.md) | Player HQ |
 | [`AGENTS.md`](./AGENTS.md) | Cloud / agent environment notes |
 
-`replit.md` also covers advanced config, card sets, giveaways, Bob, and schema gotchas.
+`replit.md` also covers advanced config, card sets, giveaways, sanctuary, and schema gotchas (including retired Bob leftovers).
 
 ---
 

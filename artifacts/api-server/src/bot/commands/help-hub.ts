@@ -344,7 +344,7 @@ const PAGES: Record<HelpSection, PageFn> = {
           "`/rarity …` — names, colors, worth, burn, weights, + **🧾 Order** (your order now drives battle/raid **strength**, not just display)" },
         { name: "🎨 Appearance & Embeds", value:
           "`/embed set key:<embed> field:<field> value:<v>` — customize any embed (incl. **key:help** to rebrand this guide)\n" +
-          "`/rarityname …` — rename/recolor the Mythic tier" },
+          "`/rarity edit` — rename/recolor any built-in tier (including Mythic)" },
         { name: "⚔️ Feature Admin", value:
           "`/battle_admin` — battle system hub (setup, rules, rewards, seasons)\n" +
           "`/raid_admin create|edit|list|enable|delete` — co-op raid bosses\n" +

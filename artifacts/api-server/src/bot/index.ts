@@ -79,7 +79,7 @@ export async function startBot() {
   if (!HOME_GUILD_ID) {
     logger.warn(
       "HOME_GUILD_ID is not set. Commands that mutate globally shared data " +
-      "(addcard, editcard, removecard, import, /sets_admin create|rename|delete|add|remove|…) " +
+      "(addcard, editcard, removecard, import, /set_hub · /set_admin …) " +
       "will be blocked for ALL guilds until HOME_GUILD_ID is configured. " +
       "Set it to your home server's Discord guild ID in the environment variables.",
     );
@@ -152,7 +152,7 @@ export async function startBot() {
     );
     try {
       // Default 27-card roster is NOT auto-seeded — admins opt-in from `!setup`
-      // ("Load Defaults" button) or `/sets_admin load file:<.json>`. Keeps fresh
+      // ("Load Defaults" button) or set hubs (`/set_hub` / `/set_admin`). Keeps fresh
       // servers free to load only their own custom roster.
       await initAllGuilds(client);
       // Warm the progression (level) frame image cache so the synchronous draw
@@ -1010,12 +1010,12 @@ export async function startBot() {
         const { handleUbAdminCommand } = await import("./unbelievaboat/discord-admin.js");
         await handleUbAdminCommand(interaction);
       } else if (USER_HUB_COMMANDS.has(cmd)) {
-        // Flattened player commands (/burn, /daily, …) + standalone player
-        // commands that carry their own subcommands (/sets, /rep, …).
+        // Flattened player commands (/burn, /pack, …) + hub-backed handlers
+        // (daily/collection/… via /user-hub) and other player routes.
         await handleUserCommand(interaction, cmd);
       } else if (ADMIN_HUB_COMMANDS.has(cmd)) {
-        // Flattened admin commands (/drop, /give, /setup, …) + standalone admin
-        // commands with their own subcommands (/sets_admin, /event, …).
+        // Flattened admin commands (/drop, /give, /setup, …) + set hubs
+        // (/set_hub, /set_admin), /event, etc.
         await handleAdminCommand(interaction, cmd);
       }
     } catch (err) {

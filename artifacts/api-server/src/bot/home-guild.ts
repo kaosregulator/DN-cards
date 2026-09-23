@@ -11,9 +11,9 @@
  * sets table, card_set_memberships table).
  *
  * Guild-scoped operations remain available from ANY server:
- *   /sets_admin active|deactivate|view|showweights|list
+ *   /set_hub · /set_admin (activate/deactivate/view/weights via hubs)
  *   /rarity, /embed, /config, /admin_hub, /setup
- *   gameplay commands (/drop, /give, /event, /daily, /pack, …)
+ *   gameplay commands (/drop, /give, /event, /user-hub daily, /pack, …)
  *
  * How to find your guild ID:
  *   Discord → right-click the server icon (Developer Mode on) → Copy Server ID
