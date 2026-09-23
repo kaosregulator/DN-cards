@@ -13,7 +13,7 @@ import {
   applyQuietIsolation, clearQuietIsolation, describeIsolationNote, ensureQuietRoom,
 } from "./permissions.js";
 import { pickQuietAudio, describeAudioCard } from "./audio/select.js";
-import { prepareQuickFallback, prepareRecording, startQuietAudioPrebuild } from "./audio/generate.js";
+import { prepareQuietExperience, startQuietAudioPrebuild } from "./audio/generate.js";
 import { sendQuietVoiceMessage } from "./audio/voice-message.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -156,14 +156,12 @@ export async function enterQuietMode(opts: EnterQuietOptions): Promise<EnterQuie
   const audioOn = settings.audioEnabled && !opts.skipAudio;
   if (audioOn) {
     try {
-      let recording = await prepareRecording({
+      const recording = await prepareQuietExperience({
         entry: audioPick.entry,
-        durationSec: Math.min(audioPick.durationSec, 180), // prefer ready 3m; longer can prebuild later
+        durationSec: audioPick.durationSec,
         quoteText: audioPick.withSpeech ? quote.text : null,
-      }).catch(async () => prepareQuickFallback(audioPick.entry));
-
-      // If long prep is slow, we already fell back inside catch; still try quick if nullish
-      if (!recording) recording = await prepareQuickFallback(audioPick.entry);
+        withSpeech: audioPick.withSpeech,
+      });
 
       const sent = await sendQuietVoiceMessage(quietChannel, recording);
       if (sent.ok) {
@@ -179,8 +177,21 @@ export async function enterQuietMode(opts: EnterQuietOptions): Promise<EnterQuie
         });
         messageIds.push(desc.id);
         logger.info({
-          guildId, userId, audioId: recording.audioId, mode: sent.mode, seconds: recording.durationSec, clock,
+          guildId,
+          userId,
+          audioId: recording.audioId,
+          mode: sent.mode,
+          detail: sent.detail,
+          seconds: recording.durationSec,
+          clock,
+          sourceKind: recording.sourceKind,
+          sourceAssetId: recording.sourceAssetId,
+          hasSpeech: recording.hasSpeech,
         }, "Quiet audio delivered");
+      } else {
+        logger.warn({
+          guildId, userId, audioId: audioPick.entry.id, error: sent.error,
+        }, "Quiet audio delivery failed");
       }
     } catch (err) {
       logger.warn({ err, guildId, userId }, "Quiet audio skipped");

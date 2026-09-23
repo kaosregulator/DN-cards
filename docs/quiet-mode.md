@@ -23,12 +23,14 @@ Addon feature: a peaceful digital “ghost town” corner inside the server.
 
 ## Audio / voice notes
 
-- Built-in catalog under `artifacts/api-server/src/bot/quiet/audio/`.
-- Ambience is **procedurally generated** with ffmpeg (original / public domain).
-- Spoken quotes use ffmpeg **flite** TTS when available; otherwise ambience-only + quote in the embed.
-- Prefers Discord **native Voice Messages** (`IS_VOICE_MESSAGE` + OGG Opus + waveform) via the attachment upload REST flow.
-- If native VM creation fails, falls back to a normal playable audio attachment (documented in-channel).
-- Cache/prebuild pool: `QUIET_AUDIO_CACHE` or `./quiet-audio-cache` — warm at bot ready.
+- **Curated CC0 library** discovered via [Openverse](https://docs.openverse.org/api/reference/search_algorithm.html) (`license=cc0`), harvested into `artifacts/api-server/quiet-audio/sources/` — see `SOURCES.md` + `LICENSE.md`.
+- Procedural ffmpeg ambience remains as **fallback** when a curated file is missing.
+- Priority at play time: **curated recording → cached prepared mix → procedural**.
+- Primary lengths: **3:00** and **5:00** (theme-aware selection, anti-repeat).
+- Optional spoken quotes via ffmpeg **flite**, mixed quietly into the ambience (~6–12s in).
+- Prefers Discord **native Voice Messages** (`IS_VOICE_MESSAGE` + OGG Opus + waveform) via REST upload; logs success / failure reason / attachment fallback.
+- Cache/prebuild pool: `QUIET_AUDIO_CACHE` or `./quiet-audio-cache` — warms curated 3m/5m at bot ready.
+- Re-harvest sources: `node artifacts/api-server/scripts/harvest-quiet-audio.mjs`
 
 ### Native voice message notes
 
@@ -40,7 +42,7 @@ Discord requires:
 - Upload `Content-Type` beginning with `audio/`
 - Typical encode: mono Opus in OGG, 48 kHz, ~32 kbps
 
-Bot limitation: some guilds/API paths may reject bot native voice messages; fallback still delivers playable audio.
+Bot limitation: some guilds/API paths may reject bot native voice messages; fallback still delivers playable audio. Logs include `Quiet native voice message succeeded`, `… failed — trying attachment fallback`, and `Quiet fallback attachment used`.
 
 ## Safety / edge cases
 
@@ -58,6 +60,11 @@ Bot limitation: some guilds/API paths may reject bot native voice messages; fall
 
 ```
 lib/db/src/schema/quiet.ts
+artifacts/api-server/quiet-audio/
+  LICENSE.md
+  SOURCES.md
+  sources/…          # harvested CC0 previews
+artifacts/api-server/scripts/harvest-quiet-audio.mjs
 artifacts/api-server/src/bot/quiet/
   commands.ts
   interactions.ts
@@ -69,6 +76,8 @@ artifacts/api-server/src/bot/quiet/
   quotes.ts
   audio/
     catalog.ts
+    sources.ts
+    openverse.ts
     generate.ts
     select.ts
     voice-message.ts

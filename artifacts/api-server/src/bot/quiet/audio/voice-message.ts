@@ -14,14 +14,10 @@ import type { PreparedRecording } from "./generate.js";
 //  - Attachment needs duration_secs + waveform (base64 ≤256 bytes)
 //  - Client format: mono Opus in OGG, 48kHz, ~32kbps
 //  - Upload Content-Type must be audio/* or waveform/duration may be stripped
-//
-// discord.js can set MessageFlags.IsVoiceMessage, but duration/waveform are most
-// reliable via the attachment upload REST flow. We try REST first, then fall
-// back to a normal playable audio attachment (still useful, not native VM UI).
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type VoiceSendResult =
-  | { ok: true; mode: "native" | "attachment"; message: Message }
+  | { ok: true; mode: "native" | "attachment"; message: Message; detail?: string }
   | { ok: false; mode: "failed"; error: string };
 
 async function sendNativeViaRest(
@@ -36,7 +32,6 @@ async function sendNativeViaRest(
   const fileSize = (await stat(recording.filePath)).size;
   const filename = "voice-message.ogg";
 
-  // 1) Request upload URL
   const attachRes = await fetch(
     `https://discord.com/api/v10/channels/${channel.id}/attachments`,
     {
@@ -59,7 +54,6 @@ async function sendNativeViaRest(
   const slot = attachJson.attachments[0];
   if (!slot) throw new Error("No attachment upload slot returned");
 
-  // 2) PUT bytes with audio content-type
   const putRes = await fetch(slot.upload_url, {
     method: "PUT",
     headers: { "Content-Type": "audio/ogg" },
@@ -69,7 +63,6 @@ async function sendNativeViaRest(
     throw new Error(`upload PUT ${putRes.status}: ${await putRes.text()}`);
   }
 
-  // 3) Create voice message
   const msgRes = await fetch(
     `https://discord.com/api/v10/channels/${channel.id}/messages`,
     {
@@ -94,27 +87,26 @@ async function sendNativeViaRest(
     throw new Error(`voice message create ${msgRes.status}: ${await msgRes.text()}`);
   }
   const raw = await msgRes.json() as { id: string };
-  // Fetch through discord.js so callers get a real Message
   return channel.messages.fetch(raw.id);
 }
 
 async function sendAsAttachment(
   channel: TextChannel,
   recording: PreparedRecording,
-): Promise<Message> {
+): Promise<{ message: Message; attemptedNativeFlag: boolean }> {
   const file = new AttachmentBuilder(recording.filePath, {
     name: `${recording.title.replace(/\s+/g, "-").toLowerCase()}.ogg`,
   });
-  // Try native flag with file upload (some API paths honor it).
   try {
-    return await channel.send({
+    const message = await channel.send({
       files: [file],
-      // discord.js typings omit IsVoiceMessage on MessageCreateOptions.flags;
-      // cast — Discord accepts 8192 for native voice messages.
       flags: MessageFlags.IsVoiceMessage as never,
     });
-  } catch {
-    return channel.send({ files: [file] });
+    return { message, attemptedNativeFlag: true };
+  } catch (err) {
+    logger.debug({ err, audioId: recording.audioId }, "Attachment+IsVoiceMessage failed — plain attachment");
+    const message = await channel.send({ files: [file] });
+    return { message, attemptedNativeFlag: false };
   }
 }
 
@@ -128,18 +120,57 @@ export async function sendQuietVoiceMessage(
 ): Promise<VoiceSendResult> {
   try {
     const message = await sendNativeViaRest(channel, recording);
-    // Heuristic: native VMs carry the flag on the created message.
     const native = Boolean(message.flags?.has(MessageFlags.IsVoiceMessage));
-    return { ok: true, mode: native ? "native" : "attachment", message };
+    if (native) {
+      logger.info({
+        audioId: recording.audioId,
+        durationSec: recording.durationSec,
+        sourceKind: recording.sourceKind,
+        channelId: channel.id,
+      }, "Quiet native voice message succeeded");
+      return { ok: true, mode: "native", message, detail: "rest_upload_is_voice_message" };
+    }
+    logger.warn({
+      audioId: recording.audioId,
+      channelId: channel.id,
+    }, "Quiet voice REST succeeded but IS_VOICE_MESSAGE flag missing — treating as attachment");
+    return { ok: true, mode: "attachment", message, detail: "rest_ok_flag_missing" };
   } catch (err) {
-    logger.warn({ err, audioId: recording.audioId }, "Native voice message failed — trying attachment fallback");
+    const reason = err instanceof Error ? err.message : String(err);
+    logger.warn({
+      err,
+      reason,
+      audioId: recording.audioId,
+      durationSec: recording.durationSec,
+      sourceKind: recording.sourceKind,
+      channelId: channel.id,
+    }, "Quiet native voice message failed — trying attachment fallback");
     try {
-      const message = await sendAsAttachment(channel, recording);
+      const { message, attemptedNativeFlag } = await sendAsAttachment(channel, recording);
       const native = Boolean(message.flags?.has(MessageFlags.IsVoiceMessage));
-      return { ok: true, mode: native ? "native" : "attachment", message };
+      if (native) {
+        logger.info({
+          audioId: recording.audioId,
+          channelId: channel.id,
+          attemptedNativeFlag,
+        }, "Quiet native voice message succeeded via attachment path");
+        return { ok: true, mode: "native", message, detail: "attachment_path_native" };
+      }
+      logger.info({
+        audioId: recording.audioId,
+        channelId: channel.id,
+        reason,
+        attemptedNativeFlag,
+      }, "Quiet fallback attachment used");
+      return { ok: true, mode: "attachment", message, detail: `fallback_after: ${reason}` };
     } catch (err2) {
       const error = err2 instanceof Error ? err2.message : String(err2);
-      logger.error({ err: err2 }, "Quiet voice send failed entirely");
+      logger.error({
+        err: err2,
+        nativeFailReason: reason,
+        audioId: recording.audioId,
+        channelId: channel.id,
+      }, "Quiet voice send failed entirely");
       return { ok: false, mode: "failed", error };
     }
   }
