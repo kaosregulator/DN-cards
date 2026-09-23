@@ -5,7 +5,7 @@ import {
 import { logger } from "../../lib/logger.js";
 import {
   deleteQuietState, getQuietPrefs, getQuietSettings, getQuietState,
-  patchQuietState, rememberQuietSelection, upsertQuietState,
+  patchQuietState, rememberQuietSelection, updateQuietSettings, upsertQuietState,
 } from "./models.js";
 import { QUIET_BRAND, QUIET_CUSTOM, QUIET_EMOJI, formatDurationLabel } from "./shared.js";
 import { pickQuietQuote, type QuietTheme } from "./quotes.js";
@@ -16,10 +16,14 @@ import {
 import { pickQuietAudio, describeAudioCard } from "./audio/select.js";
 import { prepareQuietExperience, startQuietAudioPrebuild } from "./audio/generate.js";
 import { sendQuietVoiceMessage } from "./audio/voice-message.js";
+import {
+  getModeOrDefault, mergeSanctuaryModes, patchMode, type SanctuaryMode,
+} from "./modes.js";
+import { buildReleaseGameStart } from "./games/release.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Quiet Mode lifecycle — enter / leave / room UX
-// Enter adds the Quiet quarantine role; leave removes it. DB-backed for safety.
+// Sanctuary lifecycle — Quiet / Vacation / LOA / Step Away
+// Enter adds a quarantine role; leave removes it. DB-backed for safety.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface EnterQuietOptions {
@@ -27,6 +31,8 @@ export interface EnterQuietOptions {
   enteredBy: string;
   theme?: QuietTheme | null;
   lastChannelId?: string | null;
+  /** Sanctuary mode key (quiet | vacation | loa | step_away). */
+  modeKey?: string | null;
   /** Prefer skipping audio (tests / degraded). */
   skipAudio?: boolean;
 }
@@ -38,6 +44,8 @@ export interface EnterQuietResult {
   adminBypass?: boolean;
   isolationMode?: QuietIsolationMode;
   isolationNote?: string | null;
+  modeKey?: string;
+  modeLabel?: string;
   error?: string;
 }
 
@@ -51,22 +59,45 @@ function readyButton(): ActionRowBuilder<ButtonBuilder> {
   );
 }
 
-function roomEmbed(quoteText: string): EmbedBuilder {
+function roomEmbed(mode: SanctuaryMode, quoteText: string): EmbedBuilder {
   return new EmbedBuilder()
     .setColor(QUIET_BRAND.COLOR)
-    .setTitle(`${QUIET_EMOJI.MOON} QUIET ROOM`)
+    .setTitle(`${QUIET_EMOJI.MOON} ${mode.label.toUpperCase()}`)
     .setDescription(
-      "This is the only channel you can see.\n\n" +
-      "No chatting. No reacting. Nothing to add.\n" +
-      "Just stillness — until you're ready.\n\n" +
-      "You don't need to explain anything.\n\n" +
+      `${mode.intro}\n\n` +
       `${QUIET_EMOJI.THOUGHT} *"${quoteText}"*`,
     )
     .setFooter({ text: QUIET_BRAND.FOOTER });
 }
 
+async function resolveMode(guildId: string, modeKey?: string | null): Promise<{
+  mode: SanctuaryMode;
+  modes: SanctuaryMode[];
+}> {
+  const settings = await getQuietSettings(guildId);
+  let modes = mergeSanctuaryModes(settings.sanctuaryModes);
+  // Seed legacy quiet channel/role into the quiet mode once.
+  const quiet = modes.find(m => m.key === "quiet");
+  if (quiet) {
+    let changed = false;
+    if (!quiet.channelId && settings.quietChannelId) {
+      quiet.channelId = settings.quietChannelId;
+      changed = true;
+    }
+    if (!quiet.roleId && settings.quietRoleId) {
+      quiet.roleId = settings.quietRoleId;
+      changed = true;
+    }
+    if (changed) {
+      modes = modes.map(m => (m.key === "quiet" ? quiet : m));
+      await updateQuietSettings(guildId, { sanctuaryModes: modes });
+    }
+  }
+  return { mode: getModeOrDefault(modes, modeKey), modes };
+}
+
 /**
- * Enter Quiet Mode for a member. Idempotent if already quiet (returns alreadyQuiet).
+ * Enter a sanctuary mode (Quiet / Vacation / LOA / …). Idempotent if already in.
  */
 export async function enterQuietMode(opts: EnterQuietOptions): Promise<EnterQuietResult> {
   startQuietAudioPrebuild();
@@ -77,23 +108,46 @@ export async function enterQuietMode(opts: EnterQuietOptions): Promise<EnterQuie
 
   const existing = await getQuietState(guildId, userId);
   if (existing) {
-    return { ok: true, alreadyQuiet: true, quietChannelId: (await getQuietSettings(guildId)).quietChannelId ?? undefined };
+    return {
+      ok: true,
+      alreadyQuiet: true,
+      quietChannelId: (await getQuietSettings(guildId)).quietChannelId ?? undefined,
+      modeKey: existing.modeKey,
+    };
   }
 
   const settings = await getQuietSettings(guildId);
   if (!settings.enabled) {
-    return { ok: false, error: "Quiet Mode is disabled in this server." };
+    return { ok: false, error: "Sanctuary / Quiet Mode is disabled in this server." };
+  }
+
+  const { mode, modes } = await resolveMode(guildId, opts.modeKey);
+  if (!mode.enabled) {
+    return { ok: false, error: `**${mode.label}** is turned off in this server.` };
   }
 
   let quietChannel: TextChannel;
   let categoryId: string | null;
   try {
-    const room = await ensureQuietRoom(guild);
+    const room = await ensureQuietRoom(guild, {
+      channelName: mode.channelName,
+      topic: mode.topic,
+      preferChannelId: mode.channelId,
+      persistChannelId: async (channelId) => {
+        const next = patchMode(modes, mode.key, { channelId });
+        const patch: { sanctuaryModes: typeof next; quietChannelId?: string } = {
+          sanctuaryModes: next,
+        };
+        if (mode.key === "quiet") patch.quietChannelId = channelId;
+        await updateQuietSettings(guildId, patch);
+        mode.channelId = channelId;
+      },
+    });
     quietChannel = room.channel;
     categoryId = room.categoryId;
   } catch (err) {
-    logger.error({ err, guildId }, "Quiet Room ensure failed");
-    return { ok: false, error: "Couldn't open the Quiet Room (need Manage Channels)." };
+    logger.error({ err, guildId, mode: mode.key }, "Sanctuary room ensure failed");
+    return { ok: false, error: `Couldn't open **${mode.label}** (need Manage Channels / Admin on the bot role).` };
   }
 
   const prefs = await getQuietPrefs(guildId, userId);
@@ -109,6 +163,8 @@ export async function enterQuietMode(opts: EnterQuietOptions): Promise<EnterQuie
     userId,
     enteredBy: opts.enteredBy,
     theme: opts.theme ?? null,
+    modeKey: mode.key,
+    quarantineRoleId: mode.roleId,
     quoteId: quote.id,
     quoteText: quote.text,
     audioId: audioPick.entry.id,
@@ -123,12 +179,27 @@ export async function enterQuietMode(opts: EnterQuietOptions): Promise<EnterQuie
   let adminBypass = false;
   let isolationMode: QuietIsolationMode = "room_only";
   let isolationNote: string | null = null;
+  let quarantineRoleId: string | null = mode.roleId;
   try {
-    const iso = await applyQuietIsolation(member, quietChannel, categoryId);
+    const iso = await applyQuietIsolation(member, quietChannel, categoryId, {
+      roleName: mode.roleName,
+      preferRoleId: mode.roleId,
+      persistRoleId: async (roleId) => {
+        const next = patchMode(modes, mode.key, { roleId });
+        const patch: { sanctuaryModes: typeof next; quietRoleId?: string } = {
+          sanctuaryModes: next,
+        };
+        if (mode.key === "quiet") patch.quietRoleId = roleId;
+        await updateQuietSettings(guildId, patch);
+        mode.roleId = roleId;
+        quarantineRoleId = roleId;
+      },
+    });
     targets = iso.targets;
     adminBypass = iso.adminBypass;
     isolationMode = iso.isolationMode;
     isolationNote = iso.note;
+    if (iso.roleId) quarantineRoleId = iso.roleId;
   } catch (err) {
     logger.error({ err, guildId, userId }, "Quiet isolation failed");
     await patchQuietState(guildId, userId, { needsRecovery: true });
@@ -138,16 +209,18 @@ export async function enterQuietMode(opts: EnterQuietOptions): Promise<EnterQuie
   await patchQuietState(guildId, userId, {
     overwriteTargets: targets,
     adminBypass,
+    quarantineRoleId,
+    modeKey: mode.key,
   });
 
   const messageIds: string[] = [];
 
-  // Main Quiet Room card + return button
+  // Main room card + return button
   try {
-    const embed = roomEmbed(quote.text);
+    const embed = roomEmbed(mode, quote.text);
     if (isolationNote) {
       embed.addFields({
-        name: isolationMode === "full" && !adminBypass ? "Quiet Room" : "Heads up",
+        name: isolationMode === "full" && !adminBypass ? mode.label : "Heads up",
         value: isolationNote.slice(0, 1024),
       });
     }
@@ -160,7 +233,19 @@ export async function enterQuietMode(opts: EnterQuietOptions): Promise<EnterQuie
     });
     messageIds.push(card.id);
   } catch (err) {
-    logger.error({ err }, "Quiet Room embed send failed");
+    logger.error({ err }, "Sanctuary room embed send failed");
+  }
+
+  // Therapeutic release game (click-animated embed)
+  try {
+    const game = buildReleaseGameStart();
+    const gameMsg = await quietChannel.send({
+      embeds: [game.embed],
+      components: [game.row],
+    });
+    messageIds.push(gameMsg.id);
+  } catch (err) {
+    logger.debug({ err }, "Sanctuary release game skipped");
   }
 
   // Audio experience (non-blocking failure)
@@ -217,13 +302,16 @@ export async function enterQuietMode(opts: EnterQuietOptions): Promise<EnterQuie
 
   logger.info({
     guildId, userId, enteredBy: opts.enteredBy, adminBypass, isolationMode,
-  }, "User entered Quiet Mode");
+    modeKey: mode.key,
+  }, "User entered sanctuary mode");
   return {
     ok: true,
     quietChannelId: quietChannel.id,
     adminBypass,
     isolationMode,
     isolationNote,
+    modeKey: mode.key,
+    modeLabel: mode.label,
   };
 }
 
@@ -250,20 +338,25 @@ export async function leaveQuietMode(
   const settings = await getQuietSettings(guildId);
 
   // Clear isolation first so the member can see the server again ASAP.
+  const roleToRemove = state.quarantineRoleId ?? settings.quietRoleId;
   try {
     await clearQuietIsolation(
       guild,
       userId,
       state.overwriteTargets ?? [],
-      settings.quietRoleId,
+      roleToRemove,
     );
   } catch (err) {
     logger.warn({ err, guildId, userId }, "Quiet isolation clear had errors");
   }
 
-  // Cleanup Quiet Room messages we posted for this session.
-  if (settings.quietChannelId && state.roomMessageIds?.length) {
-    const ch = guild.channels.cache.get(settings.quietChannelId);
+  // Cleanup sanctuary room messages we posted for this session.
+  const roomId = settings.quietChannelId; // may be mode channel via overwrites list messages
+  const modes = mergeSanctuaryModes(settings.sanctuaryModes);
+  const modeChannelId = modes.find(m => m.key === (state.modeKey ?? "quiet"))?.channelId
+    ?? roomId;
+  if (modeChannelId && state.roomMessageIds?.length) {
+    const ch = guild.channels.cache.get(modeChannelId);
     if (ch?.isTextBased()) {
       for (const mid of state.roomMessageIds) {
         await ch.messages.delete(mid).catch(() => {});
@@ -272,7 +365,7 @@ export async function leaveQuietMode(
   }
 
   await deleteQuietState(guildId, userId);
-  logger.info({ guildId, userId }, "User left Quiet Mode");
+  logger.info({ guildId, userId, modeKey: state.modeKey }, "User left sanctuary mode");
 
   if (opts?.welcomeBack !== false) {
     await sendWelcomeBack(member, state.lastChannelId).catch(err =>
@@ -329,14 +422,17 @@ export async function forceClearQuietState(
   if (!state) return;
   if (guild) {
     const settings = await getQuietSettings(guildId);
+    const modes = mergeSanctuaryModes(settings.sanctuaryModes);
+    const modeChannelId = modes.find(m => m.key === (state.modeKey ?? "quiet"))?.channelId
+      ?? settings.quietChannelId;
     await clearQuietIsolation(
       guild,
       userId,
       state.overwriteTargets ?? [],
-      settings.quietRoleId,
+      state.quarantineRoleId ?? settings.quietRoleId,
     ).catch(() => {});
-    if (settings.quietChannelId && state.roomMessageIds?.length) {
-      const ch = guild.channels.cache.get(settings.quietChannelId);
+    if (modeChannelId && state.roomMessageIds?.length) {
+      const ch = guild.channels.cache.get(modeChannelId);
       if (ch?.isTextBased()) {
         for (const mid of state.roomMessageIds) {
           await ch.messages.delete(mid).catch(() => {});

@@ -214,7 +214,7 @@ export const DEFAULTS_SET_NAME = "defaults";
 // Seed defaults ONLY on a completely empty database — never re-sync or re-add
 // after unload, so admin removals are permanent. Membership rows are added to
 // the "defaults" set (created if missing) so the cards are immediately
-// activatable via `/sets_admin active set:defaults`.
+// activatable via `/set_hub` / `/set_admin` (activate the "defaults" set).
 // Force-add default cards (used by /loadset defaults). Skips names already in DB.
 // Each newly-added card is also joined to the "defaults" set.
 export async function loadDefaultCards(actorGuildId: string): Promise<{ added: number; skipped: number }> {
@@ -428,7 +428,7 @@ export async function deleteSetByName(setName: string, actorGuildId: string): Pr
 // ── Card Sets v2 (first-class sets + memberships, Phase 1-3) ─────────────────
 // Replaces the ad-hoc cards.set_name aggregation with a proper sets table +
 // junction table. Guilds pick an active set via
-// /sets_admin active — only its cards spawn (Option B: no active set = no
+// /set_hub · /set_admin — only its cards spawn (Option B: no active set = no
 // random spawns).
 
 function slugifySetName(raw: string): string {
@@ -655,7 +655,7 @@ export async function getCardsInSet(setId: number, viewerGuildId?: string | null
 }
 
 /**
- * Cards that aren't a member of ANY set. Used by `/sets_admin exportall` so a
+ * Cards that aren't a member of ANY set. Used by set-hub export-all so a
  * single export gives admins a full backup even if some cards were never
  * assigned to a set (common on Server 2 where the legacy roster pre-dates
  * the sets system).

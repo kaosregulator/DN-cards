@@ -25,8 +25,7 @@ DN Cards is DarkNight's collectible military trading card game for the Roblox + 
 - DB schema: `lib/db/src/schema/cards.ts` (cards, collections, guilds, packs, daily, achievements, embeds, rarity profiles, custom rarities, dashboard users, card display overrides)
 - News schema: `lib/db/src/schema/news.ts`
 - Suggestions schema: `lib/db/src/schema/suggestions.ts`
-- Sets admin commands: `artifacts/api-server/src/bot/commands/sets-admin.ts` (`/sets_admin`)
-- Sets user commands: `artifacts/api-server/src/bot/commands/sets-user.ts` (`/sets`)
+- Sets admin helpers + hubs: `artifacts/api-server/src/bot/commands/sets-admin.ts`, `set-admin-hub.ts`, `sets-panel.ts` — live slash: `/set_hub`, `/set_admin` (not `/sets_admin`; there is no standalone `/sets` user command)
 - Website-only admin route: `artifacts/api-server/src/routes/admin.ts` (presentation-only — `card_display_overrides` upserts)
 - Public roster route (merges overrides): `artifacts/api-server/src/routes/dashboard.ts` `GET /cards`
 - News route: `artifacts/api-server/src/routes/news.ts`
@@ -34,24 +33,26 @@ DN Cards is DarkNight's collectible military trading card game for the Roblox + 
 - Bot entry: `artifacts/api-server/src/bot/index.ts`
 - Spawn manager: `artifacts/api-server/src/bot/spawn-manager.ts`
 - Admin commands: `artifacts/api-server/src/bot/commands/admin.ts`
-- Rarity admin (`/rarity` — profile/custom/card subcommand groups): `artifacts/api-server/src/bot/commands/rarity-admin.ts`
+- Rarity admin (`/rarity` hub): `artifacts/api-server/src/bot/commands/rarity-admin.ts`
 - Embed admin (`/embed` — show/set/reset): `artifacts/api-server/src/bot/commands/embed-admin.ts`
 - User commands: `artifacts/api-server/src/bot/commands/user.ts`
+- User Hub: `artifacts/api-server/src/bot/commands/user-hub.ts` (`/user-hub` — daily claim, collection, quests, wishlist, market, squad, reputation; several former standalone slash names are hub-only via `HUB_REPLACED_COMMANDS` in `register.ts`)
 - Trading commands: `artifacts/api-server/src/bot/commands/trading.ts`
 - Pack store: `artifacts/api-server/src/bot/commands/pack.ts`
-- Daily reward + achievements: `artifacts/api-server/src/bot/commands/daily.ts`
+- Daily reward handler (still used by `/user-hub` Daily; not registered as top-level `/daily`): `artifacts/api-server/src/bot/commands/daily.ts`
 - Achievement engine: `artifacts/api-server/src/bot/achievements.ts`
-- Wishlist: `artifacts/api-server/src/bot/commands/wishlist.ts`
-- Tradein (5→1 upgrade): `artifacts/api-server/src/bot/commands/tradein.ts`
+- Wishlist handler (hub-backed): `artifacts/api-server/src/bot/commands/wishlist.ts`
+- Tradein / Card Fusion (`/card_recycle`): `artifacts/api-server/src/bot/commands/tradein.ts`
 - Visual config panel: `artifacts/api-server/src/bot/commands/config-panel.ts`
+- Battles / raids: `artifacts/api-server/src/bot/battle/`, `artifacts/api-server/src/bot/raid/`, commands `battle.ts` / `battle-admin.ts` — `/battle`, `/battle phaser`, `/raid`, `/battle_admin`, `/raid_admin`
+- Sanctuary (Quiet / Vacation / LOA): `artifacts/api-server/src/bot/quiet/` — `/quiet`, `/vacation`, `/loa`, `/quiet_setup` (see `docs/quiet-mode.md`)
 - Card/rank data: `artifacts/api-server/src/bot/cards-data.ts`
 - DB helpers: `artifacts/api-server/src/bot/db.ts`
-- Slash command registration: `artifacts/api-server/src/bot/commands/register.ts`
+- Slash command registration: `artifacts/api-server/src/bot/commands/register.ts` (source of truth for live slash names)
 - Giveaway System schema: `lib/db/src/schema/giveaways.ts` (giveaways, giveaway_entries, giveaway_winners)
-- Giveaway System module: `artifacts/api-server/src/bot/giveaway/` (`db.ts` CRUD, `engine.ts` progress+winner draw, `embeds.ts` UI, `manager.ts` message/claim, `command.ts` user, `admin.ts` `/giveaway_admin`, `sweeper.ts` auto-end/reroll, `message-hook.ts` message tracking, `prizes.ts` payout)
+- Giveaway System module: `artifacts/api-server/src/bot/giveaway/` (`db.ts` CRUD, `engine.ts` progress+winner draw, `embeds.ts` UI, `manager.ts` message/claim, `hub.ts` `/giveaway` browse+admin, `sweeper.ts` auto-end/reroll, `message-hook.ts` message tracking, `prizes.ts` payout). Old `/giveaways` + `/giveaway_admin` slash names are gone — use `/giveaway`.
 - Unified help hub: `artifacts/api-server/src/bot/commands/help-hub.ts` (interactive `/help` — topic dropdown, live-edited pages, animated banner; `/admin_help` opens it on the Admin page). Banner/palette: `artifacts/api-server/src/bot/help-banners.ts`. Rebrandable via `/embed … key:help`.
-- Bob (entertainment NPC) schema: `lib/db/src/schema/bob.ts` (bob_settings, bob_profiles, bob_progress)
-- Bob module: `artifacts/api-server/src/bot/bob/` (`persona.ts` 3 forms + line banks, `db.ts` coins/xp/stats/leaderboards + opt-in DN reward bridge, `progress.ts` tasks/quests, `games.ts` mini-games, `roulette.ts` roulette+duel, `roast.ts`, `talk.ts` local+optional-Claude, `events.ts` random channel events, `stats.ts`, `menu.ts` hub, `command.ts`/`admin.ts`/`router.ts`)
+- Bob (retired entertainment NPC) schema leftovers only: `lib/db/src/schema/bob.ts` + boot `CREATE TABLE IF NOT EXISTS bob_*` in `artifacts/api-server/src/index.ts`. The runtime module `artifacts/api-server/src/bot/bob/` is **gone** — no `/bob` slash commands are registered. Do not drop the tables without a coordinated migration.
 - Headquarters (HQ) schema: `lib/db/src/schema/headquarters.ts` (player_hq, hq_unlocks, hq_displays, hq_placements, hq_defenders, hq_base_state, hq_base_attacks, hq_base_reigns, hq_world_nodes, hq_terrain)
 - UnbelievaBoat addon schema: `lib/db/src/schema/unbelievaboat.ts` (ub_settings, ub_role_links, ub_store_catalog, ub_audit_log) + `lib/db/src/schema/pets.ts` (pet_settings, pets, pet_challenges, pet_care_log)
 - UnbelievaBoat client + admin API: `artifacts/api-server/src/lib/unbelievaboat/`, `artifacts/api-server/src/routes/unbelievaboat-admin.ts` (`/api/admin/ub/*`)
@@ -149,9 +150,9 @@ those tables now happen through Discord slash commands — see
 - **Replacement, not layering:** a card assigned to a custom tier uses the **tier's** worth/burn/dropWeight — the Stage-1 rarity profile is ignored for that card. One source of truth per card per guild.
 - Storage: `custom_rarities` (`(guildId, slug)` unique) and `card_rarity_overrides` (`(guildId, cardId)` unique). Built-in `cards.rarity` is preserved untouched so removing a tier instantly reverts assigned cards.
 - API: `GET/PUT/DELETE /api/custom-rarities/:guildId[/:slug]` and `GET/PUT/DELETE /api/card-rarity-overrides/:guildId[/:cardId]`, behind `requireDashboardAuth`.
-- Resolver: `getRarityContext(guildId)` returns `{ profile, customBySlug, customByCard }` from a 5s cache. `applyRarityContext(card, ctx)` is THE chokepoint for `worth/burn/dropWeight` — custom override first, then Stage-1 profile, then card's own value. Used by spawn weighting, `/info`, `/list`, `/collection`, `/catalog`, `/burn`, `/pack` pool, `/trade_in` ladder, `/trade` fairness, leaderboard.
+- Resolver: `getRarityContext(guildId)` returns `{ profile, customBySlug, customByCard }` from a 5s cache. `applyRarityContext(card, ctx)` is THE chokepoint for `worth/burn/dropWeight` — custom override first, then Stage-1 profile, then card's own value. Used by spawn weighting, `/info`, `/list`, collection views, `/catalog`, `/burn`, `/pack` pool, `/card_recycle` ladder, `/trade` fairness, leaderboard.
 - `/pack` excludes custom-tier cards by default (toggle `inPacks` true to opt in). Custom tiers with `droppable=false` are skipped by `pickRandomCard`.
-- `/trade_in` ladder is position-ordered: groups user holdings by **effective rarity key** (built-in OR custom slug), so a card moved into a custom tier won't be eligible for the built-in's trade-in chain. The slash command rarity option still only exposes the six built-ins as the FROM tier.
+- `/card_recycle` ladder is position-ordered: groups user holdings by **effective rarity key** (built-in OR custom slug), so a card moved into a custom tier won't be eligible for the built-in's fusion chain. The slash command rarity option still only exposes the six built-ins as the FROM tier.
 - Deleting a tier also wipes its `card_rarity_overrides` rows (no DB-level FK on slug, done in the route).
 
 ### Per-Server Rarity Profiles
@@ -164,7 +165,7 @@ those tables now happen through Discord slash commands — see
 
 ### Per-Set Rarity Weights (Phase 4)
 - Each set has an optional `rarity_weights jsonb` column — partial map of `{ rarity: weight }`. Applies **only when the set is the guild's active set**. Cards' rarity/worth/burn/dropWeight are never touched.
-- Admin commands: `/sets_admin setweight set:<s> rarity:<tier> weight:<n>`, `/sets_admin clearweight set:<s> [rarity]`, `/sets_admin showweights set:<s>`.
+- Admin UI: set rarity weights via `/set_hub` / `/set_admin` (helpers live in `sets-admin.ts`; there is no `/sets_admin` slash).
 - Precedence inside `pickRandomCard` (top wins):
   1. custom-tier dropWeight
   2. **active set's rarityWeights[rarity]** ← Phase 4
@@ -181,9 +182,10 @@ those tables now happen through Discord slash commands — see
 - **Option B (no active set = no random spawns)**: with no active set, or
   with an empty active set, `doSingleSpawn` returns early. Admin `/drop` and
   `/give` bypass the set check (forcedCardId path) — they always work.
-- **Command split**:
-  - `/sets_admin` (admin) — `create rename delete add remove move bulkadd bulkremove active deactivate view setweight clearweight showweights export exportall showcase`.
-  - `/sets` (user, read-only, ephemeral) — `list active view progress`.
+- **Command surface (live):**
+  - `/set_hub` — clickable set manager (create, add cards, activate spawn pool, export).
+  - `/set_admin` — interactive set hub (full management with buttons/dropdowns).
+  - Shared helpers remain in `sets-admin.ts` (import/export payloads, etc.). The old `/sets_admin …` subcommand slash and the read-only `/sets` user command are **not** registered.
 - `pickRandomCard(weights, boosts, ctx, availableCards?)` — new 4th param is
   the pre-filtered pool (active set). Old call sites without it fall back to
   the global droppable pool for back-compat.
@@ -202,10 +204,8 @@ those tables now happen through Discord slash commands — see
   and `loadDefaultCards` join inserted cards directly to the "defaults" set.
   `importCardsFromJson` writes membership rows only.
 - **Phase 5 — export/import roundtrip.**
-  - `/sets_admin export set:<name>` attaches a single-set JSON (cards + rarity
-    weights + `awardsCompletion` flag).
-  - `/sets_admin exportall [sets:<a,b>]` attaches a bundle of every set (or a
-    subset) in one file.
+  - Set hubs can export a single-set JSON (cards + rarity weights +
+    `awardsCompletion`) or a multi-set bundle.
   - `importCardsFromJson` accepts three shapes: flat (`{cards:[…]}`),
     single-set (`{set:{…}, cards:[…]}`), and bundle (`{sets:[{set,cards}…]}`).
     It restores `rarityWeights` and `awardsCompletion` per set. Numeric
@@ -216,12 +216,12 @@ those tables now happen through Discord slash commands — see
     +1500 💠), `set_master` (5 sets, +4000 💠) — fire across ALL sets the
     user has finished, regardless of any per-set flag.
   - Dynamic: `set_complete:<setId>` (+1000 💠) — only sets whose admin
-    toggled `awardsCompletion=true` via `/sets_admin showcase` award their
-    own dedicated achievement. "Completion" = own every card in the set
-    (collections row exists; shinies irrelevant).
-- Legacy `/loadset`, `/listsets`, `/unloadset` have been merged into
-  `/sets_admin load/unload/listloaded` for easier discovery. `/sets_admin unload`
-  is destructive (deletes cards), `/sets_admin delete` only removes memberships.
+    toggled `awardsCompletion=true` (showcase) award their own dedicated
+    achievement. "Completion" = own every card in the set (collections row
+    exists; shinies irrelevant).
+- Legacy `/loadset`, `/listsets`, `/unloadset` were folded into the set hubs.
+  Unload paths that delete cards remain destructive; delete-membership paths
+  only remove set memberships.
 
 ### Limited-Time Events
 - `/event start card:<Name> duration:<30m|2h|1d> [multiplier:<1.1–50>]` — boost a card's effective spawn weight. Max 14d duration, default 2× multiplier.
@@ -238,30 +238,29 @@ those tables now happen through Discord slash commands — see
 - The embed is admin-rebrandable through the existing override system: `/embed set key:help field:customImageUrl|color|title|footer value:<…>` (the `help` key was added to `EMBED_KEYS`). Banner + section palette live in `help-banners.ts`; the banner is a free direct-hotlink animated GIF and swappable per guild.
 - Custom-IDs are namespaced `help:*` (select `help:select`, button `help:home`) and routed in `index.ts`.
 
-### Bob — Entertainment NPC (add-on)
-- A self-contained fun module with its **own** currency (🪙 Bob Coins), XP/levels, stats, tasks, quests, and cosmetic titles. It never touches the DN Cards card/collection/currency tables. Three per-guild tables (`bob_settings`, `bob_profiles`, `bob_progress`); live games run in memory.
-- **Three forms** rolled per interaction: 🟡 Normal, 🔵 Blue (evil, ~12%, doubles win rewards / hard-mode roulette), 🙃 Upside-Down (glitched, ~2%, may invert outcomes). Odds are admin-tunable.
-- **Games:** `/bob_roulette` (animated survival, gentle losses — never below 0 coins, survival streak), `/bob_duel` (turn-based, first BANG loses), plus Coin Flip, Dice, Higher/Lower, Slots, Lucky Wheel, Guess-the-Emoji in the `/bob` hub — all animated, cooldown-gated, with rewards + stats.
-- **Roast** (`/bob_roast`, form-flavoured banks, cooldown anti-spam), **Talk** (`/bob_talk` — local personality by default; upgrades to Claude when `bob_admin toggle ai on` AND `ANTHROPIC_API_KEY` is set; keeps short per-user memory), **Tasks** (daily) + **Quests** (long-term) that pay coins/XP/titles, and random **channel events** ("BOB HAS ARRIVED" — first-click / trivia / mystery box) that only fire in admin-configured channels.
-- **Stats & leaderboards:** `/bob_stats`, `/bob_leaderboard` (richest, most wins, best roulette streak, most interactions, biggest gamblers, jackpot kings, highest level).
-- **Commands:** `/bob` (hub), `/bob_roulette`, `/bob_duel`, `/bob_roast`, `/bob_talk`, `/bob_stats`, `/bob_leaderboard`, admin `/bob_admin settings|toggle|odds|rewards|cooldown|channels|testevent`. All component IDs namespaced `bob:*` and routed in `bob/router.ts`.
-- **Optional DN Cards bridge:** `bob_admin toggle dex on` lets rare Bob events pay real DN Shards/packs via the existing grant paths — the only crossover. New tables need `pnpm -C lib/db run push`.
+### Bob — retired (schema leftovers only)
+- The Bob entertainment NPC (`/bob`, `/bob_roulette`, `/bob_talk`, `/bob_admin`, …) is **not registered** and the runtime under `artifacts/api-server/src/bot/bob/` is gone.
+- Per-guild tables `bob_settings`, `bob_profiles`, `bob_progress` may still exist via `lib/db/src/schema/bob.ts` and boot SQL in `artifacts/api-server/src/index.ts`. Leave them until a deliberate migration drops them — they are unused by the live bot.
+- Do not confuse Bob with **`/minigames`** (Wild Mini-Games admin panel) or emoji assets named “bobble” / card art — those are unrelated.
 
 ### Giveaway System (add-on)
 - Purely additive feature powered by DN Cards. Admins run giveaways with custom prizes; players earn chances through real gameplay. Three per-guild tables (`giveaways`, `giveaway_entries`, `giveaway_winners`); nothing in the core card/battle/raid/echo tables is modified.
-- **Prizes** (any mix): `shards`, `pack` (basic/premium/legendary ×N), `card:<Name> xN` (minted via the real `catchCard` path), `nitro`, `role` (auto-assigned on claim), `custom`. Card/pack/shard prizes auto-fulfil through the existing economy; nitro/custom produce an admin hand-off receipt.
+- **Prizes** (any mix): `shards`, `pack` (basic/premium/legendary ×N), `card:<Name> xN` (minted via the real `catchCard` path), `nitro`, `role` (auto-assigned on claim), `custom`. Card/pack/shard prizes auto-fulfill through the existing economy; nitro/custom produce an admin hand-off receipt.
 - **Requirements** measure activity from when the giveaway goes active, fed by fire-and-forget hooks on the SAME flows quests use: `catch` (rarity-gatable), `burn`, `pack_open`, `battle_win`, `battle_played` (valid, non-forfeit), `raid_join`, `raid_damage`, `echo_use`, `message` (anti-spam: bots/commands ignored, one counted msg per member per 12s).
 - **Winner modes:** `entry` (weighted random by earned 🎟️ entries — `*N` per unit, `+N` on completion) or `completion` (must finish every requirement). **Difficulty:** easy/medium/hard/legendary (cosmetic tier + color).
 - **UI (raid-style):** one channel message updates in place while entrants join, then the SAME message is edited into a winner announcement with a **Claim Prize** button. Buttons: My Progress / Enter (open giveaways) / Details / Claim. Times use Discord `<t:unix:…>` so every viewer sees their local timezone with no stored preference.
-- **Claim + reroll:** winners claim within `claimTimerMinutes` (default 24h); the minute sweeper (`giveaway/sweeper.ts`) auto-ends due giveaways, draws winners, and rerolls unclaimed slots. Admins can `/giveaway_admin reroll`. Announce via channel / DM / both.
-- **Commands:** `/giveaways` (board + your standing), `/giveaway progress [id]`, and admin `/giveaway_admin create|edit|end|winners|list|reroll`. Create uses compact syntax, e.g. `prizes: shards:50000; nitro:1 Month Nitro; card:Dragon Lord x10` and `requirements: catch:50:*1; battlewin:10:+10; message:100`.
+- **Claim + reroll:** winners claim within `claimTimerMinutes` (default 24h); the minute sweeper (`giveaway/sweeper.ts`) auto-ends due giveaways, draws winners, and rerolls unclaimed slots. Admins reroll from `/giveaway` → Admin. Announce via channel / DM / both.
+- **Commands:** single hub **`/giveaway`** (browse active giveaways + standing; Admin tools for quick-create, end, cancel, reroll). Replaces the old `/giveaways`, `/giveaway progress`, and `/giveaway_admin` slash sprawl.
 - **DB push:** new tables require `pnpm -C lib/db run push` after deploy.
+
+### Sanctuary (Quiet / Vacation / LOA)
+- Quarantine-role isolation so a member can step away without leaving the server. Live slash: `/quiet`, `/vacation`, `/loa`, `/quiet_setup`. Staff can force-in/force-out with `/quiet user:@Member`. See `docs/quiet-mode.md`.
 
 ## Architecture decisions
 
 - Bot runs inside the same Express server process (startBot() called from index.ts) — keeps infra simple, one workflow to manage.
 - **Command split:** Setup/config commands use `!` prefix (text commands). Quick admin actions + all user commands use slash commands.
-- **Flat slash commands:** every command is a standalone top-level command (`/burn`, `/daily`, `/drop`, `/setup`) — NOT nested under `/cards …` / `/admin …` hubs. `register.ts` `buildCommands()` returns them flat; `index.ts` routes each name via the exported `USER_HUB_COMMANDS` / `ADMIN_HUB_COMMANDS` sets to `handleUserCommand` / `handleAdminCommand`. The category grouping players see lives in the `/help` hub, not the slash menu. ~67 commands total (under Discord's 100/guild cap).
+- **Flat slash commands + hubs:** commands register as standalone top-level names (`/burn`, `/drop`, `/setup`, `/user-hub`, `/battle`, …) — NOT nested under `/cards …` / `/admin …`. `register.ts` `buildCommands()` flattens + applies `COMMAND_RENAMES`, then drops `HUB_REPLACED_COMMANDS` (e.g. daily/collection/wishlist/quests/market/squad) whose handlers remain for hub buttons. `index.ts` routes via `USER_HUB_COMMANDS` / `ADMIN_HUB_COMMANDS` plus explicit branches (battle, quiet, giveaway, pet, …). Prefer `/help` for the player-facing map. Stay under Discord's 100/guild slash cap.
 - Weighted random card drops: each card has a `dropWeight`; guild-specific rarity weights override per-rarity (stored as nullable ints in guild_settings).
 - Multi-card spawns: `cardsPerSpawn` (1/3/5/-1=random) fires N independent spawn events with 5s gaps. `activeSpawns` is `Map<guildId, Map<spawnId, ActiveSpawn>>` to support multiple simultaneous spawns.
 - Catch detection: any non-`!` message is checked against ALL active spawns for the guild (case-insensitive).
@@ -274,8 +273,8 @@ those tables now happen through Discord slash commands — see
 - Burn system: destroys one copy, awards burnValue shards to user's DN Shards balance.
 - `!setup` wizard: interactive multi-step setup — choose_type → channel → cooldown_number → cooldown_unit → cards_per_spawn → rarity_choice → (5 rarity steps) → test_card. Sessions stored in memory per `guildId:userId`, 5-min timeout.
 - **Pack store atomic claim:** `/pack` open is a single conditional UPDATE that enforces shards ≥ cost, shared cooldown, and per-tier weekly cap (with Monday 00:00 UTC rollover applied inline via CASE). Zero rows = no state change; caller re-reads the row to explain why. Prevents TOCTOU races across concurrent opens. Failed-grant path calls `refundClaim()` to roll back shards + counters.
-- **Daily atomic claim:** `/daily` uses `INSERT … ON CONFLICT DO NOTHING` for first-time, then a cooldown-gated UPDATE for repeats. Streak resets via SQL CASE when last claim > 48h ago.
-- **Achievements** unlock check fires after catches, /burn, /pack, /trade-accept, /daily, /trade_in. Stored in `achievements_unlocked` with a unique (guild, user, key) index so the insert is idempotent.
+- **Daily atomic claim:** daily claim (via `/user-hub` → Daily) uses `INSERT … ON CONFLICT DO NOTHING` for first-time, then a cooldown-gated UPDATE for repeats. Streak resets via SQL CASE when last claim > 48h ago. Handler file: `daily.ts` (not a registered top-level slash).
+- **Achievements** unlock check fires after catches, /burn, /pack, /trade-accept, daily claim, /card_recycle. Stored in `achievements_unlocked` with a unique (guild, user, key) index so the insert is idempotent.
 - **Shinies** are a separate `shinyCount` column on `collections` (not a flag on individual rows) — keeps the (guild, user, card) unique index intact while letting us count shinies once at SHINY_MULTIPLIER for net worth and leaderboard. `catchCard` rolls SHINY_RATE bot-side then UPSERTs the right counter; `burnCard({shiny:true})` decrements `shinyCount` specifically so `/burn name:X all:true` can't accidentally torch rare shinies.
 - **Event boosts** are read once per spawn via `getActiveEventBoosts(guildId)` (joined-and-filtered by `endsAt > NOW()`) and passed as `Map<cardId, multiplier>` into `pickRandomCard`. Stopping an event is just `UPDATE … SET endsAt = NOW()` so expired rows stay around as history.
 
@@ -284,13 +283,13 @@ those tables now happen through Discord slash commands — see
 ### Card Acquisition
 - **Random drops**: Cards spawn at configured intervals in the spawn channel
 - **Card packs**: `/pack tier:basic|premium|legendary` — buy with DN Shards, opens 5 cards
-- **Daily reward**: `/daily` for shards with a 7-day streak bonus
+- **Daily reward**: `/user-hub` → Daily (streak bonus); handler still in `daily.ts`, not a top-level `/daily` slash
 - **Event drops**: Admin force-drops specific cards with `/drop name:<Name>`
 - **Limited-time events**: `/event start|list|stop` — admin boosts any card's spawn weight for a duration
-- **Admin giveaways**: `/give user:@User name:<Card Name>` — direct award (no shiny roll)
+- **Admin giveaways**: `/give user:@User name:<Card Name>` — direct award (no shiny roll); activity giveaways via `/giveaway`
 - **Trading**: `/trade user:@User offer:<card>|shards want:<card>|shards` (shows ⚠️ if value ratio > 3:1)
-- **Trade-in**: `/trade_in <rarity>` — burn 5 of one rarity for 1 random card of the next tier up
-- **Wishlists**: `/wishlist` — get pinged when wished-for cards spawn
+- **Card Fusion**: `/card_recycle` — burn/fuse path (public name for internal `tradein`)
+- **Wishlists**: `/user-hub` → Wishlist (hub-backed; not a top-level `/wishlist` slash)
 - **Shinies ✨**: every random/pack/tradein acquisition has a flat 0.5% chance to mint a shiny. Shiny copies count at 2× worth/burn, are tracked separately, and are **not tradeable** in v1.
 
 ### Card System
@@ -298,7 +297,7 @@ those tables now happen through Discord slash commands — see
 - **Worth values**: Common 10 → Legendary 2500 → Mythic 6000 DN Shards
 - **Burn values**: Common 5 → Legendary 1250 → Mythic 3000 DN Shards (50% of worth)
 - **Mythic tier**: the new top rarity. Default weight 0 (never drops randomly until admins set a weight or run an `/event`). Appears in **Legendary** packs at 0.5% by default. Trade-in: Legendary → Mythic (5 Legendaries for 1 Mythic).
-- **`/rarityname`** (admin) — rename the Mythic tier per-server (e.g. "Prismatic", "Apex") with a custom emoji and hex color. Use `/rarityname reset:true` to revert.
+- **`/rarity edit`** (admin) — rename/recolor any built-in rarity tier (including Mythic) with emoji + hex color. Old `/rarityname` is not registered.
 - **Limited Edition**: Admin-created, capped at a set number of copies (4× worth/burn)
 - **Event Exclusive**: Admin-drop only, never appear in random spawns (3× worth/burn)
 - **Card Types**: tank, aircraft, ship, vehicle, infantry, boss, community, event, achievement, limited
@@ -318,7 +317,7 @@ those tables now happen through Discord slash commands — see
 - Use `/pack_stats` to see your per-tier usage, cooldown remaining, and reset countdown.
 
 ### Economy (DN Shards 💠)
-- **Earned by**: burning duplicate cards (`/burn`), `/daily` rewards (50 base + streak bonus up to +200), gifts (`/gift`), trade-in upgrades, admin awards (`/give_shards`), achievement unlocks
+- **Earned by**: burning duplicate cards (`/burn`), daily rewards via `/user-hub` (50 base + streak bonus up to +200), gifts (`/gift`), Card Fusion upgrades, admin awards (`/give_shards`), achievement unlocks
 - **Spent on**: `/pack` openings, `/trade` offers, `/gift` to other members
 - Balance + all-time-earned tracked per user per guild
 - Admins can deduct with `/take_shards`
@@ -382,70 +381,62 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 Card catching is text-based — when a card spawns, type its name exactly to catch it.
 
-### User Slash Commands
-| Command | Description |
-|---|---|
-| `/welcome` | Posts the public Welcome / Rules / Commands intro (3 banner-led embeds) |
-| `/help` | Full command reference |
-| `/collection [user]` | Paginated collection with rank, net worth, achievements summary |
-| `/rank [user]` | Collector rank and progression |
-| `/info name:<Name>` | Card details, worth, burn value, drop chance |
-| `/list` | Full roster grouped by rarity |
-| `/catalog` | Browse cards by category — see what you own and what's missing |
-| `/top` | Top 10 net-worth leaderboard + top 5 pack openers |
-| `/burn name:<Name> [shiny:true]` | Burn a card for DN Shards (shiny:true burns shiny pile at 2× value) |
-| `/shards [user]` | Check shard balance |
-| `/daily` | Claim daily shards (with streak bonus) |
-| `/pack tier:<basic\|premium\|legendary>` | Open a pack |
-| `/pack_stats` | Your pack costs, weekly caps, cooldown |
-| `/trade_in rarity:<r>` | Burn 5 of one rarity for 1 random card of the next tier |
-| `/wishlist` | Manage your wishlist — get pinged on spawn |
-| `/achievements [user]` | View unlocked achievements |
-| `/trade user:@User offer want` | Propose a trade (cards, shards, or both) |
-| `/gift user:@User amount:<n>` | Gift shards to another member |
-| `/trades` | View pending trade offers |
-| `/trade_history [user]` | Recent completed trades, newest first |
-| `/accept id:<ID>` | Accept a trade |
-| `/decline id:<ID>` | Decline or cancel a trade |
-| `/giveaways` | Active giveaways: prizes, live countdown, requirements, your progress + entries |
-| `/giveaway progress [id]` | Detailed per-requirement progress and earned entries |
-| `/bob` | Open Bob — games, roulette, roasts, tasks, quests, talk, stats |
-| `/bob_roulette` · `/bob_duel` · `/bob_roast` · `/bob_talk` · `/bob_stats` · `/bob_leaderboard` | Bob entertainment commands |
+Slash names below match `register.ts` `buildCommands()` (after renames + hub filtering). Prefer **`/help`** and **`/user-hub`** for the full surface.
 
-### Admin Quick Actions (Slash Commands)
+### Player hubs & collecting
 | Command | Description |
 |---|---|
-| `/config` | Visual config panel (toggles, intervals, rates, packs sub-panel) |
-| `/admin_hub` | Ephemeral admin hub — manage bot admins, catch timeouts, set channels, server state |
-| `/admin_help` | Show admin & setup command reference |
-| `/drop [name:<Name>]` | Force-drop a card for events/giveaways |
-| `/mass_drop` | Drop a big batch of cards — mostly low tier with a few bangers |
-| `/give user:@User name:<Name>` | Give a card directly to a member |
-| `/give_shards user:@User amount:<n>` | Give DN Shards to a member |
-| `/take_back user:@User name:<Name>` | Remove a card from a member |
-| `/take_shards user:@User amount:<n>` | Deduct DN Shards from a member |
-| `/event start card:<Name> duration:<e.g. 2h> [multiplier:<n>]` | Start a limited-time spawn boost |
-| `/event list` | Show all active events |
-| `/event stop id:<ID>` | End an event early |
-| `/giveaway_admin create title duration prizes [requirements] [winners] [difficulty] [mode] [channel] [image] [claimtimer] [announce]` | Create & launch a giveaway (compact prize/requirement syntax) |
-| `/giveaway_admin edit id [fields…]` | Edit any field of a giveaway; refreshes the live message |
-| `/giveaway_admin end id` | End a giveaway now and draw winners |
-| `/giveaway_admin winners id` | View winners and claim status |
-| `/giveaway_admin list` | Active + past giveaways |
-| `/giveaway_admin reroll id [user]` | Reroll a winner (auto-picks a fresh eligible player) |
-| `/rarityname name:<Name> emoji:<🔮> [color:<#hex>] [reset:true]` | Customize the Mythic tier's display name, emoji & color |
-| `/rarity profile set rarity:<tier> [worth] [burn] [weight]` | Override worth/burn/drop-weight for a built-in rarity |
-| `/rarity profile reset rarity:<tier>` | Clear all overrides for a built-in rarity |
-| `/rarity profile list` | Show current per-tier overrides |
-| `/rarity custom add\|edit\|remove\|list` | Manage brand-new rarity tiers beyond the 6 built-ins |
-| `/rarity card assign card:<Name> slug:<tier>` | Put a card into a custom tier (replaces its worth/burn/weight) |
-| `/rarity card unassign card:<Name>` | Revert a card to its built-in rarity |
-| `/embed show key:<embed>` | Show current per-guild override for an embed |
-| `/embed set key:<embed> field:<field> value:<v>` | Set one field on an embed override (color, title, footer, image, etc.) |
-| `/embed reset key:<embed> [field]` | Reset one field or the whole embed override |
-| `/sets_admin load file:<.json> [name:<set>]` | Import cards from a JSON file (creates or appends to a set) |
-| `/sets_admin unload set:<Name>` | Nuke a set and all its cards (destructive) |
-| `/sets_admin listloaded` | List all sets with card counts |
+| `/user-hub` | Profile hub: daily claim, collection, quests, wishlist, market, squad, reputation |
+| `/help` | Interactive command guide |
+| `/collection-hub` | Browse / filter owned cards |
+| `/welcome` | Public Welcome / Rules / Commands intro |
+| `/info name:<Name>` | Card details, worth, burn value, drop chance |
+| `/list` · `/catalog` | Full roster · browse by category |
+| `/top` | Net-worth leaderboard (+ pack openers) |
+| `/burn name:<Name> [shiny:true]` | Burn a card for DN Shards |
+| `/shards [user]` | Check shard balance |
+| `/pack tier:<basic\|premium\|legendary>` | Open a pack |
+| `/pack_stats` | Pack costs, weekly caps, cooldown |
+| `/card_recycle` | Card Fusion / star-rank recycle |
+| `/trade` · `/trades` · `/trade_history` | Propose and manage trades |
+| `/gift` · `/accept` · `/decline` | Gift shards / accept or decline trades |
+| `/lock` · `/level` · `/collector` | Lock cards · battle level · spawn ping role |
+| `/begin` | Onboarding |
+| `/funfact` | Fun facts |
+
+### Battles, HQ, giveaways, sanctuary
+| Command | Description |
+|---|---|
+| `/battle` | Fights, raids, sieges, profile — includes **`/battle phaser`** (Discord Activity) |
+| `/raid` | Co-op raid entry |
+| `/hq` · `/hqbuild` | Personal Headquarters |
+| `/giveaway` | Giveaway hub (browse + admin tools) |
+| `/quiet` · `/vacation` · `/loa` | Sanctuary modes (run again to leave) |
+| `/afk` · `/whisper` · `/echo` | AFK Secretary / encrypted whispers |
+| `/pet` | Tamagotchi pets (when enabled) |
+
+> **Hub-only (handlers kept, not top-level slash):** daily, collection, calendar, frame, rank, achievements, market, squad, quests, wishlist, rep, search — use `/user-hub` (and `/top` for leaderboard).
+>
+> **Removed from live registration:** Bob (`/bob`, `/bob_*`, `/bob_admin`). Schema/boot leftovers may remain.
+
+### Staff / admin
+| Command | Description |
+|---|---|
+| `/setup` · `!setup` | Guided server setup |
+| `/config` | Visual config panel |
+| `/admin_hub` · `/admin_help` | Admin toolbox / reference |
+| `/battle_admin` · `/raid_admin` · `/hqadmin` | Combat / HQ staff tools |
+| `/set_hub` · `/set_admin` | Card sets / spawn rotation |
+| `/drop` · `/mass_drop` · `/event` | Force drops · limited events |
+| `/give` · `/give_shards` · `/take_back` · `/take_shards` · `/giveall` | Direct awards / deductions |
+| `/rarity` · `/embed` | Rarity tiers · embed branding |
+| `/quiet_setup` · `/afk_setup` | Sanctuary / AFK setup |
+| `/quiet user:@Member` | Place into sanctuary or force out |
+| `/minigames` | Wild Mini-Games admin panel (not Bob) |
+| `/add_card` · `/edit_card` · `/edit_image` · `/delete_card` | Card CRUD |
+| `/welcome_admin` · `/collector_role` · `/mass_role` | Onboarding / roles |
+| `/progression_default` · `/progression_card` | Arrival star/level defaults |
+| `/petadmin` | Pet admin (when pets enabled) |
 
 ### Setup & Config Commands (`!` prefix — admin only)
 | Command | Description |

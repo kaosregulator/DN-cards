@@ -12,6 +12,7 @@ import {
   ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder,
 } from "discord.js";
 import { QUIET_BRAND, QUIET_CUSTOM, QUIET_EMOJI } from "./shared.js";
+import { getModeOrDefault, mergeSanctuaryModes } from "./modes.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Quiet Mode — restart recovery + member-leave cleanup
@@ -129,12 +130,23 @@ async function recoverOne(client: Client, guildId: string, userId: string): Prom
   if (!state) return;
 
   try {
-    const { channel, categoryId } = await ensureQuietRoom(guild);
-    // Re-apply isolation (idempotent role assign + hides).
-    const iso = await applyQuietIsolation(member, channel, categoryId);
+    const settings = await getQuietSettings(guildId);
+    const modes = mergeSanctuaryModes(settings.sanctuaryModes);
+    const mode = getModeOrDefault(modes, state.modeKey);
+    const { channel, categoryId } = await ensureQuietRoom(guild, {
+      channelName: mode.channelName,
+      topic: mode.topic,
+      preferChannelId: mode.channelId ?? settings.quietChannelId,
+    });
+    // Re-apply isolation (idempotent role assign + member hides).
+    const iso = await applyQuietIsolation(member, channel, categoryId, {
+      roleName: mode.roleName,
+      preferRoleId: state.quarantineRoleId ?? mode.roleId ?? settings.quietRoleId,
+    });
     await patchQuietState(guildId, userId, {
       overwriteTargets: iso.targets,
       adminBypass: iso.adminBypass,
+      quarantineRoleId: iso.roleId ?? state.quarantineRoleId,
       needsRecovery: false,
     });
 
@@ -151,11 +163,11 @@ async function recoverOne(client: Client, guildId: string, userId: string): Prom
     if (!buttonAlive) {
       const embed = new EmbedBuilder()
         .setColor(QUIET_BRAND.COLOR)
-        .setTitle(`${QUIET_EMOJI.MOON} QUIET ROOM`)
+        .setTitle(`${QUIET_EMOJI.MOON} ${mode.label.toUpperCase()}`)
         .setDescription(
           "Still here.\n\n" +
           (state.quoteText ? `💭 *"${state.quoteText}"*\n\n` : "") +
-          "The bot came back. Your Quiet Mode was restored.\n" +
+          `The bot came back. Your **${mode.label}** was restored.\n` +
           "Press **I'm Ready** when you want the server again — or run `/quiet`.",
         )
         .setFooter({ text: QUIET_BRAND.FOOTER });
@@ -190,7 +202,12 @@ async function recoverOne(client: Client, guildId: string, userId: string): Prom
     // Last resort: clear isolation so they aren't locked out if Quiet Room is broken.
     try {
       const settings = await getQuietSettings(guildId);
-      await clearQuietIsolation(guild, userId, state.overwriteTargets ?? [], settings.quietRoleId);
+      await clearQuietIsolation(
+        guild,
+        userId,
+        state.overwriteTargets ?? [],
+        state.quarantineRoleId ?? settings.quietRoleId,
+      );
     } catch { /* ignore */ }
   }
 }

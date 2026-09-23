@@ -7,6 +7,7 @@ import { logger } from "../../lib/logger.js";
 import { getQuietState } from "./models.js";
 import { QUIET_BRAND, QUIET_CUSTOM, QUIET_EMOJI } from "./shared.js";
 import { leaveQuietFromInteraction } from "./lifecycle.js";
+import { handleReleaseGameButton } from "./games/release.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Quiet Mode — component interactions (quiet:* customIds)
@@ -19,6 +20,14 @@ export async function handleQuietInteraction(interaction: Interaction): Promise<
   if (interaction.isButton() && interaction.customId === QUIET_CUSTOM.READY) {
     await handleReadyButton(interaction);
     return;
+  }
+
+  if (interaction.isButton() && interaction.customId.startsWith("quiet:game:")) {
+    const handled = await handleReleaseGameButton(interaction).catch(err => {
+      logger.debug({ err }, "Quiet game button failed");
+      return false;
+    });
+    if (handled) return;
   }
 
   // Unknown quiet:* control — ack quietly so Discord doesn't error-toast.

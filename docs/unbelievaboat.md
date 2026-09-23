@@ -1,6 +1,6 @@
 # UnbelievaBoat addon
 
-Addon for DN Cards — does **not** replace shards, packs, Bob, or the existing bot.
+Addon for DN Cards — does **not** replace shards, packs, or the existing bot.
 
 ## What you get
 

@@ -8,9 +8,14 @@ Addon feature: a peaceful digital “ghost town” corner inside the server.
 
 | Command | Who | What |
 |---------|-----|------|
-| `/quiet` | Members (role-gated if configured) | Enter Quiet Mode. If already quiet, **leave** (emergency exit). |
-| `/quiet user:@Member [theme]` | Staff | **Toggle:** place them into Quiet Mode, or **force them out** if already quiet. |
-| `/quietsetup config\|ensure_room\|status\|audio` | Manage Server / admins | Whitelist/blacklist roles, toggles, room + Quiet role ensure, audio library. |
+| `/quiet` `[mode]` | Members (role-gated if configured) | Enter Quiet / Vacation / LOA / Step Away. If already in, **leave**. |
+| `/vacation` · `/loa` | Members | Same isolation engine, different labels (renameable per server). |
+| `/quiet user:@Member` | Staff | **Toggle:** place them in, or **force them out**. |
+| `/quiet_setup ensure_room` | Admins | Sync all sanctuary rooms + quarantine roles + channel hides. |
+| `/quiet_setup rename` | Admins | Rename a mode’s label / role name / channel name for this server. |
+| `/quiet_setup config\|status\|audio` | Admins | Toggles, status, audio library. |
+
+Inside the room: **Stones in the Water** — a short click-through release exercise (therapeutic grounding), plus optional ambience.
 
 ## What happens on enter
 
@@ -32,7 +37,7 @@ Addon feature: a peaceful digital “ghost town” corner inside the server.
 | Manage Channels only | Opens Quiet Room + weaker **member** hides; may still leak channels / pings |
 | Neither | Can only try to show Quiet Room — **lists channels still visible** in the Heads-up note |
 
-`/quietsetup ensure_room` and `/quietsetup status` spell out whether the bot has Administrator and whether the Quiet role exists.
+`/quiet_setup ensure_room` and `/quiet_setup status` spell out whether the bot has Administrator and whether the Quiet role exists.
 
 Discord **Administrator** members still bypass channel hides (platform limit) — UX explains this.
 

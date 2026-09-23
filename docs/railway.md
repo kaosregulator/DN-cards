@@ -45,7 +45,7 @@ Postgres database and your usual secrets (bot token, guild id, session secret).
 | --- | --- |
 | `DISCORD_CLIENT_ID` / `DISCORD_CLIENT_SECRET` | Website Discord OAuth + Activity |
 | `DISCORD_OAUTH_REDIRECT_URI` | `https://YOUR-DOMAIN/api/oauth/discord/callback` |
-| `ANTHROPIC_API_KEY` | Bob AI talk |
+| `UNBELIEVABOAT_TOKEN` | UnbelievaBoat hub + pet shop |
 | `ADMIN_TOKEN` | Break-glass dashboard admin header |
 | `UNBELIEVABOAT_TOKEN` | UnbelievaBoat API token from https://unbelievaboat.com/applications (raw token, no `Bearer`). Enables the `/admin/unbelievaboat` hub + pet shop cash spends. Alias: `UNB_TOKEN`. |
 | `AFK_PRESENCE_INTENT` | `1` only if Presence Intent is enabled in the Developer Portal |

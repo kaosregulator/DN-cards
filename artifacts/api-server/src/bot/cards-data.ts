@@ -1,6 +1,6 @@
 // DN Cards — DarkNight Military Card Roster
 // Your custom 60-card default roster. Auto-seeded on first server join.
-// Update via the dashboard or run `/sets_admin load file:<.json>` to re-add after `/sets_admin unload`.
+// Update via the dashboard or `/set_hub` / `/set_admin` (load/unload helpers in sets-admin.ts).
 //
 // Drop weights (higher = more common):
 //   Common:    60   worth:   20  burn:   10
@@ -49,7 +49,7 @@ export const RARITY_COLORS: Record<Rarity, number> = {
   rare: 0x3498db,      // blue
   epic: 0x9b59b6,      // purple
   legendary: 0xf39c12, // gold
-  mythic: 0xff2d92,    // pink-magenta — admin can change via /rarityname
+  mythic: 0xff2d92,    // pink-magenta — admin can change via /rarity edit
 };
 
 export const RARITY_EMOJI: Record<Rarity, string> = {
