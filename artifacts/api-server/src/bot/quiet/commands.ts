@@ -193,9 +193,8 @@ export async function handleQuietCommand(interaction: ChatInputCommandInteractio
       .setColor(QUIET_BRAND.COLOR)
       .setTitle(`${QUIET_EMOJI.MOON} Quiet Room`)
       .setDescription(
-        `You're in ${roomMention} now.\n\n` +
-        "The busy server can wait.\n" +
-        "When you're ready, press **🌤️ I'm Ready — Bring Me Back**.\n" +
+        `You're in ${roomMention} now — **one silent channel**. Other channels are hidden.\n\n` +
+        "No chat, no reactions. When you're ready, press **🌤️ I'm Ready — Bring Me Back**.\n" +
         "Or run `/quiet` again anytime to leave — even if the bot restarted." +
         (result.isolationNote
           ? `\n\n${result.isolationNote}`

@@ -10,18 +10,16 @@ import { getQuietSettings, updateQuietSettings } from "./models.js";
 // Quiet Mode — true empty-server isolation via a quarantine ROLE.
 //
 // Strategy (best with bot Administrator, or Manage Roles + Manage Channels):
-//  1. Ensure a shared Quiet Room (@everyone denied).
-//  2. Ensure a "Quiet" quarantine role, positioned as high as the bot can place.
-//  3. Deny ViewChannel/Connect for that role on every other category/channel.
-//  4. Allow the Quiet role (+ the quiet member) on Quiet Room only.
+//  1. Ensure a shared Quiet Room (@everyone denied — outsiders never see it).
+//  2. Ensure a "Quiet" quarantine role with ZERO base perms (never hoist /
+//     never mentionable / never special powers). Position it high under the bot.
+//  3. Deny View (+ talk/connect) for that role on every other category/channel.
+//  4. Quiet Room: visitors may ONLY view + read history (no send, react, attach,
+//     threads, voice). Bot posts the card; member presses I'm Ready.
 //  5. Enter = add role. Leave = remove role.
 //
-// Member overwrites alone are too weak (users can still uncover channels / get
-// pinged). Role quarantine is the standard jail pattern and makes the sidebar
-// look empty.
-//
-// If the bot lacks role/channel powers, we fall back to member overwrites and
-// surface an honest "still visible" channel list in UX.
+// Result: sidebar looks like a one-channel server; hidden channels can't ping
+// them; outsiders don't see Quiet Room or get a loud role dump.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const VIEW = PermissionFlagsBits.ViewChannel;
@@ -38,6 +36,50 @@ const BOT_ROOM_PERMS = [
   PermissionFlagsBits.ReadMessageHistory,
   PermissionFlagsBits.ManageChannels,
   PermissionFlagsBits.ManageMessages,
+];
+
+/** Quiet Room visitors: see the bot card only — no chatting / adding anything. */
+const QUIET_ROOM_VISITOR_OVERWRITE = {
+  ViewChannel: true,
+  ReadMessageHistory: true,
+  SendMessages: false,
+  SendMessagesInThreads: false,
+  CreatePublicThreads: false,
+  CreatePrivateThreads: false,
+  AddReactions: false,
+  AttachFiles: false,
+  EmbedLinks: false,
+  MentionEveryone: false,
+  SendTTSMessages: false,
+  SendVoiceMessages: false,
+  UseExternalEmojis: false,
+  UseExternalStickers: false,
+  Connect: false,
+  Speak: false,
+  Stream: false,
+  UseVAD: false,
+  PrioritySpeaker: false,
+} as const;
+
+/** Everywhere else: invisible + mute (View deny is what blocks pings). */
+const QUIET_HIDE_OVERWRITE = {
+  ViewChannel: false,
+  Connect: false,
+  Speak: false,
+  SendMessages: false,
+  AddReactions: false,
+  SendVoiceMessages: false,
+} as const;
+
+/** @everyone must never see or use Quiet Room. */
+const EVERYONE_ROOM_DENY = [
+  VIEW,
+  CONNECT,
+  PermissionFlagsBits.SendMessages,
+  PermissionFlagsBits.AddReactions,
+  PermissionFlagsBits.CreatePublicThreads,
+  PermissionFlagsBits.CreatePrivateThreads,
+  PermissionFlagsBits.SendVoiceMessages,
 ];
 
 export type QuietIsolationMode = "full" | "partial" | "room_only";
@@ -129,11 +171,11 @@ export async function ensureQuietRoom(guild: Guild): Promise<{
       name: "quiet-room",
       type: ChannelType.GuildText,
       parent: category.id,
-      topic: "A quiet corner. Disappear without leaving. Return without explaining.",
+      topic: "Silent corner. One channel. No chat — just rest, then I'm Ready.",
       permissionOverwrites: [
         {
           id: guild.roles.everyone.id,
-          deny: [VIEW, CONNECT, PermissionFlagsBits.SendMessages],
+          deny: EVERYONE_ROOM_DENY,
         },
         ...(me ? [{ id: me.id, allow: BOT_ROOM_PERMS }] : []),
       ],
@@ -144,10 +186,21 @@ export async function ensureQuietRoom(guild: Guild): Promise<{
     await channel.setParent(category.id, { lockPermissions: false }).catch(() => {});
   }
 
+  // Keep Quiet Room private from @everyone (outsiders never see who is quiet).
   await channel.permissionOverwrites.edit(guild.roles.everyone, {
     ViewChannel: false,
     Connect: false,
+    SendMessages: false,
+    AddReactions: false,
+    CreatePublicThreads: false,
+    CreatePrivateThreads: false,
+    SendVoiceMessages: false,
   }).catch(err => logger.debug({ err }, "Quiet Room everyone overwrite refresh failed"));
+
+  await category.permissionOverwrites.edit(guild.roles.everyone, {
+    ViewChannel: false,
+    Connect: false,
+  }).catch(() => {});
 
   if (me) {
     await channel.permissionOverwrites.edit(me, {
@@ -160,7 +213,7 @@ export async function ensureQuietRoom(guild: Guild): Promise<{
     }).catch(() => {});
   }
 
-  // If quarantine role already exists, keep Quiet Room allowed for it.
+  // If quarantine role already exists, keep Quiet Room view-only for it.
   if (settings.quietRoleId) {
     const role = guild.roles.cache.get(settings.quietRoleId);
     if (role) {
@@ -178,18 +231,14 @@ async function grantQuietRoleRoomAccess(
   category: CategoryChannel | null,
   role: Role,
 ): Promise<void> {
-  await quietChannel.permissionOverwrites.edit(role.id, {
-    ViewChannel: true,
-    ReadMessageHistory: true,
-    SendMessages: true,
-    EmbedLinks: true,
-    AttachFiles: true,
-    Connect: false,
-  });
+  // View + read only — never grant send / react / attach / special powers here.
+  await quietChannel.permissionOverwrites.edit(role.id, { ...QUIET_ROOM_VISITOR_OVERWRITE });
   if (category) {
     await category.permissionOverwrites.edit(role.id, {
       ViewChannel: true,
       Connect: false,
+      SendMessages: false,
+      AddReactions: false,
     });
   }
 }
@@ -253,6 +302,19 @@ export async function ensureQuietRole(guild: Guild): Promise<{
 
   let positionedHigh = false;
   if (role.editable) {
+    // Hard invariants every ensure: zero perms, not displayed, not @mentionable.
+    await Promise.all([
+      role.permissions.bitfield !== 0n
+        ? role.setPermissions([], "Quiet Mode: quarantine role must have no base perms")
+        : Promise.resolve(),
+      role.hoist
+        ? role.setHoist(false, "Quiet Mode: keep Quiet role invisible in member list")
+        : Promise.resolve(),
+      role.mentionable
+        ? role.setMentionable(false, "Quiet Mode: Quiet role must not be pingable")
+        : Promise.resolve(),
+    ]).catch(err => logger.debug({ err, roleId: role!.id }, "Quiet role invariant refresh failed"));
+
     const targetPos = maxQuietRolePosition(me);
     if (role.position < targetPos) {
       try {
@@ -273,11 +335,6 @@ export async function ensureQuietRole(guild: Guild): Promise<{
       error:
         "Quiet role sits above the bot (or isn't editable). Move the bot's role **above** Quiet, or grant the bot **Administrator**.",
     };
-  }
-
-  // Ensure role itself grants nothing server-wide.
-  if (role.permissions.bitfield !== 0n) {
-    await role.setPermissions([], "Quiet Mode: quarantine role must have no base perms").catch(() => {});
   }
 
   return { role, positionedHigh };
@@ -316,11 +373,18 @@ async function applyRoleHide(
   try {
     const existing = ch.permissionOverwrites.cache.get(roleId);
     const deny = existing ? new PermissionsBitField(existing.deny) : null;
-    if (deny?.has(VIEW) && deny.has(CONNECT)) return true;
-    await ch.permissionOverwrites.edit(roleId, {
-      ViewChannel: false,
-      Connect: false,
-    }, { reason: "Quiet Mode: quarantine role hide" });
+    // Already fully hidden — skip the API call.
+    if (
+      deny?.has(VIEW) &&
+      deny.has(CONNECT) &&
+      deny.has(PermissionFlagsBits.SendMessages) &&
+      deny.has(PermissionFlagsBits.AddReactions)
+    ) {
+      return true;
+    }
+    await ch.permissionOverwrites.edit(roleId, { ...QUIET_HIDE_OVERWRITE }, {
+      reason: "Quiet Mode: quarantine role hide",
+    });
     return true;
   } catch (err) {
     logger.debug({ err, channelId: ch.id, roleId }, "Quiet role hide skipped");
@@ -394,7 +458,9 @@ function buildCapabilityNote(opts: {
 
   if (opts.isolationMode === "full" && !opts.adminBypass) {
     parts.push(
-      "You're in an empty-server Quiet Room — other channels are hidden via the **Quiet** quarantine role, so pings from them shouldn't reach you.",
+      "One silent channel only — no chat, no reactions, nothing to add. " +
+      "Other channels are hidden, so pings from them shouldn't reach you. " +
+      "Outsiders can't see this room.",
     );
     return parts.join("\n\n");
   }
@@ -509,16 +575,9 @@ export async function applyQuietIsolation(
     roleError = ensured.error;
   }
 
-  // ── 2) Always allow Quiet Room on the member (belt + suspenders) ───────────
+  // ── 2) Member Quiet Room access: view-only (same as role) ──────────────────
   try {
-    await quietChannel.permissionOverwrites.edit(member.id, {
-      ViewChannel: true,
-      ReadMessageHistory: true,
-      SendMessages: true,
-      EmbedLinks: true,
-      AttachFiles: true,
-      Connect: false,
-    });
+    await quietChannel.permissionOverwrites.edit(member.id, { ...QUIET_ROOM_VISITOR_OVERWRITE });
     if (!applied.includes(quietChannel.id)) applied.push(quietChannel.id);
   } catch (err) {
     logger.warn({ err, guildId: guild.id, userId: member.id }, "Quiet Room member allow failed");
@@ -526,7 +585,12 @@ export async function applyQuietIsolation(
 
   if (category) {
     try {
-      await category.permissionOverwrites.edit(member.id, { ViewChannel: true });
+      await category.permissionOverwrites.edit(member.id, {
+        ViewChannel: true,
+        Connect: false,
+        SendMessages: false,
+        AddReactions: false,
+      });
       if (!applied.includes(category.id)) applied.push(category.id);
     } catch (err) {
       logger.debug({ err }, "Quiet category member allow failed");
@@ -538,10 +602,7 @@ export async function applyQuietIsolation(
     const targets = collectHideTargets(guild, quietChannel.id, quietCategoryId);
     for (const ch of targets) {
       try {
-        await ch.permissionOverwrites.edit(member.id, {
-          ViewChannel: false,
-          Connect: false,
-        });
+        await ch.permissionOverwrites.edit(member.id, { ...QUIET_HIDE_OVERWRITE });
         applied.push(ch.id);
       } catch (err) {
         logger.debug({ err, channelId: ch.id }, "Quiet member hide overwrite skipped");

@@ -56,10 +56,10 @@ function roomEmbed(quoteText: string): EmbedBuilder {
     .setColor(QUIET_BRAND.COLOR)
     .setTitle(`${QUIET_EMOJI.MOON} QUIET ROOM`)
     .setDescription(
-      "Everything is still here.\n\n" +
-      "You don't need to explain anything.\n" +
-      "You don't need to do anything.\n\n" +
-      "Take your time.\n\n" +
+      "This is the only channel you can see.\n\n" +
+      "No chatting. No reacting. Nothing to add.\n" +
+      "Just stillness — until you're ready.\n\n" +
+      "You don't need to explain anything.\n\n" +
       `${QUIET_EMOJI.THOUGHT} *"${quoteText}"*`,
     )
     .setFooter({ text: QUIET_BRAND.FOOTER });

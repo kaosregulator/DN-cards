@@ -15,12 +15,13 @@ Addon feature: a peaceful digital “ghost town” corner inside the server.
 ## What happens on enter
 
 1. State is saved to Postgres **before** permission changes (restart-safe).
-2. Bot ensures a shared `#quiet-room` channel (category “Quiet Room”).
-3. Bot ensures a **Quiet** quarantine role (positioned as high as the bot can place it).
-4. That role is **denied ViewChannel** on every other category/channel, and **allowed** only on Quiet Room.
-5. The member receives the Quiet role → sidebar looks like an empty server (Quiet Room only). Pings from hidden channels should not reach them.
-6. Quiet Room embed + random quote + optional voice note + **🌤️ I'm Ready — Bring Me Back**.
-7. No public announcement.
+2. Bot ensures a shared `#quiet-room` channel (category “Quiet Room”) — **hidden from @everyone**.
+3. Bot ensures a **Quiet** quarantine role with **zero base permissions** (never hoist, never mentionable, never special powers), positioned as high as the bot can place it.
+4. That role is **denied View** (and talk/connect) on every other category/channel.
+5. Quiet Room itself is **view + read only** for Quiet members — no send, react, attach, threads, or voice. The bot posts the card; they press **I'm Ready**.
+6. The member receives the Quiet role → sidebar looks like a **one-channel empty server**. Hidden channels can't ping them. Outsiders can't see Quiet Room.
+7. Optional voice note from the bot (still no member chat).
+8. No public announcement.
 
 ### Bot permissions (important)
 
