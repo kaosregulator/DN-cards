@@ -1013,10 +1013,37 @@ async function runBootMigrations() {
       leaderboard_sort  TEXT NOT NULL DEFAULT 'total',
       pets_spend_ub     BOOLEAN NOT NULL DEFAULT TRUE,
       currency_label    TEXT,
+      games_enabled     BOOLEAN NOT NULL DEFAULT TRUE,
+      store_enabled     BOOLEAN NOT NULL DEFAULT TRUE,
+      daily_min         INTEGER NOT NULL DEFAULT 100,
+      daily_max         INTEGER NOT NULL DEFAULT 250,
       created_at        TIMESTAMP NOT NULL DEFAULT NOW(),
       updated_at        TIMESTAMP NOT NULL DEFAULT NOW()
     )
   `);
+  await pool.query(`ALTER TABLE ub_settings ADD COLUMN IF NOT EXISTS games_enabled BOOLEAN NOT NULL DEFAULT TRUE`);
+  await pool.query(`ALTER TABLE ub_settings ADD COLUMN IF NOT EXISTS store_enabled BOOLEAN NOT NULL DEFAULT TRUE`);
+  await pool.query(`ALTER TABLE ub_settings ADD COLUMN IF NOT EXISTS daily_min INTEGER NOT NULL DEFAULT 100`);
+  await pool.query(`ALTER TABLE ub_settings ADD COLUMN IF NOT EXISTS daily_max INTEGER NOT NULL DEFAULT 250`);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS ub_game_state (
+      id                  SERIAL PRIMARY KEY,
+      guild_id            TEXT NOT NULL,
+      user_id             TEXT NOT NULL,
+      last_daily_at       TIMESTAMP,
+      last_rob_at         TIMESTAMP,
+      last_beg_at         TIMESTAMP,
+      last_roulette_at    TIMESTAMP,
+      last_blackjack_at   TIMESTAMP,
+      last_russian_at     TIMESTAMP,
+      daily_streak        INTEGER NOT NULL DEFAULT 0,
+      meta                JSONB NOT NULL DEFAULT '{}'::jsonb,
+      updated_at          TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `);
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS ub_game_state_guild_user_uidx ON ub_game_state (guild_id, user_id)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS ub_game_state_guild_idx ON ub_game_state (guild_id)`);
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS ub_role_links (

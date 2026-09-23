@@ -270,7 +270,8 @@ export async function startBot() {
 
       // ── /quote builder (quote:* selects/buttons/modals) ────────────────────
       if (
-        (interaction.isMessageComponent() || interaction.isModalSubmit()) &&
+        (interaction.isButton() || interaction.isStringSelectMenu() || interaction.isUserSelectMenu()
+          || interaction.isModalSubmit()) &&
         interaction.customId.startsWith("quote:")
       ) {
         const { handleQuoteInteraction } = await import("./quote/command.js");
@@ -293,9 +294,10 @@ export async function startBot() {
         return;
       }
 
-      // ── UnbelievaBoat Discord mini dashboard (ubadmin:*) ───────────────────
+      // ── UnbelievaBoat Discord dashboard (ubadmin:* components) ─────────────
       if (
-        (interaction.isButton() || interaction.isStringSelectMenu() || interaction.isUserSelectMenu()) &&
+        (interaction.isButton() || interaction.isStringSelectMenu() || interaction.isUserSelectMenu()
+          || interaction.isRoleSelectMenu()) &&
         interaction.customId.startsWith("ubadmin:")
       ) {
         const { handleUbAdminComponent } = await import("./unbelievaboat/discord-admin.js");
@@ -305,6 +307,16 @@ export async function startBot() {
       if (interaction.isModalSubmit() && interaction.customId.startsWith("ubadmin:")) {
         const { handleUbAdminModal } = await import("./unbelievaboat/discord-admin.js");
         await handleUbAdminModal(interaction);
+        return;
+      }
+      if (interaction.isButton() && interaction.customId.startsWith("unbgame:")) {
+        const { handleUnbGameComponent } = await import("./unbelievaboat/games.js");
+        await handleUnbGameComponent(interaction);
+        return;
+      }
+      if (interaction.isStringSelectMenu() && interaction.customId.startsWith("unbstore:")) {
+        const { handleCashStoreSelect } = await import("./unbelievaboat/store.js");
+        await handleCashStoreSelect(interaction);
         return;
       }
 
@@ -1006,9 +1018,33 @@ export async function startBot() {
       } else if (cmd === "petadmin") {
         const { handlePetAdminCommand } = await import("./pets/command.js");
         await handlePetAdminCommand(interaction);
-      } else if (cmd === "ubadmin") {
+      } else if (cmd === "ubadmin" || cmd === "unbelievaboat") {
         const { handleUbAdminCommand } = await import("./unbelievaboat/discord-admin.js");
         await handleUbAdminCommand(interaction);
+      } else if (cmd === "cashcheck") {
+        const { handleCashCheck } = await import("./unbelievaboat/games.js");
+        await handleCashCheck(interaction);
+      } else if (cmd === "cashgames") {
+        const { handleCashGamesHub } = await import("./unbelievaboat/games.js");
+        await handleCashGamesHub(interaction);
+      } else if (cmd === "cashstore") {
+        const { handleCashStore } = await import("./unbelievaboat/store.js");
+        await handleCashStore(interaction);
+      } else if (cmd === "roulette") {
+        const { handleRoulette } = await import("./unbelievaboat/games.js");
+        await handleRoulette(interaction);
+      } else if (cmd === "blackjack") {
+        const { handleBlackjack } = await import("./unbelievaboat/games.js");
+        await handleBlackjack(interaction);
+      } else if (cmd === "russian") {
+        const { handleRussian } = await import("./unbelievaboat/games.js");
+        await handleRussian(interaction);
+      } else if (cmd === "rob") {
+        const { handleRob } = await import("./unbelievaboat/games.js");
+        await handleRob(interaction);
+      } else if (cmd === "slut") {
+        const { handleSlut } = await import("./unbelievaboat/games.js");
+        await handleSlut(interaction);
       } else if (USER_HUB_COMMANDS.has(cmd)) {
         // Flattened player commands (/burn, /pack, …) + hub-backed handlers
         // (daily/collection/… via /user-hub) and other player routes.
@@ -1044,7 +1080,9 @@ export async function startBot() {
     "begin", "show_shiny",
     "quote",
     "collection_hub", "hq", "hqadmin", "hqbuild",
-    "pet", "petadmin", "ubadmin",
+    "pet", "petadmin", "ubadmin", "unbelievaboat",
+    "cashcheck", "cashgames", "cashstore",
+    "roulette", "blackjack", "russian", "rob", "slut",
     "valuehelp", "valuelist", "info_mttv", "giveall", "editpack", "postcalculator",
     "postboard", "massrole", "emoji",
   ]);

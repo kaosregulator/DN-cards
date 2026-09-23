@@ -26,8 +26,13 @@ export const ubSettingsTable = pgTable("ub_settings", {
   leaderboardSort: text("leaderboard_sort").notNull().default("total"),
   // When true, pet shop purchases deduct UB cash via the API.
   petsSpendUb: boolean("pets_spend_ub").notNull().default(true),
-  // Optional currency symbol override (falls back to UB guild.symbol).
+  // Optional currency symbol override (falls back to UnbelievaBoat guild.symbol).
   currencyLabel: text("currency_label"),
+  // Mini-games + Cash Check-In + role storefront (Discord addon).
+  gamesEnabled: boolean("games_enabled").notNull().default(true),
+  storeEnabled: boolean("store_enabled").notNull().default(true),
+  dailyMin: integer("daily_min").notNull().default(100),
+  dailyMax: integer("daily_max").notNull().default(250),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -114,3 +119,27 @@ export const ubAuditLogTable = pgTable("ub_audit_log", {
 ]);
 
 export type UbAuditLog = typeof ubAuditLogTable.$inferSelect;
+
+/**
+ * Per-player UnbelievaBoat mini-game cooldowns (daily check-in, rob, beg, …).
+ * Does not store balances — those live on UnbelievaBoat's API.
+ */
+export const ubGameStateTable = pgTable("ub_game_state", {
+  id: serial("id").primaryKey(),
+  guildId: text("guild_id").notNull(),
+  userId: text("user_id").notNull(),
+  lastDailyAt: timestamp("last_daily_at"),
+  lastRobAt: timestamp("last_rob_at"),
+  lastBegAt: timestamp("last_beg_at"),
+  lastRouletteAt: timestamp("last_roulette_at"),
+  lastBlackjackAt: timestamp("last_blackjack_at"),
+  lastRussianAt: timestamp("last_russian_at"),
+  dailyStreak: integer("daily_streak").notNull().default(0),
+  meta: jsonb("meta").$type<Record<string, unknown>>().notNull().default({}),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("ub_game_state_guild_user_uidx").on(t.guildId, t.userId),
+  index("ub_game_state_guild_idx").on(t.guildId),
+]);
+
+export type UbGameState = typeof ubGameStateTable.$inferSelect;
