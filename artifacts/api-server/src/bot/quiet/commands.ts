@@ -14,7 +14,7 @@ import {
 } from "./shared.js";
 import { QUIET_THEME_CHOICES } from "./quotes.js";
 import { enterQuietMode, leaveQuietMode } from "./lifecycle.js";
-import { ensureQuietRoom } from "./permissions.js";
+import { ensureQuietRoom, ensureQuietRole, syncQuietRoleHides } from "./permissions.js";
 import { QUIET_AUDIO_CATALOG } from "./audio/catalog.js";
 import { startQuietAudioPrebuild } from "./audio/generate.js";
 
@@ -136,9 +136,11 @@ export async function handleQuietCommand(interaction: ChatInputCommandInteractio
         .setDescription(
           `Placed <@${targetMember.id}> into the Quiet Room.\n` +
           `No public announcement was made. They return when **they** click **I'm Ready**.` +
-          (result.adminBypass
-            ? `\n\n_They have Administrator — Discord may still show them other channels._`
-            : ""),
+          (result.isolationNote && result.isolationMode !== "full"
+            ? `\n\n${result.isolationNote}`
+            : result.adminBypass
+              ? `\n\n_They have Administrator — Discord may still show them other channels._`
+              : ""),
         )],
     });
     return;
@@ -195,8 +197,8 @@ export async function handleQuietCommand(interaction: ChatInputCommandInteractio
         "The busy server can wait.\n" +
         "When you're ready, press **🌤️ I'm Ready — Bring Me Back**.\n" +
         "Or run `/quiet` again anytime to leave — even if the bot restarted." +
-        (result.adminBypass
-          ? "\n\n_Administrator bypass: other channels may still be visible. Roles were not changed._"
+        (result.isolationNote
+          ? `\n\n${result.isolationNote}`
           : ""),
       )
       .setFooter({ text: QUIET_BRAND.FOOTER })],
@@ -260,10 +262,25 @@ export async function handleQuietSetupCommand(interaction: ChatInputCommandInter
   if (sub === "ensure_room") {
     try {
       const { channel } = await ensureQuietRoom(interaction.guild);
-      await interaction.editReply(`Quiet Room ready: ${channel}`);
+      const roleResult = await ensureQuietRole(interaction.guild);
+      const me = interaction.guild.members.me;
+      const botAdmin = Boolean(me?.permissions.has(PermissionFlagsBits.Administrator));
+      const lines = [
+        `Quiet Room ready: ${channel}`,
+        roleResult.role
+          ? `Quarantine role: <@&${roleResult.role.id}>` +
+            (roleResult.positionedHigh ? " (positioned high under the bot)" : " _(move bot role above Quiet if assign fails)_")
+          : `Quarantine role: **not created** — ${roleResult.error ?? "missing Manage Roles"}`,
+        botAdmin
+          ? "Bot has **Administrator** — full empty-server Quiet Mode is available."
+          : "⚠️ Bot does **not** have Administrator. For a true empty server (hide all channels + block pings), " +
+            "grant the bot **Administrator**, or at least **Manage Roles** + **Manage Channels** with its role above **Quiet**. " +
+            "Without that, Quiet can only open the room and/or apply weaker member hides — and will list channels still visible.",
+      ];
+      await interaction.editReply(lines.join("\n"));
     } catch (err) {
       logger.error({ err }, "quiet_setup ensure_room failed");
-      await interaction.editReply("Couldn't create the Quiet Room. Check **Manage Channels** for the bot.");
+      await interaction.editReply("Couldn't create the Quiet Room. Check **Manage Channels** / **Administrator** for the bot.");
     }
     return;
   }
@@ -271,6 +288,8 @@ export async function handleQuietSetupCommand(interaction: ChatInputCommandInter
   if (sub === "status") {
     const settings = await getQuietSettings(guildId);
     const active = await listQuietStates(guildId);
+    const me = interaction.guild.members.me;
+    const botAdmin = Boolean(me?.permissions.has(PermissionFlagsBits.Administrator));
     await interaction.editReply({
       embeds: [new EmbedBuilder()
         .setColor(QUIET_BRAND.COLOR)
@@ -278,6 +297,9 @@ export async function handleQuietSetupCommand(interaction: ChatInputCommandInter
         .setDescription(
           `**Enabled:** ${settings.enabled ? "yes" : "no"}\n` +
           `**Audio:** ${settings.audioEnabled ? "yes" : "no"}\n` +
+          `**Room:** ${settings.quietChannelId ? `<#${settings.quietChannelId}>` : "_not created_"}\n` +
+          `**Quiet role:** ${settings.quietRoleId ? `<@&${settings.quietRoleId}>` : "_not created — run ensure_room_"}\n` +
+          `**Bot Administrator:** ${botAdmin ? "yes ✅" : "no ⚠️ (empty-server quarantine limited)"}\n` +
           `**Currently quiet:** ${active.length}\n` +
           (active.length
             ? active.slice(0, 25).map(s => `• <@${s.userId}> since <t:${Math.floor(s.enteredAt.getTime() / 1000)}:R>`).join("\n")

@@ -59,7 +59,8 @@ Railway builds install **ffmpeg** + **flite** via `nixpacks.toml` `aptPkgs`.
 Quiet Mode tables (`quiet_*`) are created automatically on start:
 
 1. `start-production.mjs` creates them if `quiet_state` is missing
-2. Boot migrations also `CREATE TABLE IF NOT EXISTS` for the same tables
+2. Boot migrations also `CREATE TABLE IF NOT EXISTS` for the same tables, and
+   `ADD COLUMN IF NOT EXISTS quiet_role_id` for the quarantine role
 
 No manual `drizzle-kit push` is required for Quiet Mode on an existing database.
 

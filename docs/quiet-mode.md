@@ -10,16 +10,30 @@ Addon feature: a peaceful digital “ghost town” corner inside the server.
 |---------|-----|------|
 | `/quiet` | Members (role-gated if configured) | Enter Quiet Mode. If already quiet, **leave** (emergency exit). |
 | `/quiet user:@Member [theme]` | Staff | Place someone into the same Quiet Room experience. No timer. They still click **I'm Ready**. |
-| `/quiet_setup config\|ensure_room\|status\|audio` | Manage Server / admins | Whitelist/blacklist roles, toggles, room ensure, audio library. |
+| `/quietsetup config\|ensure_room\|status\|audio` | Manage Server / admins | Whitelist/blacklist roles, toggles, room + Quiet role ensure, audio library. |
 
 ## What happens on enter
 
 1. State is saved to Postgres **before** permission changes (restart-safe).
 2. Bot ensures a shared `#quiet-room` channel (category “Quiet Room”).
-3. **Per-member permission overwrites** hide other categories/channels from that user and allow the Quiet Room.
-4. **Roles are never added or removed** — no role audit spam, no tenure/admin role loss.
-5. Quiet Room embed + random quote + optional voice note + **🌤️ I'm Ready — Bring Me Back**.
-6. No public announcement. Ping attempts against quiet users simply don’t reach channels they can’t see.
+3. Bot ensures a **Quiet** quarantine role (positioned as high as the bot can place it).
+4. That role is **denied ViewChannel** on every other category/channel, and **allowed** only on Quiet Room.
+5. The member receives the Quiet role → sidebar looks like an empty server (Quiet Room only). Pings from hidden channels should not reach them.
+6. Quiet Room embed + random quote + optional voice note + **🌤️ I'm Ready — Bring Me Back**.
+7. No public announcement.
+
+### Bot permissions (important)
+
+| Bot perms | What Quiet Mode can do |
+|-----------|-------------------------|
+| **Administrator** (recommended) | Full empty-server quarantine: create/position Quiet role, hide all other channels, assign/remove role |
+| Manage Roles + Manage Channels, bot role **above** Quiet | Same as full quarantine in practice |
+| Manage Channels only | Opens Quiet Room + weaker **member** hides; may still leak channels / pings |
+| Neither | Can only try to show Quiet Room — **lists channels still visible** in the Heads-up note |
+
+`/quietsetup ensure_room` and `/quietsetup status` spell out whether the bot has Administrator and whether the Quiet role exists.
+
+Discord **Administrator** members still bypass channel hides (platform limit) — UX explains this.
 
 ## Audio / voice notes
 
@@ -49,12 +63,12 @@ Bot limitation: some guilds/API paths may reject bot native voice messages; fall
 | Case | Behavior |
 |------|----------|
 | `/quiet` while already quiet | Leaves Quiet Mode (offline exit) |
-| Bot restarts mid-quiet | Recovery re-applies overwrites + re-posts **I'm Ready** |
-| Member leaves server while quiet | State + overwrites cleared |
+| Bot restarts mid-quiet | Recovery re-assigns Quiet role + hides + re-posts **I'm Ready** |
+| Member leaves server while quiet | State + role/overwrites cleared |
 | Double leave / double ready click | Idempotent no-op |
-| Administrator users | Discord Admin **bypasses** channel hides — UX explains this; roles untouched |
-| Partial permission failure | `needsRecovery` flag; periodic recovery; `/quiet` still exits |
-| Many users quiet at once | Independent DB rows + independent overwrites |
+| Administrator users | Discord Admin **bypasses** channel hides — UX explains this |
+| Bot missing Admin / Manage Roles | Partial isolation; embed lists channels still visible |
+| Many users quiet at once | Shared Quiet role + independent DB rows |
 
 ## Files
 
@@ -86,18 +100,9 @@ artifacts/api-server/src/bot/quiet/
 ## Deploy note
 
 On Railway, Quiet Mode tables are created automatically by `start-production.mjs`
-and boot migrations (`CREATE TABLE IF NOT EXISTS quiet_*`). Existing databases
+and boot migrations (`CREATE TABLE IF NOT EXISTS quiet_*`, plus
+`ALTER TABLE … ADD COLUMN IF NOT EXISTS quiet_role_id`). Existing databases
 that already have `guild_settings` do **not** need `AUTO_DB_PUSH=1`.
 
 The Railway image installs **ffmpeg** + **flite** via `nixpacks.toml` so curated
 ambience mixes and spoken quotes work in production.
-
-
-Current ship uses procedural audio only. Good places for **legally redistributable** ambient samples later:
-
-- [Freesound](https://freesound.org/) — filter **CC0** / **CC-BY** (keep attribution)
-- [OpenGameArt](https://opengameart.org/) — CC0 / CC-BY ambience loops
-- Pixabay Sound Effects — check current license terms before bundling
-- BBC Sound Effects (remArc) — check each clip’s licence
-
-Do **not** pull commercial YouTube music or copyrighted songs into the library.

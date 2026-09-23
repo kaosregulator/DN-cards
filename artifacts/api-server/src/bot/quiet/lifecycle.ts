@@ -10,7 +10,8 @@ import {
 import { QUIET_BRAND, QUIET_CUSTOM, QUIET_EMOJI, formatDurationLabel } from "./shared.js";
 import { pickQuietQuote, type QuietTheme } from "./quotes.js";
 import {
-  applyQuietIsolation, clearQuietIsolation, describeIsolationNote, ensureQuietRoom,
+  applyQuietIsolation, clearQuietIsolation, ensureQuietRoom,
+  type QuietIsolationMode,
 } from "./permissions.js";
 import { pickQuietAudio, describeAudioCard } from "./audio/select.js";
 import { prepareQuietExperience, startQuietAudioPrebuild } from "./audio/generate.js";
@@ -18,7 +19,7 @@ import { sendQuietVoiceMessage } from "./audio/voice-message.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Quiet Mode lifecycle — enter / leave / room UX
-// Roles are never touched. State is DB-backed for restart safety.
+// Enter adds the Quiet quarantine role; leave removes it. DB-backed for safety.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface EnterQuietOptions {
@@ -35,6 +36,8 @@ export interface EnterQuietResult {
   alreadyQuiet?: boolean;
   quietChannelId?: string;
   adminBypass?: boolean;
+  isolationMode?: QuietIsolationMode;
+  isolationNote?: string | null;
   error?: string;
 }
 
@@ -118,10 +121,14 @@ export async function enterQuietMode(opts: EnterQuietOptions): Promise<EnterQuie
 
   let targets: string[] = [];
   let adminBypass = false;
+  let isolationMode: QuietIsolationMode = "room_only";
+  let isolationNote: string | null = null;
   try {
     const iso = await applyQuietIsolation(member, quietChannel, categoryId);
     targets = iso.targets;
     adminBypass = iso.adminBypass;
+    isolationMode = iso.isolationMode;
+    isolationNote = iso.note;
   } catch (err) {
     logger.error({ err, guildId, userId }, "Quiet isolation failed");
     await patchQuietState(guildId, userId, { needsRecovery: true });
@@ -138,8 +145,12 @@ export async function enterQuietMode(opts: EnterQuietOptions): Promise<EnterQuie
   // Main Quiet Room card + return button
   try {
     const embed = roomEmbed(quote.text);
-    const note = describeIsolationNote(adminBypass);
-    if (note) embed.addFields({ name: "Heads up", value: note });
+    if (isolationNote) {
+      embed.addFields({
+        name: isolationMode === "full" && !adminBypass ? "Quiet Room" : "Heads up",
+        value: isolationNote.slice(0, 1024),
+      });
+    }
 
     const card = await quietChannel.send({
       content: `<@${userId}>`,
@@ -204,8 +215,16 @@ export async function enterQuietMode(opts: EnterQuietOptions): Promise<EnterQuie
   });
   await rememberQuietSelection(guildId, userId, audioPick.entry.id, quote.id);
 
-  logger.info({ guildId, userId, enteredBy: opts.enteredBy, adminBypass }, "User entered Quiet Mode");
-  return { ok: true, quietChannelId: quietChannel.id, adminBypass };
+  logger.info({
+    guildId, userId, enteredBy: opts.enteredBy, adminBypass, isolationMode,
+  }, "User entered Quiet Mode");
+  return {
+    ok: true,
+    quietChannelId: quietChannel.id,
+    adminBypass,
+    isolationMode,
+    isolationNote,
+  };
 }
 
 export interface LeaveQuietResult {
@@ -215,7 +234,7 @@ export interface LeaveQuietResult {
 }
 
 /**
- * Leave Quiet Mode — restore overwrites, clean room messages, clear DB state.
+ * Leave Quiet Mode — remove Quiet role, restore overwrites, clean room, clear DB.
  * Safe to call twice (second call is a no-op).
  */
 export async function leaveQuietMode(
@@ -228,15 +247,21 @@ export async function leaveQuietMode(
   const state = await getQuietState(guildId, userId);
   if (!state) return { ok: true, wasQuiet: false };
 
+  const settings = await getQuietSettings(guildId);
+
   // Clear isolation first so the member can see the server again ASAP.
   try {
-    await clearQuietIsolation(guild, userId, state.overwriteTargets ?? []);
+    await clearQuietIsolation(
+      guild,
+      userId,
+      state.overwriteTargets ?? [],
+      settings.quietRoleId,
+    );
   } catch (err) {
     logger.warn({ err, guildId, userId }, "Quiet isolation clear had errors");
   }
 
   // Cleanup Quiet Room messages we posted for this session.
-  const settings = await getQuietSettings(guildId);
   if (settings.quietChannelId && state.roomMessageIds?.length) {
     const ch = guild.channels.cache.get(settings.quietChannelId);
     if (ch?.isTextBased()) {
@@ -303,8 +328,13 @@ export async function forceClearQuietState(
   const state = await getQuietState(guildId, userId);
   if (!state) return;
   if (guild) {
-    await clearQuietIsolation(guild, userId, state.overwriteTargets ?? []).catch(() => {});
     const settings = await getQuietSettings(guildId);
+    await clearQuietIsolation(
+      guild,
+      userId,
+      state.overwriteTargets ?? [],
+      settings.quietRoleId,
+    ).catch(() => {});
     if (settings.quietChannelId && state.roomMessageIds?.length) {
       const ch = guild.channels.cache.get(settings.quietChannelId);
       if (ch?.isTextBased()) {

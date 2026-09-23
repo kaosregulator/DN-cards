@@ -47,6 +47,7 @@ export async function updateQuietSettings(
     enabled: boolean;
     quietChannelId: string | null;
     quietCategoryId: string | null;
+    quietRoleId: string | null;
     whitelistRoleId: string | null;
     blacklistRoleId: string | null;
     audioEnabled: boolean;

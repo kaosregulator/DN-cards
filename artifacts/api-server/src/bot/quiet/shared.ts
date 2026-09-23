@@ -8,8 +8,8 @@ import type { QuietTheme } from "./quotes.js";
 // ─────────────────────────────────────────────────────────────────────────────
 // Quiet Mode — shared brand, access wall, helpers.
 //
-// Roles are NEVER added/removed for Quiet Mode. Channel isolation uses member
-// permission overwrites only (see permissions.ts).
+// Isolation uses a dedicated Quiet quarantine role (see permissions.ts).
+// Whitelist/blacklist roles below are access gates only — separate from Quiet.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const QUIET_BRAND = {
