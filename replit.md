@@ -45,13 +45,14 @@ DN Cards is DarkNight's collectible military trading card game for the Roblox + 
 - Tradein / Card Fusion (`/card_recycle`): `artifacts/api-server/src/bot/commands/tradein.ts`
 - Visual config panel: `artifacts/api-server/src/bot/commands/config-panel.ts`
 - Battles / raids: `artifacts/api-server/src/bot/battle/`, `artifacts/api-server/src/bot/raid/`, commands `battle.ts` / `battle-admin.ts` — `/battle`, `/battle phaser`, `/raid`, `/battle_admin`, `/raid_admin`
-- Sanctuary (Quiet / Vacation / LOA): `artifacts/api-server/src/bot/quiet/` — `/quiet`, `/vacation`, `/loa`, `/quiet_setup` (see `docs/quiet-mode.md`)
+- Sanctuary (Quiet / Vacation / LOA): `artifacts/api-server/src/bot/quiet/` — `/quiet` (`mode:quiet|vacation|loa|stepaway`), `/quiet_setup` (see `docs/quiet-mode.md`)
 - Card/rank data: `artifacts/api-server/src/bot/cards-data.ts`
 - DB helpers: `artifacts/api-server/src/bot/db.ts`
 - Slash command registration: `artifacts/api-server/src/bot/commands/register.ts` (source of truth for live slash names)
 - Giveaway System schema: `lib/db/src/schema/giveaways.ts` (giveaways, giveaway_entries, giveaway_winners)
 - Giveaway System module: `artifacts/api-server/src/bot/giveaway/` (`db.ts` CRUD, `engine.ts` progress+winner draw, `embeds.ts` UI, `manager.ts` message/claim, `hub.ts` `/giveaway` browse+admin, `sweeper.ts` auto-end/reroll, `message-hook.ts` message tracking, `prizes.ts` payout). Old `/giveaways` + `/giveaway_admin` slash names are gone — use `/giveaway`.
-- Unified help hub: `artifacts/api-server/src/bot/commands/help-hub.ts` (interactive `/help` — topic dropdown, live-edited pages, animated banner; `/admin_help` opens it on the Admin page). Banner/palette: `artifacts/api-server/src/bot/help-banners.ts`. Rebrandable via `/embed … key:help`.
+- Unified help hub: `artifacts/api-server/src/bot/commands/help-hub.ts` (interactive `/help` — topic dropdown, live-edited pages, animated banner; Admin page is the staff reference). Banner/palette: `artifacts/api-server/src/bot/help-banners.ts`. Rebrandable via `/embed … key:help`.
+- Trade / Vault Values / card-admin / secret hubs: `trade-hub.ts`, `vaultvalue-hub.ts`, `cardadmin-hub.ts`, `secret-hub.ts` (handlers kept; flat slash names dropped via `HUB_REPLACED_COMMANDS`)
 - Bob (retired entertainment NPC) schema leftovers only: `lib/db/src/schema/bob.ts` + boot `CREATE TABLE IF NOT EXISTS bob_*` in `artifacts/api-server/src/index.ts`. The runtime module `artifacts/api-server/src/bot/bob/` is **gone** — no `/bob` slash commands are registered. Do not drop the tables without a coordinated migration.
 - Headquarters (HQ) schema: `lib/db/src/schema/headquarters.ts` (player_hq, hq_unlocks, hq_displays, hq_placements, hq_defenders, hq_base_state, hq_base_attacks, hq_base_reigns, hq_world_nodes, hq_terrain)
 - UnbelievaBoat addon schema: `lib/db/src/schema/unbelievaboat.ts` (ub_settings, ub_role_links, ub_store_catalog, ub_audit_log) + `lib/db/src/schema/pets.ts` (pet_settings, pets, pet_challenges, pet_care_log)
@@ -234,7 +235,7 @@ those tables now happen through Discord slash commands — see
 - When the proposing side's worth ratio vs the requesting side exceeds **3:1** (cards by `worthValue`, shards 1:1), the trade embed shows an orange ⚠️ banner naming the disadvantaged party. Trade still goes through if accepted — it's informational only.
 
 ### Unified Help Hub
-- `/help` (and `!help`) open one interactive, ephemeral help message: an animated banner + a **topic dropdown** (Overview, Collecting, Economy, Trading & Market, Battles/Raids/Squads, Giveaways, Quests & Reputation, Echo & AFK, Admin). Picking a topic **live-edits** the same message — no new messages. `/admin_help` opens it on the Admin page (admin-gated). It documents every player and admin command in one place.
+- `/help` (and `!help`) open one interactive, ephemeral help message: an animated banner + a **topic dropdown** (Overview, Collecting, Economy, Trading & Market, Battles/Raids/Squads, Giveaways, Quests & Reputation, Echo & AFK, Admin). Picking a topic **live-edits** the same message — no new messages. The **Admin** topic is admin-gated and is the staff reference. It documents every player and admin command in one place.
 - The embed is admin-rebrandable through the existing override system: `/embed set key:help field:customImageUrl|color|title|footer value:<…>` (the `help` key was added to `EMBED_KEYS`). Banner + section palette live in `help-banners.ts`; the banner is a free direct-hotlink animated GIF and swappable per guild.
 - Custom-IDs are namespaced `help:*` (select `help:select`, button `help:home`) and routed in `index.ts`.
 
@@ -254,13 +255,13 @@ those tables now happen through Discord slash commands — see
 - **DB push:** new tables require `pnpm -C lib/db run push` after deploy.
 
 ### Sanctuary (Quiet / Vacation / LOA)
-- Quarantine-role isolation so a member can step away without leaving the server. Live slash: `/quiet`, `/vacation`, `/loa`, `/quiet_setup`. Staff can force-in/force-out with `/quiet user:@Member`. See `docs/quiet-mode.md`.
+- Quarantine-role isolation so a member can step away without leaving the server. Live slash: `/quiet` (`mode:quiet|vacation|loa|stepaway`), `/quiet_setup`. Staff can force-in/force-out with `/quiet user:@Member`. See `docs/quiet-mode.md`.
 
 ## Architecture decisions
 
 - Bot runs inside the same Express server process (startBot() called from index.ts) — keeps infra simple, one workflow to manage.
 - **Command split:** Setup/config commands use `!` prefix (text commands). Quick admin actions + all user commands use slash commands.
-- **Flat slash commands + hubs:** commands register as standalone top-level names (`/burn`, `/drop`, `/setup`, `/user-hub`, `/battle`, …) — NOT nested under `/cards …` / `/admin …`. `register.ts` `buildCommands()` flattens + applies `COMMAND_RENAMES`, then drops `HUB_REPLACED_COMMANDS` (e.g. daily/collection/wishlist/quests/market/squad) whose handlers remain for hub buttons. `index.ts` routes via `USER_HUB_COMMANDS` / `ADMIN_HUB_COMMANDS` plus explicit branches (battle, quiet, giveaway, pet, …). Prefer `/help` for the player-facing map. Stay under Discord's 100/guild slash cap.
+- **Flat slash commands + hubs:** commands register as standalone top-level names (`/burn`, `/setup`, `/user-hub`, `/battle`, `/trade`, `/vaultvalue`, `/cardadmin`, `/secret`, …) — NOT nested under `/cards …` / `/admin …`. `register.ts` `buildCommands()` flattens + applies `COMMAND_RENAMES`, then drops `HUB_REPLACED_COMMANDS` (daily/collection/wishlist/quests/market/squad, trade flats, vaultvalue flats, cardadmin flats, whisper/staff, vacation/loa, …) whose handlers remain for hub buttons / thin routers. `index.ts` routes via `USER_HUB_COMMANDS` / `ADMIN_HUB_COMMANDS` plus explicit branches (battle, quiet, giveaway, pet, casino, vaultvalue, cardadmin, secret, trade, …). Prefer `/help` for the player-facing map. Stay under Discord's 100/guild slash cap.
 - Weighted random card drops: each card has a `dropWeight`; guild-specific rarity weights override per-rarity (stored as nullable ints in guild_settings).
 - Multi-card spawns: `cardsPerSpawn` (1/3/5/-1=random) fires N independent spawn events with 5s gaps. `activeSpawns` is `Map<guildId, Map<spawnId, ActiveSpawn>>` to support multiple simultaneous spawns.
 - Catch detection: any non-`!` message is checked against ALL active spawns for the guild (case-insensitive).
@@ -284,9 +285,9 @@ those tables now happen through Discord slash commands — see
 - **Random drops**: Cards spawn at configured intervals in the spawn channel
 - **Card packs**: `/pack tier:basic|premium|legendary` — buy with DN Shards, opens 5 cards
 - **Daily reward**: `/user-hub` → Daily (streak bonus); handler still in `daily.ts`, not a top-level `/daily` slash
-- **Event drops**: Admin force-drops specific cards with `/drop name:<Name>`
+- **Event drops**: Admin force-drops specific cards with `/cardadmin drop name:<Name>`
 - **Limited-time events**: `/event start|list|stop` — admin boosts any card's spawn weight for a duration
-- **Admin giveaways**: `/give user:@User name:<Card Name>` — direct award (no shiny roll); activity giveaways via `/giveaway`
+- **Admin giveaways**: `/cardadmin give user:@User name:<Card Name>` — direct award (no shiny roll); activity giveaways via `/giveaway`
 - **Trading**: `/trade user:@User offer:<card>|shards want:<card>|shards` (shows ⚠️ if value ratio > 3:1)
 - **Card Fusion**: `/card_recycle` — burn/fuse path (public name for internal `tradein`)
 - **Wishlists**: `/user-hub` → Wishlist (hub-backed; not a top-level `/wishlist` slash)
@@ -317,10 +318,10 @@ those tables now happen through Discord slash commands — see
 - Use `/pack_stats` to see your per-tier usage, cooldown remaining, and reset countdown.
 
 ### Economy (DN Shards 💠)
-- **Earned by**: burning duplicate cards (`/burn`), daily rewards via `/user-hub` (50 base + streak bonus up to +200), gifts (`/gift`), Card Fusion upgrades, admin awards (`/give_shards`), achievement unlocks
-- **Spent on**: `/pack` openings, `/trade` offers, `/gift` to other members
+- **Earned by**: burning duplicate cards (`/burn`), daily rewards via `/user-hub` (50 base + streak bonus up to +200), gifts (`/trade gift`), Card Fusion upgrades, admin awards (`/cardadmin give_shards`), achievement unlocks
+- **Spent on**: `/pack` openings, `/trade` offers, `/trade gift` to other members
 - Balance + all-time-earned tracked per user per guild
-- Admins can deduct with `/take_shards`
+- Admins can deduct with `/cardadmin take_shards`
 
 ### Daily Reward
 - 20h cooldown (slight grace so dailies don't drift later each day)
@@ -398,11 +399,13 @@ Slash names below match `register.ts` `buildCommands()` (after renames + hub fil
 | `/pack tier:<basic\|premium\|legendary>` | Open a pack |
 | `/pack_stats` | Pack costs, weekly caps, cooldown |
 | `/card_recycle` | Card Fusion / star-rank recycle |
-| `/trade` · `/trades` · `/trade_history` | Propose and manage trades |
-| `/gift` · `/accept` · `/decline` | Gift shards / accept or decline trades |
+| `/trade` | Trade hub — propose, pending, history, accept, decline, gift |
 | `/lock` · `/level` · `/collector` | Lock cards · battle level · spawn ping role |
 | `/begin` | Onboarding |
 | `/funfact` | Fun facts |
+| `/vaultvalue` | Vault Values prices + calculator ([valuevaultx.com](https://valuevaultx.com)) |
+| `/secret` | Encrypted Echo — whisper / staff |
+| `/casino` | UnbelievaBoat casino hub |
 
 ### Battles, HQ, giveaways, sanctuary
 | Command | Description |
@@ -411,11 +414,11 @@ Slash names below match `register.ts` `buildCommands()` (after renames + hub fil
 | `/raid` | Co-op raid entry |
 | `/hq` · `/hqbuild` | Personal Headquarters |
 | `/giveaway` | Giveaway hub (browse + admin tools) |
-| `/quiet` · `/vacation` · `/loa` | Sanctuary modes (run again to leave) |
-| `/afk` · `/whisper` · `/echo` | AFK Secretary / encrypted whispers |
+| `/quiet` | Sanctuary (`mode:quiet|vacation|loa|stepaway` — run again to leave) |
+| `/afk` · `/echo` | AFK Secretary / Echo-Whisper config |
 | `/pet` | Tamagotchi pets (when enabled) |
 
-> **Hub-only (handlers kept, not top-level slash):** daily, collection, calendar, frame, rank, achievements, market, squad, quests, wishlist, rep, search — use `/user-hub` (and `/top` for leaderboard).
+> **Hub-only (handlers kept, not top-level slash):** daily, collection, calendar, frame, rank, achievements, market, squad, quests, wishlist, rep, search — use `/user-hub` (and `/top` for leaderboard). Also folded: trade flats → `/trade`; vaultvalue flats → `/vaultvalue`; card create/give/drop → `/cardadmin`; whisper/staff → `/secret`; vacation/loa → `/quiet mode:…`.
 >
 > **Removed from live registration:** Bob (`/bob`, `/bob_*`, `/bob_admin`). Schema/boot leftovers may remain.
 
@@ -424,19 +427,21 @@ Slash names below match `register.ts` `buildCommands()` (after renames + hub fil
 |---|---|
 | `/setup` · `!setup` | Guided server setup |
 | `/config` | Visual config panel |
-| `/admin_hub` · `/admin_help` | Admin toolbox / reference |
+| `/admin_hub` | Admin toolbox · **`/help` → Admin** for the full reference |
+| `/cardadmin` | Create / edit / give / drop (upload · Kitsu · Vault Values) |
 | `/battle_admin` · `/raid_admin` · `/hqadmin` | Combat / HQ staff tools |
 | `/set_hub` · `/set_admin` | Card sets / spawn rotation |
-| `/drop` · `/mass_drop` · `/event` | Force drops · limited events |
-| `/give` · `/give_shards` · `/take_back` · `/take_shards` · `/giveall` | Direct awards / deductions |
+| `/event` | Limited events |
 | `/rarity` · `/embed` | Rarity tiers · embed branding |
 | `/quiet_setup` · `/afk_setup` | Sanctuary / AFK setup |
 | `/quiet user:@Member` | Place into sanctuary or force out |
 | `/minigames` | Wild Mini-Games admin panel (not Bob) |
-| `/add_card` · `/edit_card` · `/edit_image` · `/delete_card` | Card CRUD |
-| `/welcome_admin` · `/collector_role` · `/mass_role` | Onboarding / roles |
+| `/collector_role` · `/mass_role` | Roles |
 | `/progression_default` · `/progression_card` | Arrival star/level defaults |
+| `/echo` | Echo-Whisper config |
+| `/vaultvalue postcalc` | Post persistent Vault Values calculator hub |
 | `/petadmin` | Pet admin (when pets enabled) |
+| `/unbelievaboat` | UnbelievaBoat Discord admin dashboard |
 
 ### Setup & Config Commands (`!` prefix — admin only)
 | Command | Description |

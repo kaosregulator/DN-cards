@@ -8,8 +8,7 @@ Addon feature: a peaceful digital “ghost town” corner inside the server.
 
 | Command | Who | What |
 |---------|-----|------|
-| `/quiet` `[mode]` | Members (role-gated if configured) | Enter Quiet / Vacation / LOA / Step Away. If already in, **leave**. |
-| `/vacation` · `/loa` | Members | Same isolation engine, different labels (renameable per server). |
+| `/quiet` `[mode:quiet\|vacation\|loa\|stepaway]` | Members (role-gated if configured) | Enter Quiet / Vacation / LOA / Step Away. If already in, **leave**. |
 | `/quiet user:@Member` | Staff | **Toggle:** place them in, or **force them out**. |
 | `/quiet_setup ensure_room` | Admins | Sync all sanctuary rooms + quarantine roles + channel hides. |
 | `/quiet_setup rename` | Admins | Rename a mode’s label / role name / channel name for this server. |

@@ -1,7 +1,5 @@
-// Echo-Whisper slash-command handlers (ported into DN Cards). Three commands:
-//   /whisper user:@x      — encrypted member-to-member message
-//   /admin_secret          — role-gated staff message
-//   /echo <sub>           — management hub (roles, override, stats, config)
+// Echo-Whisper slash-command handlers (ported into DN Cards).
+// Send via `/secret whisper` / `/secret staff`; configure via `/echo`.
 //
 // The heavy lifting (modal submits + reveal buttons) lives in interactions.ts.
 
@@ -17,7 +15,7 @@ import {
 
 const EPHEMERAL = { flags: MessageFlags.Ephemeral } as const;
 
-// ── /whisper ─────────────────────────────────────────────────────────────────
+// ── /secret whisper ──────────────────────────────────────────────────────────
 export async function handleWhisperCommand(interaction: ChatInputCommandInteraction): Promise<void> {
   const targetUser = interaction.options.getUser("user", true);
   if (targetUser.id === interaction.user.id) {
@@ -42,7 +40,7 @@ export async function handleWhisperCommand(interaction: ChatInputCommandInteract
   await interaction.showModal(modal);
 }
 
-// ── /admin_secret ─────────────────────────────────────────────────────────────
+// ── /secret staff ────────────────────────────────────────────────────────────
 export async function handleAdminSecretCommand(interaction: ChatInputCommandInteraction): Promise<void> {
   const modal = new ModalBuilder()
     .setCustomId("adminsecret_modal")
@@ -85,7 +83,7 @@ export async function handleEchoCommand(interaction: ChatInputCommandInteraction
         });
       } else {
         const list = roleIds.map(id => `• <@&${id}>`).join("\n");
-        await interaction.reply({ content: `**🔐 Authorized roles for /admin_secret viewing:**\n${list}`, ...EPHEMERAL });
+        await interaction.reply({ content: `**🔐 Authorized roles for /secret staff viewing:**\n${list}`, ...EPHEMERAL });
       }
       return;
     }
@@ -96,7 +94,7 @@ export async function handleEchoCommand(interaction: ChatInputCommandInteraction
     }
     if (action === "add") {
       await addViewerRole(guildId, role.id);
-      await interaction.reply({ content: `✅ <@&${role.id}> can now reveal /admin_secret messages.`, ...EPHEMERAL });
+      await interaction.reply({ content: `✅ <@&${role.id}> can now reveal /secret staff messages.`, ...EPHEMERAL });
     } else {
       const removed = await removeViewerRole(guildId, role.id);
       await interaction.reply({
@@ -115,7 +113,7 @@ export async function handleEchoCommand(interaction: ChatInputCommandInteraction
     await setAdminOverride(guildId, enable);
     await interaction.reply({
       content: `✅ **Admin override** is now **${enable ? "enabled" : "disabled"}**.\n` +
-        `Admins ${enable ? "can" : "cannot"} decrypt any /admin_secret and /whisper message.`,
+        `Admins ${enable ? "can" : "cannot"} decrypt any /secret staff and /secret whisper message.`,
       ...EPHEMERAL,
     });
     return;
@@ -129,7 +127,7 @@ export async function handleEchoCommand(interaction: ChatInputCommandInteraction
         "**What it does:** Members can send encrypted private messages to each other.\n" +
         "**Who can decrypt:** Only the sender, recipient, and (if enabled) server admins.\n" +
         `**Admin override:** ${override ? "✅ Enabled — admins can decrypt any whisper" : "❌ Disabled — admins follow the same rules as members"}\n\n` +
-        "**Usage:** `/whisper user:@member`",
+        "**Usage:** `/secret whisper user:@member`",
       ...EPHEMERAL,
     });
     return;
@@ -145,7 +143,7 @@ export async function handleEchoCommand(interaction: ChatInputCommandInteraction
         "**What it does:** Staff can post encrypted messages for authorized roles only.\n" +
         `**Authorized roles:**\n${roleList}\n` +
         `**Admin override:** ${override ? "✅ Enabled — admins can decrypt any adminsecret" : "❌ Disabled — admins follow role rules"}\n\n` +
-        "**Usage:** `/admin_secret`",
+        "**Usage:** `/secret staff`",
       ...EPHEMERAL,
     });
     return;
@@ -160,7 +158,7 @@ export async function handleEchoCommand(interaction: ChatInputCommandInteraction
         "📊 **Echo-Whisper Statistics**\n\n" +
         `**Servers:** ${guildCount}\n` +
         `**Uptime:** ${uptime}\n` +
-        "**Commands:** /admin_secret, /whisper, /echo\n" +
+        "**Commands:** /secret whisper, /secret staff, /echo\n" +
         "**Storage:** Encrypted payloads in the Dex N Cards database (per-guild)",
       ...EPHEMERAL,
     });
@@ -176,8 +174,8 @@ export async function handleEchoCommand(interaction: ChatInputCommandInteraction
         `**Viewer roles:** ${settings.viewerRoleIds.length} role(s) configured\n` +
         "**Encryption:** AES-256-CBC (key derived from ENCRYPTION_KEY)\n\n" +
         "**Available commands:**\n" +
-        "• `/admin_secret` — staff encrypted messages\n" +
-        "• `/whisper` — member private conversations\n" +
+        "• `/secret staff` — staff encrypted messages\n" +
+        "• `/secret whisper` — member private conversations\n" +
         "• `/echo` — this management hub",
       ...EPHEMERAL,
     });

@@ -162,9 +162,9 @@ export async function handleSetupButton(interaction: ButtonInteraction): Promise
             `Drops are live in <#${settings.spawnChannelId}>.\n\n` +
             `**👈 What to do next**\n` +
             `• **Post the welcome guide:** Go to your info channel and run \`/welcome\`\n` +
-            `• **Add your own cards:** \`/add_card\` with an image attachment\n` +
-            `• **Test drops:** \`/drop\` (force one) · \`/mass_drop\` (batch)\n` +
-            `• **Players need help?** \`/help\` · \`/admin_help\`\n\n` +
+            `• **Add your own cards:** \`/cardadmin create\` with an image attachment\n` +
+            `• **Test drops:** \`/cardadmin drop\` (force one) · \`/cardadmin mass_drop\` (batch)\n` +
+            `• **Players need help?** \`/help\` (admins: open the **Admin** topic)\n\n` +
             `Re-open anytime: \`${settings.commandPrefix}setup\` or \`/setup\``,
           ),
       ],
@@ -375,8 +375,8 @@ function buildSetupEmbed(s: GuildSettings, hasDefaults: boolean): EmbedBuilder {
         name: "✅ Guided Next Steps",
         value:
           `• \`/welcome\` — post player guide (run in info channel)\n` +
-          `• \`/drop\` — force a drop instantly\n` +
-          `• \`/add_card\` — create a card with built-in rarity + upload`,
+          `• \`/cardadmin drop\` — force a drop instantly\n` +
+          `• \`/cardadmin create\` — create a card with built-in rarity + upload`,
         inline: false,
       },
     )

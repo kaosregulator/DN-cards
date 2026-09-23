@@ -134,10 +134,10 @@ export async function handleWelcome(interaction: ChatInputCommandInteraction): P
     .setTitle("🔄 Trades & Market")
     .setDescription(
       "Move cards between players — safely and fairly.\n\n" +
-      "🤝 **`/trade user:@player`** — direct card-for-card deals. Lopsided offers (over 3:1 in value) flash a ⚠️ so nobody gets fleeced.\n" +
-      "🎁 **`/gift user:@player`** — hand a card over, no strings.\n" +
-      "📌 **`/wishlist`** — mark the cards you're hunting so trade partners can find you.\n" +
-      "🏪 **`/market`** — the player marketplace: list what you're selling, browse & buy what you need.",
+      "🤝 **`/trade propose user:@player`** — direct card-for-card deals. Lopsided offers (over 3:1 in value) flash a ⚠️ so nobody gets fleeced.\n" +
+      "🎁 **`/trade gift user:@player`** — send 💠 shards to a friend.\n" +
+      "📌 **/user-hub → Wishlist** — mark the cards you're hunting so trade partners can find you.\n" +
+      "🏪 **/user-hub → Market** — the player marketplace: list what you're selling, browse & buy what you need.",
     )
     .setImage(DIVIDER_GIF);
 
@@ -202,17 +202,17 @@ export async function handleWelcomeAdmin(interaction: ChatInputCommandInteractio
 
       "**✅ Step 2 — Activate a Card Set**\n" +
       "Random spawns only fire from the **active set**. Run `/set_hub` (clickable panel) " +
-      "to pick one. No active set = no random spawns (admin `/drop` always works).\n\n" +
+      "to pick one. No active set = no random spawns (admin `/cardadmin drop` always works).\n\n" +
 
       "**✅ Step 3 — Add & Edit Cards**\n" +
       `• **Website** → [${SITE_ADMIN}](${SITE_ADMIN}) — display name, image, description, featured/hidden, sort order.\n` +
-      "• **Discord prefix commands** → `!addcard` / `!editcard <Name>` — rarity, worth, burn, spawn chance, packs.\n\n" +
+      "• **Discord** → `/cardadmin create` (upload) · `create_kitsu` · `create_vault` — or prefix `!addcard` / `!editcard`.\n\n" +
 
       "**✅ Step 4 — Dashboard Login**\n" +
       "Run `/dashboard` — bot DMs you a one-time login link. Do this for every admin who needs site access.\n\n" +
 
       "**✅ Step 5 — Test It**\n" +
-      "Run `/drop` (no name = random from active set). If nothing spawns, check the set has droppable cards and the spawn channel is configured.",
+      "Run `/cardadmin drop` (no name = random from active set). If nothing spawns, check the set has droppable cards and the spawn channel is configured.",
     )
     .setImage(DIVIDER_GIF);
 
@@ -254,12 +254,11 @@ export async function handleWelcomeAdmin(interaction: ChatInputCommandInteractio
     .setTitle("⚡ Admin Command Cheat-Sheet")
     .addFields(
       {
-        name: "🎁 Drops & Giveaways",
+        name: "🎁 Drops & Giveaways (`/cardadmin`)",
         value:
-          "`/drop [name]` — single drop (bypasses active-set check)\n" +
-          "`/mass_drop [amount]` — 10–25 cards in a batch (event use)\n" +
-          "`/give user:@ name:<card>` · `/take_back user:@ name:<card>`\n" +
-          "`/give_shards user:@ amount:<n>` · `/take_shards user:@ amount:<n>`",
+          "`/cardadmin drop [name]` — single drop (bypasses active-set check)\n" +
+          "`/cardadmin mass_drop [amount]` — 10–25 cards in a batch (event use)\n" +
+          "`/cardadmin give` · `take` · `give_shards` · `take_shards`",
         inline: false,
       },
       {
@@ -274,7 +273,7 @@ export async function handleWelcomeAdmin(interaction: ChatInputCommandInteractio
         value:
           "`/setup` — first-time wizard · `/config` — visual config panel\n" +
           "`/admin_hub` — manage admins, timeouts, channels & server state\n" +
-          "`/admin_help` — full admin reference",
+          "`/help` → **Admin** — full admin reference",
         inline: false,
       },
       {
@@ -301,7 +300,7 @@ export async function handleWelcomeAdmin(interaction: ChatInputCommandInteractio
         inline: false,
       },
     )
-    .setFooter({ text: "Player commands → /help  ·  Full admin reference → /admin_help" });
+    .setFooter({ text: "Player commands → /help  ·  Full admin reference → /help → Admin" });
 
   await interaction.editReply({ embeds: [quickstart, cardEditing, cheatsheet] });
 }

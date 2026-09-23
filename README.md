@@ -16,7 +16,7 @@ Collect, trade, battle, and build — with a User Hub for daily profile flow, co
 - **Random card spawns** — timed drops in configured channels
 - **Packs** — `/pack` (Basic / Premium / Legendary) with shard economy
 - **Burn & fuse** — `/burn` for shards · `/card_recycle` for Card Fusion / star rank
-- **Trading** — `/trade`, `/trades`, accept/decline with fairness warnings
+- **Trading** — `/trade` hub (propose / pending / history / accept / decline / gift) with fairness warnings
 - **Shinies, limited & event cards** — rare variants, copy caps, admin events (`/event`)
 
 ### 🧭 Player hubs
@@ -34,15 +34,16 @@ Collect, trade, battle, and build — with a User Hub for daily profile flow, co
 
 ### 🌙 Sanctuary (Quiet / Vacation / LOA)
 - One-channel isolation via quarantine roles — disappear without leaving the server
-- **`/quiet`** · **`/vacation`** · **`/loa`** (renameable labels per server)
+- **`/quiet`** with `mode:quiet|vacation|loa|stepaway` (renameable labels per server)
 - Staff force-out: `/quiet user:@Member` · setup: `/quiet_setup`
 - Optional CC0 ambience + **Stones in the Water** release exercise — see [`docs/quiet-mode.md`](./docs/quiet-mode.md)
 
 ### ⚙️ Admin tools
 - **`/setup`** (and `!setup`) — guided configuration
 - **`/config`** — visual toggles, intervals, rates, pack settings
-- Sets, rarity, embeds, drops, giveaways — `/set_hub`, `/rarity`, `/embed`, `/drop`, `/giveaway`
-- **`/admin_hub`** · **`/admin_help`** — staff toolbox
+- Sets, rarity, embeds, giveaways — `/set_hub`, `/rarity`, `/embed`, `/giveaway`
+- **`/cardadmin`** — create (upload / Kitsu / Vault Values), edit, give, drop
+- **`/admin_hub`** — staff toolbox · **`/help` → Admin** for the full reference
 
 ---
 
@@ -142,15 +143,17 @@ Slash names below are what Discord registers today. Prefer **`/help`** and **`/u
 | `/pack` | Open a card pack |
 | `/burn` | Burn cards for shards |
 | `/card_recycle` | Card Fusion / star-rank recycle |
-| `/trade` · `/trades` | Propose and manage trades |
+| `/trade` | Trade hub — propose, pending, history, accept, decline, gift |
 | `/info` · `/top` | Card details · leaderboards |
 | `/battle` | Fights, raids, sieges, profile — includes **`/battle phaser`** (live Activity) |
 | `/raid` | Co-op raid entry |
 | `/hq` · `/hqbuild` | Personal Headquarters |
 | `/giveaway` | Giveaway hub |
-| `/quiet` · `/vacation` · `/loa` | Sanctuary modes (run again to leave) |
+| `/quiet` | Sanctuary modes (`mode:quiet|vacation|loa|stepaway` — run again to leave) |
 | `/begin` | Onboarding |
 | `/afk` | AFK Secretary |
+| `/secret` | Encrypted Echo — whisper a member or post a staff secret |
+| `/vaultvalue` | Vault Values prices + calculator ([valuevaultx.com](https://valuevaultx.com)) |
 | `/pet` | Pets (when enabled) |
 | `/casino` | UnbelievaBoat casino hub — deposit/withdraw, daily, collect, games, UNO, leaderboard, store |
 | `/unbelievaboat` | Admin Discord dashboard (cooldowns, cash, store, logs, rob immunity) |
@@ -160,14 +163,16 @@ Slash names below are what Discord registers today. Prefer **`/help`** and **`/u
 |---------|-------------|
 | `/setup` · `!setup` | Guided server setup |
 | `/config` | Visual configuration panel |
-| `/admin_hub` · `/admin_help` | Admin toolbox / reference |
+| `/admin_hub` | Admin toolbox |
+| `/cardadmin` | Create / edit / give / drop cards (upload · Kitsu · Vault Values) |
 | `/battle_admin` · `/raid_admin` | Combat admin |
 | `/set_hub` · `/set_admin` | Card sets / spawn rotation |
-| `/drop` · `/event` | Force drops · limited events |
+| `/event` | Limited events |
 | `/rarity` · `/embed` | Rarity tiers · embed branding |
 | `/quiet_setup` | Sanctuary rooms, quarantine roles, renames, audio |
 | `/quiet user:@Member` | Place into sanctuary **or force out** |
 | `/hqadmin` | HQ staff tools |
+| `/echo` | Echo-Whisper config (viewer roles, override, stats) |
 
 ### Prefix helpers (also available)
 | Command | Description |
@@ -176,7 +181,17 @@ Slash names below are what Discord registers today. Prefer **`/help`** and **`/u
 | `!addcard` | Add a card to the pool |
 | `!settings` | View current server configuration |
 
-> **Moved into `/user-hub` (no longer standalone slash):** `/daily`, `/collection`, `/wishlist`, `/quests`, `/market`, `/squad`, and related profile shortcuts. Handlers may still exist in code for hub buttons — they are not registered as top-level slash commands.
+> **Moved into hubs (no longer standalone slash):** many older one-offs. Prefer **`/help`** for the live map.
+>
+> - **`/user-hub`:** daily, collection, wishlist, quests, market, squad, and related profile shortcuts
+> - **`/trade`:** gift, pending trades, history, accept, decline
+> - **`/vaultvalue`:** info, calc, list, help, postcalc
+> - **`/cardadmin`:** create / Kitsu / Vault Values create, library, edit, give, drop, shards
+> - **`/secret`:** whisper, staff secret (`/echo` stays as config)
+> - **`/quiet mode:…`:** vacation / loa entry aliases
+> - **`/help` → Admin:** adminhelp / welcomeadmin docs
+>
+> Handlers stay in code for hub buttons and legacy routing — they are not registered as top-level slash commands.
 >
 > **Removed from the live bot:** Bob entertainment (`/bob`, `/bob_*`, `/bob_admin`). Schema leftovers may remain; the module is not registered. (Unrelated: `/minigames` Wild Mini-Games admin panel is still live.)
 

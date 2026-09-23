@@ -919,7 +919,7 @@ export async function startBot() {
               }).catch(() => { /* may be deleted */ });
             }
             await interaction.followUp({
-              content: "💾 Kept! The card is in your collection — use `/collection` to view it.",
+              content: "💾 Kept! The card is in your collection — use `/collection-hub` or **/user-hub → Collection** to view it.",
               flags: MessageFlags.Ephemeral,
             }).catch(() => { /* ignore */ });
           } else {
@@ -932,7 +932,7 @@ export async function startBot() {
               }).catch(() => { /* may be deleted */ });
             }
             await interaction.followUp({
-              content: `🔄 You're now open to trading **${cardName}**! Others can use /trade to make an offer.`,
+              content: `🔄 You're now open to trading **${cardName}**! Others can use \`/trade propose\` to make an offer.`,
               flags: MessageFlags.Ephemeral,
             }).catch(() => { /* ignore */ });
           }
@@ -974,6 +974,9 @@ export async function startBot() {
         await handleWhisperCommand(interaction);
       } else if (cmd === "adminsecret") {
         await handleAdminSecretCommand(interaction);
+      } else if (cmd === "secret") {
+        const { handleSecretCommand } = await import("./commands/secret-hub.js");
+        await handleSecretCommand(interaction);
       } else if (cmd === "echo") {
         await handleEchoCommand(interaction);
       } else if (cmd === "emoji") {
@@ -1024,6 +1027,15 @@ export async function startBot() {
       } else if (cmd === "casino") {
         const { handleCasinoCommand } = await import("./unbelievaboat/casino.js");
         await handleCasinoCommand(interaction);
+      } else if (cmd === "vaultvalue") {
+        const { handleVaultValueCommand } = await import("./commands/vaultvalue-hub.js");
+        await handleVaultValueCommand(interaction);
+      } else if (cmd === "cardadmin") {
+        const { handleCardAdminCommand } = await import("./commands/cardadmin-hub.js");
+        await handleCardAdminCommand(interaction);
+      } else if (cmd === "trade") {
+        const { handleTradeHubCommand } = await import("./commands/trade-hub.js");
+        await handleTradeHubCommand(interaction);
       } else if (USER_HUB_COMMANDS.has(cmd)) {
         // Flattened player commands (/burn, /pack, …) + hub-backed handlers
         // (daily/collection/… via /user-hub) and other player routes.
@@ -1060,7 +1072,7 @@ export async function startBot() {
     "quote",
     "collection_hub", "hq", "hqadmin", "hqbuild",
     "pet", "petadmin", "ubadmin", "unbelievaboat",
-    "casino",
+    "casino", "vaultvalue", "cardadmin", "secret",
     "valuehelp", "valuelist", "info_mttv", "giveall", "editpack", "postcalculator",
     "postboard", "massrole", "emoji",
   ]);

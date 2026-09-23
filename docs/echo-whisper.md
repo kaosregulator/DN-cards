@@ -18,13 +18,13 @@ bot token (stable per deployment) rather than a public default — set an explic
 
 ## Commands
 
-- `/whisper user:@member` — opens a modal; posts an encrypted message in the
+- `/secret whisper user:@member` — opens a modal; posts an encrypted message in the
   channel that only the **sender**, the **recipient**, and (if admin override is
   on) server **admins** can reveal via the **View Whisper** button.
-- `/adminsecret` — opens a modal; posts an encrypted staff message that only
+- `/secret staff` — opens a modal; posts an encrypted staff message that only
   members holding an **authorized viewer role** (or override-admins) can reveal.
 - `/echo` (admin) — management hub:
-  - `role add|remove|list` — manage the roles allowed to reveal `/adminsecret`.
+  - `role add|remove|list` — manage the roles allowed to reveal `/secret staff`.
   - `override enable|disable` — toggle whether admins can decrypt any message.
   - `whisper` / `adminsecret` — view each feature's current configuration.
   - `stats` / `config` — usage stats and configuration overview.
@@ -45,5 +45,5 @@ bot token (stable per deployment) rather than a public default — set an explic
 | --- | --- |
 | `crypto` | AES-256-CBC encrypt/decrypt + public transmission codes |
 | `db` | Per-guild settings + transmission data-access layer |
-| `commands` | `/whisper`, `/adminsecret`, `/echo` slash handlers |
+| `commands` | `/secret` (whisper / staff) + `/echo` slash handlers |
 | `interactions` | Modal submits + reveal-button access control |

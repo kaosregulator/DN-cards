@@ -17,4 +17,4 @@ When packing N items into Discord embed fields (`.addFields`), always chunk:
 
 **Why:** users assumed the bot was broken when overflows occurred — they had no signal that data was being clipped. Silent truncation is worse than a smaller view with a clear pointer.
 
-**How to apply:** any new handler that builds fields from a user-controlled collection (cards, trades, achievements, history) needs the same chunker pattern. `/top` is safe because line counts are bounded; `/tradehistory` already uses a 3900-char description budget.
+**How to apply:** any new handler that builds fields from a user-controlled collection (cards, trades, achievements, history) needs the same chunker pattern. `/top` is safe because line counts are bounded; `/trade history` already uses a 3900-char description budget.
