@@ -4,6 +4,7 @@ import {
   type SlashCommandSubcommandsOnlyBuilder,
 } from "discord.js";
 import { buildAfkCommandJson, buildAfkSetupCommandJson } from "../afk/commands.js";
+import { buildQuietCommandJson, buildQuietSetupCommandJson } from "../quiet/commands.js";
 import { buildEmojiCommandJson, buildPostboardCommandJson } from "../emoji/commands/definition.js";
 import { buildQuoteCommandJson, buildQuoteContextMenuJson } from "../quote/definition.js";
 import { buildPetCommandJson, buildPetAdminCommandJson } from "../pets/command.js";
@@ -703,6 +704,7 @@ export const COMMAND_RENAMES: Record<string, string> = {
   tradein: "card_recycle",
   adminsecret: "admin_secret",
   afksetup: "afk_setup",
+  quietsetup: "quiet_setup",
   collectorrole: "collector_role",
   addcard: "add_card",
   createcardfrommttv: "create_card_from_mttv",
@@ -782,6 +784,9 @@ export function buildCommands() {
     // ── AFK Secretary & Whitelist Access System (standalone top-level cmds) ──
     buildAfkCommandJson() as CommandJson,
     buildAfkSetupCommandJson() as CommandJson,
+    // ── Quiet Mode / Quiet Room (addon) ──────────────────────────────────────
+    buildQuietCommandJson() as CommandJson,
+    buildQuietSetupCommandJson() as CommandJson,
   ]
     // Drop Hub-consolidated duplicates from the registered set (handlers stay).
     .filter((c) => !HUB_REPLACED_COMMANDS.has(c.name));
