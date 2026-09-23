@@ -22,8 +22,8 @@ import { startQuietAudioPrebuild } from "./audio/generate.js";
 // Quiet Mode — slash commands
 //
 //   /quiet              — enter (or leave if already quiet)  [users]
-//   /quiet user:@x      — staff places someone into Quiet Mode
-//   /quiet_setup        — whitelist/blacklist roles, toggles, audio list
+//   /quiet user:@x      — staff toggle: place in OR force out
+//   /quietsetup         — whitelist/blacklist roles, toggles, audio list
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function buildQuietCommandJson() {
@@ -38,7 +38,7 @@ export function buildQuietCommandJson() {
     .setDMPermission(false)
     .addUserOption(o => o
       .setName("user")
-      .setDescription("(Staff) Place this member into Quiet Mode")
+      .setDescription("(Staff) Place into Quiet Mode — or force them out if already quiet")
       .setRequired(false))
     .addStringOption(o => o
       .setName("theme")
@@ -108,11 +108,17 @@ export async function handleQuietCommand(interaction: ChatInputCommandInteractio
 
     const existing = await getQuietState(interaction.guild.id, targetMember.id);
     if (existing) {
+      // Staff force-out: same restore path as I'm Ready / self /quiet.
+      const left = await leaveQuietMode(targetMember, { welcomeBack: true });
       await interaction.editReply({
         embeds: [new EmbedBuilder()
-          .setColor(QUIET_BRAND.COLOR_SOFT)
-          .setTitle(`${QUIET_EMOJI.MOON} Already quiet`)
-          .setDescription(`<@${targetMember.id}> is already in Quiet Mode. They can leave with **I'm Ready** or \`/quiet\`.`)],
+          .setColor(QUIET_BRAND.COLOR_OK)
+          .setTitle(`${QUIET_EMOJI.SUN} Brought back`)
+          .setDescription(
+            left.wasQuiet
+              ? `Forced <@${targetMember.id}> out of Quiet Mode. Server access restored.`
+              : `<@${targetMember.id}> wasn't in Quiet Mode.`,
+          )],
       });
       return;
     }
@@ -135,7 +141,8 @@ export async function handleQuietCommand(interaction: ChatInputCommandInteractio
         .setTitle(`${QUIET_EMOJI.MOON} Quiet Mode`)
         .setDescription(
           `Placed <@${targetMember.id}> into the Quiet Room.\n` +
-          `No public announcement was made. They return when **they** click **I'm Ready**.` +
+          `No public announcement was made. They return when **they** click **I'm Ready**, ` +
+          `or you can force them out with \`/quiet user:@Member\` again.` +
           (result.isolationNote && result.isolationMode !== "full"
             ? `\n\n${result.isolationNote}`
             : result.adminBypass
@@ -345,7 +352,7 @@ export async function handleQuietSetupCommand(interaction: ChatInputCommandInter
         .setColor(QUIET_BRAND.COLOR_SOFT)
         .setTitle(`${QUIET_EMOJI.MIC} Quiet audio library`)
         .setDescription(lines.join("\n").slice(0, 4000))
-        .setFooter({ text: "Toggle: /quiet_setup audio id:<id> enabled:true|false" })],
+        .setFooter({ text: "Toggle: /quietsetup audio id:<id> enabled:true|false" })],
     });
     return;
   }

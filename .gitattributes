@@ -1,4 +1,2 @@
-dn-cards-backup.tar.gz filter=lfs diff=lfs merge=lfs -text
-attached_assets/DN-cards-main_(1)_1783057737296.zip filter=lfs diff=lfs merge=lfs -text
-attached_assets/dn-cards-full_1783058362750.zip filter=lfs diff=lfs merge=lfs -text
-DN-cards-backup-2026-07-30.zip filter=lfs diff=lfs merge=lfs -text
+# Git LFS — only keep patterns for files that still exist in the repo.
+# (Stale backup archive pointers were removed 2026-09.)

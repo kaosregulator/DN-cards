@@ -9,7 +9,7 @@ Addon feature: a peaceful digital “ghost town” corner inside the server.
 | Command | Who | What |
 |---------|-----|------|
 | `/quiet` | Members (role-gated if configured) | Enter Quiet Mode. If already quiet, **leave** (emergency exit). |
-| `/quiet user:@Member [theme]` | Staff | Place someone into the same Quiet Room experience. No timer. They still click **I'm Ready**. |
+| `/quiet user:@Member [theme]` | Staff | **Toggle:** place them into Quiet Mode, or **force them out** if already quiet. |
 | `/quietsetup config\|ensure_room\|status\|audio` | Manage Server / admins | Whitelist/blacklist roles, toggles, room + Quiet role ensure, audio library. |
 
 ## What happens on enter
@@ -64,6 +64,7 @@ Bot limitation: some guilds/API paths may reject bot native voice messages; fall
 | Case | Behavior |
 |------|----------|
 | `/quiet` while already quiet | Leaves Quiet Mode (offline exit) |
+| `/quiet user:@Member` while they are quiet | Staff **force-out** — restores access |
 | Bot restarts mid-quiet | Recovery re-assigns Quiet role + hides + re-posts **I'm Ready** |
 | Member leaves server while quiet | State + role/overwrites cleared |
 | Double leave / double ready click | Idempotent no-op |
