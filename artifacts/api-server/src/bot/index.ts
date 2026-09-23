@@ -62,6 +62,11 @@ import { handleAfkCommand, handleAfkSetupCommand } from "./afk/commands.js";
 import { handleAfkInteraction } from "./afk/interactions.js";
 import { handleAfkMessage } from "./afk/message-hook.js";
 import { handleAfkPresence, startAfkSweeper } from "./afk/presence-hook.js";
+// ── Quiet Mode / Quiet Room (addon) ──────────────────────────────────────────
+import { handleQuietCommand, handleQuietSetupCommand } from "./quiet/commands.js";
+import { handleQuietInteraction } from "./quiet/interactions.js";
+import { startQuietRecovery } from "./quiet/recovery.js";
+import { startQuietAudioPrebuild } from "./quiet/audio/generate.js";
 
 export async function startBot() {
   const token = process.env["DISCORD_BOT_TOKEN"];
@@ -163,6 +168,10 @@ export async function startBot() {
       // AFK Secretary: start the timed auto-remove sweeper (clears "timed" AFKs
       // once their countdown elapses; presence/messages can't cover this).
       startAfkSweeper(client);
+      // Quiet Mode: restore any in-progress Quiet Room sessions after restart
+      // and warm the audio cache pool (non-blocking).
+      startQuietRecovery(client);
+      startQuietAudioPrebuild();
     } catch (err) {
       // Never let ClientReady reject into an unhandled 'error' event — that
       // crashes Node and Railway crash-loops (empty DB / missing tables).
@@ -232,6 +241,15 @@ export async function startBot() {
         interaction.customId.startsWith("afk:")
       ) {
         await handleAfkInteraction(interaction);
+        return;
+      }
+
+      // ── Quiet Mode / Quiet Room (quiet:* buttons) ─────────────────────────
+      if (
+        interaction.isMessageComponent() &&
+        interaction.customId.startsWith("quiet:")
+      ) {
+        await handleQuietInteraction(interaction);
         return;
       }
 
@@ -950,6 +968,10 @@ export async function startBot() {
         await handleAfkCommand(interaction);
       } else if (cmd === "afksetup") {
         await handleAfkSetupCommand(interaction);
+      } else if (cmd === "quiet") {
+        await handleQuietCommand(interaction);
+      } else if (cmd === "quietsetup") {
+        await handleQuietSetupCommand(interaction);
       } else if (cmd === "begin") {
         const { handleOnboardingCommand } = await import("./onboarding/command.js");
         await handleOnboardingCommand(interaction);
@@ -1010,7 +1032,8 @@ export async function startBot() {
     // Explicitly routed in the interaction handler above.
     "battle", "battleadmin", "market", "squad", "raid", "raidadmin",
     "giveaway",
-    "whisper", "adminsecret", "echo", "afk", "afksetup", "begin", "show_shiny",
+    "whisper", "adminsecret", "echo", "afk", "afksetup", "quiet", "quietsetup",
+    "begin", "show_shiny",
     "quote",
     "collection_hub", "hq", "hqadmin", "hqbuild",
     "pet", "petadmin", "ubadmin",

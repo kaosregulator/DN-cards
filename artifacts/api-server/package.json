@@ -11,6 +11,7 @@
     "start:production": "node ./scripts/start-production.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
+    "quiet:harvest-audio": "node ./scripts/harvest-quiet-audio.mjs",
     "emoji:install-browser": "playwright install chromium",
     "postinstall": "node ./scripts/install-browser.mjs"
   },

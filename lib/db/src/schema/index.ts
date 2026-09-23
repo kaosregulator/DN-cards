@@ -4,6 +4,7 @@ export * from "./news";
 export * from "./suggestions";
 export * from "./battles";
 export * from "./afk";
+export * from "./quiet";
 export * from "./secret";
 export * from "./quests";
 export * from "./card-progress";

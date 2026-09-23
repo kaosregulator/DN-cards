@@ -39,7 +39,7 @@ const SECTIONS: SectionMeta[] = [
   { id: "battle",   emoji: "⚔️", label: "Battles, Raids & Squads",    blurb: "Duels, co-op bosses, teams" },
   { id: "giveaway", emoji: "🎉", label: "Giveaways",                  blurb: "Win prizes through activity" },
   { id: "quests",   emoji: "🎯", label: "Quests & Reputation",        blurb: "Daily/weekly goals, rep, thanks" },
-  { id: "social",   emoji: "🔊", label: "Quotes, Echo & AFK",         blurb: "Quote cards, encrypted whispers, away status" },
+  { id: "social",   emoji: "🔊", label: "Quotes, Echo, AFK & Quiet", blurb: "Quote cards, whispers, away status, Quiet Room" },
   { id: "admin",    emoji: "🛠️", label: "Admin Toolbox",              blurb: "Setup, config & management (admins)", adminOnly: true },
 ];
 
@@ -294,8 +294,8 @@ const PAGES: Record<HelpSection, PageFn> = {
 
   // ── Echo & AFK ────────────────────────────────────────────────────────────────
   social: (e) => {
-    e.setTitle("🔊 Quotes, Echo Messages & AFK")
-      .setDescription("Quote cards, encrypted whispers, and away-status tools." + NAV_HINT)
+    e.setTitle("🔊 Quotes, Echo, AFK & Quiet Room")
+      .setDescription("Quote cards, encrypted whispers, away-status, and a peaceful Quiet Room." + NAV_HINT)
       .addFields(
         { name: "🖤 Make it a Quote", value:
           "`/quote` — pick from the last 5 messages, or pass `message_id` / `user` / `text`\n" +
@@ -311,6 +311,12 @@ const PAGES: Record<HelpSection, PageFn> = {
           "`/afk clear` — come back now, whatever return trigger you picked\n" +
           "`/afk messages` — read notes left while you were away\n" +
           "`/afk_setup` — (admin) configure the Secretary — incl. **Reply As Member** (answer with your name + avatar)" },
+        { name: "🌙 Quiet Room", value:
+          "`/quiet` — step into a private Quiet Room (server goes quiet for you until you return)\n" +
+          "`/quiet` again — emergency exit / bring yourself back (works after bot restarts)\n" +
+          "`/quiet user:@Member` — (staff) place someone into Quiet Mode; they still choose when to return\n" +
+          "`/quiet_setup` — (admin) whitelist/blacklist roles, audio library, ensure room\n" +
+          "No public announcements. Roles are not removed — channel hides use per-member overwrites." },
       );
   },
 
