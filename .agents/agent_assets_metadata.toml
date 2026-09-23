@@ -19,30 +19,6 @@ type = "image"
 title = "commands banner"
 
 [[outputs]]
-id = "hLT25KZHOUFKhjaPox_Ch"
-uri = "file://dn-cards-backup.tar.gz"
-type = "unspecified"
-title = "DN Cards — Full Source Backup (May 27 2026)"
-
-[[outputs]]
-id = "cAtihCBF9flqZKrXwXdGP"
-uri = "file://db-backup.sql.gz"
-type = "unspecified"
-title = "DN Cards Database Backup (compressed SQL)"
-
-[[outputs]]
-id = "UL67iOsHfFTGUIfo7LWf2"
-uri = "file://db-backup.txt"
-type = "text"
-title = "DN Cards Database Backup (viewable as text)"
-
-[[outputs]]
-id = "_2YIRcw9Gi3Ur7CnT4SUY"
-uri = "file://exports/dn-cards-backup.tar.gz"
-type = "unspecified"
-title = "DN Cards — Full Project Backup (.tar.gz)"
-
-[[outputs]]
 id = "AcevgjaY8545FyubOGNwo"
 uri = "file://docs/dn-cards-commands.pdf"
 type = "pdf"
@@ -53,9 +29,3 @@ id = "qJUDtPJ4F83x5mvsCHOwR"
 uri = "file://artifacts/api-server/screenshots/recycle-select-menu-preview.png"
 type = "image"
 title = "Recycle select menu preview"
-
-[[outputs]]
-id = "VboULg9jjfBQyMBVQ6o8d"
-uri = "file://tmp/riku-kingdom-hearts.jpg"
-type = "image"
-title = "Riku (Kingdom Hearts) — Kitsu character image"

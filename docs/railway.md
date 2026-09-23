@@ -59,7 +59,8 @@ Railway builds install **ffmpeg** + **flite** via `nixpacks.toml` `aptPkgs`.
 Quiet Mode tables (`quiet_*`) are created automatically on start:
 
 1. `start-production.mjs` creates them if `quiet_state` is missing
-2. Boot migrations also `CREATE TABLE IF NOT EXISTS` for the same tables
+2. Boot migrations also `CREATE TABLE IF NOT EXISTS` for the same tables, and
+   `ADD COLUMN IF NOT EXISTS quiet_role_id` for the quarantine role
 
 No manual `drizzle-kit push` is required for Quiet Mode on an existing database.
 
@@ -97,7 +98,7 @@ If schema push fails at `Pulling schema from database…` with an SSL / `verify-
 
 If the Railway Postgres is empty and you already have cards/collections:
 
-1. Dump the old DB (`pg_dump` / existing `db-backup.sql` in the repo).
+1. Dump the old DB (`pg_dump` from your previous host).
 2. Restore into Railway Postgres (`psql $DATABASE_URL < dump.sql` or Railway’s UI).
 3. Set `AUTO_DB_PUSH=0` for that boot if you already restored a full schema, or leave unset so push is skipped when `guild_settings` exists.
 

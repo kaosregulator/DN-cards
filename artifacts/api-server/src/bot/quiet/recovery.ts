@@ -3,7 +3,7 @@ import {
 } from "discord.js";
 import { logger } from "../../lib/logger.js";
 import {
-  getQuietState, listNeedsRecovery, listQuietStates, patchQuietState,
+  getQuietSettings, getQuietState, listNeedsRecovery, listQuietStates, patchQuietState,
 } from "./models.js";
 import { ensureQuietRoom, applyQuietIsolation, clearQuietIsolation } from "./permissions.js";
 import { forceClearQuietState } from "./lifecycle.js";
@@ -17,7 +17,7 @@ import { QUIET_BRAND, QUIET_CUSTOM, QUIET_EMOJI } from "./shared.js";
 // Quiet Mode — restart recovery + member-leave cleanup
 //
 // If the bot dies while people are quiet, DB state remains. On ready we:
-//  - re-assert Quiet Room access + hide overwrites
+//  - re-assert Quiet quarantine role + room access + channel hides
 //  - re-post an I'm Ready button if prior messages vanished
 // Members can ALWAYS emergency-exit with /quiet even if recovery fails.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -130,7 +130,7 @@ async function recoverOne(client: Client, guildId: string, userId: string): Prom
 
   try {
     const { channel, categoryId } = await ensureQuietRoom(guild);
-    // Re-apply isolation (idempotent overwrite edits).
+    // Re-apply isolation (idempotent role assign + hides).
     const iso = await applyQuietIsolation(member, channel, categoryId);
     await patchQuietState(guildId, userId, {
       overwriteTargets: iso.targets,
@@ -160,6 +160,10 @@ async function recoverOne(client: Client, guildId: string, userId: string): Prom
         )
         .setFooter({ text: QUIET_BRAND.FOOTER });
 
+      if (iso.note && iso.isolationMode !== "full") {
+        embed.addFields({ name: "Heads up", value: iso.note.slice(0, 1024) });
+      }
+
       const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
           .setCustomId(QUIET_CUSTOM.READY)
@@ -179,13 +183,14 @@ async function recoverOne(client: Client, guildId: string, userId: string): Prom
       });
     }
 
-    logger.info({ guildId, userId }, "Quiet Mode session recovered");
+    logger.info({ guildId, userId, isolationMode: iso.isolationMode }, "Quiet Mode session recovered");
   } catch (err) {
     logger.warn({ err, guildId, userId }, "Quiet recovery incomplete — marking needsRecovery");
     await patchQuietState(guildId, userId, { needsRecovery: true });
     // Last resort: clear isolation so they aren't locked out if Quiet Room is broken.
     try {
-      await clearQuietIsolation(guild, userId, state.overwriteTargets ?? []);
+      const settings = await getQuietSettings(guildId);
+      await clearQuietIsolation(guild, userId, state.overwriteTargets ?? [], settings.quietRoleId);
     } catch { /* ignore */ }
   }
 }

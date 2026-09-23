@@ -312,11 +312,11 @@ const PAGES: Record<HelpSection, PageFn> = {
           "`/afk messages` — read notes left while you were away\n" +
           "`/afk_setup` — (admin) configure the Secretary — incl. **Reply As Member** (answer with your name + avatar)" },
         { name: "🌙 Quiet Room", value:
-          "`/quiet` — step into a private Quiet Room (server goes quiet for you until you return)\n" +
+          "`/quiet` — enter a silent one-channel Quiet Room (other channels hidden; no chat/reactions)\n" +
           "`/quiet` again — emergency exit / bring yourself back (works after bot restarts)\n" +
-          "`/quiet user:@Member` — (staff) place someone into Quiet Mode; they still choose when to return\n" +
-          "`/quiet_setup` — (admin) whitelist/blacklist roles, audio library, ensure room\n" +
-          "No public announcements. Roles are not removed — channel hides use per-member overwrites." },
+          "`/quiet user:@Member` — (staff) **toggle**: place them in, or **force them out** if already quiet\n" +
+          "`/quietsetup` — (admin) whitelist/blacklist roles, audio library, ensure Quiet Room + Quiet role\n" +
+          "Uses a Quiet quarantine role (not hoist/mentionable). Outsiders can't see the room. No public announcements." },
       );
   },
 
@@ -349,7 +349,8 @@ const PAGES: Record<HelpSection, PageFn> = {
           "`/battle_admin` — battle system hub (setup, rules, rewards, seasons)\n" +
           "`/raid_admin create|edit|list|enable|delete` — co-op raid bosses\n" +
           "`/giveaway` → **⚙️ Admin** — quick-create, manage, end, cancel & reroll giveaways\n" +
-          "`/echo …` — Echo-Whisper viewer roles, override & stats" },
+          "`/echo …` — Echo-Whisper viewer roles, override & stats\n" +
+          "`/quietsetup` — Quiet Room + Quiet quarantine role · `/quiet user:@Member` — staff place **or force out**" },
         { name: "🌐 Website", value: `Public: **[${site}](${site})** · Admin dashboard: run \`/dashboard\` for your login link.` },
       );
   },

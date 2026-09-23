@@ -7,8 +7,8 @@ import {
 // Quiet Mode / Quiet Room — database schema
 //
 // Addon tables for the optional Quiet Room experience. State is persisted so a
-// bot restart never permanently locks a member out of the server. Channel
-// isolation uses per-member permission overwrites (no role add/remove churn).
+// bot restart never permanently locks a member out of the server. Isolation uses
+// a Quiet quarantine role (empty-server) plus Quiet Room allows.
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Per-guild Quiet Mode settings. One row per guild. */
@@ -20,6 +20,8 @@ export const quietGuildSettingsTable = pgTable("quiet_guild_settings", {
   quietChannelId: text("quiet_channel_id"),
   /** Optional parent category for the Quiet Room. */
   quietCategoryId: text("quiet_category_id"),
+  /** Quarantine role — View denied everywhere except Quiet Room. */
+  quietRoleId: text("quiet_role_id"),
   /**
    * If set, only members holding this role may self-enter Quiet Mode.
    * Admins/staff can always place others (and themselves) into Quiet Mode.
@@ -36,8 +38,8 @@ export type QuietGuildSettings = typeof quietGuildSettingsTable.$inferSelect;
 
 /**
  * Live Quiet Mode state. At most one active row per (guild, user).
- * `overwriteTargets` lists channel/category IDs where we applied a member-level
- * ViewChannel deny (or Quiet Room allow) so we can reverse them on exit.
+ * `overwriteTargets` lists channel/category IDs touched for cleanup on exit
+ * (member fallbacks / room allows). Quarantine is primarily the Quiet role.
  */
 export const quietStateTable = pgTable("quiet_state", {
   id: serial("id").primaryKey(),

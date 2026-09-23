@@ -14,7 +14,7 @@ import {
 } from "./shared.js";
 import { QUIET_THEME_CHOICES } from "./quotes.js";
 import { enterQuietMode, leaveQuietMode } from "./lifecycle.js";
-import { ensureQuietRoom } from "./permissions.js";
+import { ensureQuietRoom, ensureQuietRole, syncQuietRoleHides } from "./permissions.js";
 import { QUIET_AUDIO_CATALOG } from "./audio/catalog.js";
 import { startQuietAudioPrebuild } from "./audio/generate.js";
 
@@ -22,8 +22,8 @@ import { startQuietAudioPrebuild } from "./audio/generate.js";
 // Quiet Mode — slash commands
 //
 //   /quiet              — enter (or leave if already quiet)  [users]
-//   /quiet user:@x      — staff places someone into Quiet Mode
-//   /quiet_setup        — whitelist/blacklist roles, toggles, audio list
+//   /quiet user:@x      — staff toggle: place in OR force out
+//   /quietsetup         — whitelist/blacklist roles, toggles, audio list
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function buildQuietCommandJson() {
@@ -38,7 +38,7 @@ export function buildQuietCommandJson() {
     .setDMPermission(false)
     .addUserOption(o => o
       .setName("user")
-      .setDescription("(Staff) Place this member into Quiet Mode")
+      .setDescription("(Staff) Place into Quiet Mode — or force them out if already quiet")
       .setRequired(false))
     .addStringOption(o => o
       .setName("theme")
@@ -108,11 +108,17 @@ export async function handleQuietCommand(interaction: ChatInputCommandInteractio
 
     const existing = await getQuietState(interaction.guild.id, targetMember.id);
     if (existing) {
+      // Staff force-out: same restore path as I'm Ready / self /quiet.
+      const left = await leaveQuietMode(targetMember, { welcomeBack: true });
       await interaction.editReply({
         embeds: [new EmbedBuilder()
-          .setColor(QUIET_BRAND.COLOR_SOFT)
-          .setTitle(`${QUIET_EMOJI.MOON} Already quiet`)
-          .setDescription(`<@${targetMember.id}> is already in Quiet Mode. They can leave with **I'm Ready** or \`/quiet\`.`)],
+          .setColor(QUIET_BRAND.COLOR_OK)
+          .setTitle(`${QUIET_EMOJI.SUN} Brought back`)
+          .setDescription(
+            left.wasQuiet
+              ? `Forced <@${targetMember.id}> out of Quiet Mode. Server access restored.`
+              : `<@${targetMember.id}> wasn't in Quiet Mode.`,
+          )],
       });
       return;
     }
@@ -135,10 +141,13 @@ export async function handleQuietCommand(interaction: ChatInputCommandInteractio
         .setTitle(`${QUIET_EMOJI.MOON} Quiet Mode`)
         .setDescription(
           `Placed <@${targetMember.id}> into the Quiet Room.\n` +
-          `No public announcement was made. They return when **they** click **I'm Ready**.` +
-          (result.adminBypass
-            ? `\n\n_They have Administrator — Discord may still show them other channels._`
-            : ""),
+          `No public announcement was made. They return when **they** click **I'm Ready**, ` +
+          `or you can force them out with \`/quiet user:@Member\` again.` +
+          (result.isolationNote && result.isolationMode !== "full"
+            ? `\n\n${result.isolationNote}`
+            : result.adminBypass
+              ? `\n\n_They have Administrator — Discord may still show them other channels._`
+              : ""),
         )],
     });
     return;
@@ -191,12 +200,11 @@ export async function handleQuietCommand(interaction: ChatInputCommandInteractio
       .setColor(QUIET_BRAND.COLOR)
       .setTitle(`${QUIET_EMOJI.MOON} Quiet Room`)
       .setDescription(
-        `You're in ${roomMention} now.\n\n` +
-        "The busy server can wait.\n" +
-        "When you're ready, press **🌤️ I'm Ready — Bring Me Back**.\n" +
+        `You're in ${roomMention} now — **one silent channel**. Other channels are hidden.\n\n` +
+        "No chat, no reactions. When you're ready, press **🌤️ I'm Ready — Bring Me Back**.\n" +
         "Or run `/quiet` again anytime to leave — even if the bot restarted." +
-        (result.adminBypass
-          ? "\n\n_Administrator bypass: other channels may still be visible. Roles were not changed._"
+        (result.isolationNote
+          ? `\n\n${result.isolationNote}`
           : ""),
       )
       .setFooter({ text: QUIET_BRAND.FOOTER })],
@@ -259,11 +267,37 @@ export async function handleQuietSetupCommand(interaction: ChatInputCommandInter
 
   if (sub === "ensure_room") {
     try {
-      const { channel } = await ensureQuietRoom(interaction.guild);
-      await interaction.editReply(`Quiet Room ready: ${channel}`);
+      const { channel, categoryId } = await ensureQuietRoom(interaction.guild);
+      const roleResult = await ensureQuietRole(interaction.guild);
+      let hideCount = 0;
+      if (roleResult.role) {
+        const hidden = await syncQuietRoleHides(
+          interaction.guild,
+          roleResult.role,
+          channel.id,
+          categoryId,
+        );
+        hideCount = hidden.length;
+      }
+      const me = interaction.guild.members.me;
+      const botAdmin = Boolean(me?.permissions.has(PermissionFlagsBits.Administrator));
+      const lines = [
+        `Quiet Room ready: ${channel}`,
+        roleResult.role
+          ? `Quarantine role: <@&${roleResult.role.id}>` +
+            (roleResult.positionedHigh ? " (positioned high under the bot)" : " _(move bot role above Quiet if assign fails)_") +
+            `\nRole hides synced on **${hideCount}** categories/channels`
+          : `Quarantine role: **not created** — ${roleResult.error ?? "missing Manage Roles"}`,
+        botAdmin
+          ? "Bot has **Administrator** — full empty-server Quiet Mode is available."
+          : "⚠️ Bot does **not** have Administrator. For a true empty server (hide all channels + block pings), " +
+            "grant the bot **Administrator**, or at least **Manage Roles** + **Manage Channels** with its role above **Quiet**. " +
+            "Without that, Quiet can only open the room and/or apply weaker member hides — and will list channels still visible.",
+      ];
+      await interaction.editReply(lines.join("\n"));
     } catch (err) {
       logger.error({ err }, "quiet_setup ensure_room failed");
-      await interaction.editReply("Couldn't create the Quiet Room. Check **Manage Channels** for the bot.");
+      await interaction.editReply("Couldn't create the Quiet Room. Check **Manage Channels** / **Administrator** for the bot.");
     }
     return;
   }
@@ -271,6 +305,8 @@ export async function handleQuietSetupCommand(interaction: ChatInputCommandInter
   if (sub === "status") {
     const settings = await getQuietSettings(guildId);
     const active = await listQuietStates(guildId);
+    const me = interaction.guild.members.me;
+    const botAdmin = Boolean(me?.permissions.has(PermissionFlagsBits.Administrator));
     await interaction.editReply({
       embeds: [new EmbedBuilder()
         .setColor(QUIET_BRAND.COLOR)
@@ -278,6 +314,9 @@ export async function handleQuietSetupCommand(interaction: ChatInputCommandInter
         .setDescription(
           `**Enabled:** ${settings.enabled ? "yes" : "no"}\n` +
           `**Audio:** ${settings.audioEnabled ? "yes" : "no"}\n` +
+          `**Room:** ${settings.quietChannelId ? `<#${settings.quietChannelId}>` : "_not created_"}\n` +
+          `**Quiet role:** ${settings.quietRoleId ? `<@&${settings.quietRoleId}>` : "_not created — run ensure_room_"}\n` +
+          `**Bot Administrator:** ${botAdmin ? "yes ✅" : "no ⚠️ (empty-server quarantine limited)"}\n` +
           `**Currently quiet:** ${active.length}\n` +
           (active.length
             ? active.slice(0, 25).map(s => `• <@${s.userId}> since <t:${Math.floor(s.enteredAt.getTime() / 1000)}:R>`).join("\n")
@@ -313,7 +352,7 @@ export async function handleQuietSetupCommand(interaction: ChatInputCommandInter
         .setColor(QUIET_BRAND.COLOR_SOFT)
         .setTitle(`${QUIET_EMOJI.MIC} Quiet audio library`)
         .setDescription(lines.join("\n").slice(0, 4000))
-        .setFooter({ text: "Toggle: /quiet_setup audio id:<id> enabled:true|false" })],
+        .setFooter({ text: "Toggle: /quietsetup audio id:<id> enabled:true|false" })],
     });
     return;
   }

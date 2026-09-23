@@ -90,11 +90,16 @@ async function ensureQuietTables() {
         enabled            BOOLEAN NOT NULL DEFAULT TRUE,
         quiet_channel_id   TEXT,
         quiet_category_id  TEXT,
+        quiet_role_id      TEXT,
         whitelist_role_id  TEXT,
         blacklist_role_id  TEXT,
         audio_enabled      BOOLEAN NOT NULL DEFAULT TRUE,
         updated_at         TIMESTAMP NOT NULL DEFAULT NOW()
       )
+    `);
+    await pool.query(`
+      ALTER TABLE quiet_guild_settings
+        ADD COLUMN IF NOT EXISTS quiet_role_id TEXT
     `);
     await pool.query(`
       CREATE TABLE IF NOT EXISTS quiet_state (

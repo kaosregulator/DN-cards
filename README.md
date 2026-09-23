@@ -44,6 +44,11 @@ A fully-featured Discord bot for collecting, trading, and battling with military
 - **Levels & Cosmetics** — Independent progression with titles and rewards
 - **Leaderboards** — Richest players, best streaks, jackpot kings
 
+### 🌙 Quiet Room
+- **`/quiet`** — silent one-channel corner; other channels hidden via a Quiet quarantine role
+- **Staff toggle** — `/quiet user:@Member` places them in, or **forces them out** if already quiet
+- Optional curated CC0 ambience / voice notes — see [`docs/quiet-mode.md`](./docs/quiet-mode.md)
+
 ---
 
 ## Quick Start
@@ -96,13 +101,19 @@ See [`docs/railway.md`](./docs/railway.md). Link Railway Postgres (`DATABASE_URL
 
 ## Tech Stack
 
-- **Runtime:** Node.js 24, TypeScript 5.9
-- **API:** Express 5
-- **Database:** PostgreSQL + Drizzle ORM
-- **Discord:** discord.js v14
-- **Validation:** Zod v4, drizzle-zod
-- **Build:** esbuild (CJS bundle)
-- **Package Manager:** pnpm workspaces
+What this project is built with (click through for each upstream project):
+
+| Area | Libraries |
+|------|-----------|
+| Runtime | [Node.js](https://nodejs.org/) · [TypeScript](https://www.typescriptlang.org/) · [pnpm](https://pnpm.io/) |
+| Discord bot & API | [discord.js](https://discord.js.org/) · [Express](https://expressjs.com/) · [Zod](https://zod.dev/) |
+| Database | [PostgreSQL](https://www.postgresql.org/) · [Drizzle ORM](https://orm.drizzle.team/) · [node-postgres (pg)](https://node-postgres.com/) |
+| Image & canvas | [node-canvas](https://github.com/Automattic/node-canvas) · [@napi-rs/canvas](https://github.com/Brooooooklyn/canvas) · [sharp](https://sharp.pixelplumbing.com/) · [Konva](https://konvajs.org/) |
+| Discord Activity | [Phaser](https://phaser.io/) · [Babylon.js](https://www.babylonjs.com/) · [Rive](https://rive.app/) · [Discord Embedded App SDK](https://discord.com/developers/docs/activities/overview) |
+| Dashboard | [React](https://react.dev/) · [Vite](https://vite.dev/) · [TanStack Query](https://tanstack.com/query) · [Tailwind CSS](https://tailwindcss.com/) · [Wouter](https://github.com/molefrog/wouter) |
+| Tooling | [esbuild](https://esbuild.github.io/) · [Vitest](https://vitest.dev/) · [Playwright](https://playwright.dev/) (optional MakeEmoji browser) |
+
+Also used in-bot: [Matter.js](https://brm.io/matter-js/), [Pino](https://getpino.io/), [Fuse.js](https://www.fusejs.io/), [ws](https://github.com/websockets/ws).
 
 ---
 
@@ -112,10 +123,13 @@ See [`docs/railway.md`](./docs/railway.md). Link Railway Postgres (`DATABASE_URL
 DN-cards/
 ├── artifacts/
 │   ├── api-server/          # Express + Discord bot
-│   └── dashboard/           # Admin web interface
+│   ├── dashboard/           # Admin web interface
+│   ├── activity/            # Discord Embedded Activity (Phaser)
+│   └── emoji-offline/       # Offline emoji compositor (MakeEmoji-compatible)
 ├── lib/
 │   ├── db/                  # Drizzle schema & migrations
 │   └── api-spec/            # OpenAPI contract
+├── docs/                    # Feature docs (Quiet Mode, Railway, battles, …)
 └── scripts/                 # Utility scripts & validation
 ```
 
@@ -135,6 +149,8 @@ DN-cards/
 | `/info` | Card details, worth, burn value, drop chance |
 | `/giveaways` | View active giveaways and your progress |
 | `/bob` | Open Bob entertainment hub |
+| `/quiet` | Enter Quiet Room (run again to leave) |
+| `/help` | Interactive command hub |
 
 ### Admin Commands
 | Command | Description |
@@ -146,6 +162,8 @@ DN-cards/
 | `/sets_admin` | Manage card sets and spawn rotation |
 | `/rarity` | Override rarity tier properties |
 | `/embed` | Customize bot embed messages |
+| `/quiet user:@Member` | Staff: place into Quiet Mode **or force out** |
+| `/quietsetup` | Quiet Room / Quiet role / audio config |
 
 ### Setup Commands (prefix `!`)
 | Command | Description |
@@ -204,16 +222,30 @@ tank · aircraft · ship · vehicle · infantry · boss · community · event ·
 
 ## Documentation
 
-**Full feature reference, architecture decisions, and troubleshooting:**
+| Doc | Topic |
+|-----|--------|
+| [`replit.md`](./replit.md) | Full product / command reference & architecture notes |
+| [`docs/quiet-mode.md`](./docs/quiet-mode.md) | Quiet Room quarantine role + audio |
+| [`docs/railway.md`](./docs/railway.md) | Railway deploy |
+| [`docs/battle-system.md`](./docs/battle-system.md) | Battles |
+| [`docs/headquarters.md`](./docs/headquarters.md) | Player HQ |
+| [`AGENTS.md`](./AGENTS.md) | Cloud / agent environment notes |
 
-See [`replit.md`](./replit.md) for:
-- Complete command reference with all options
-- Advanced config (rarity profiles, custom rarities, embeds)
-- Card sets and spawn rotation
-- Giveaway system details
-- Bob entertainment module
-- Architecture decisions & gotchas
-- Database schema overview
+`replit.md` also covers advanced config, card sets, giveaways, Bob, and schema gotchas.
+
+---
+
+## Thanks
+
+Quick thanks to the upstream projects and ecosystems this bot leans on:
+
+- **[discord.js](https://discord.js.org/)** — Discord API client
+- **[Phaser](https://phaser.io/)** — Embedded Activity game scenes
+- **[node-canvas](https://github.com/Automattic/node-canvas)** & **[@napi-rs/canvas](https://github.com/Brooooooklyn/canvas)** — card / HQ / battle image rendering
+- **[Drizzle](https://orm.drizzle.team/)** & **[PostgreSQL](https://www.postgresql.org/)** — schema and data
+- **[Openverse](https://openverse.org/)** & **[Freesound](https://freesound.org/)** creators — CC0 Quiet Room ambience sources (see [`artifacts/api-server/quiet-audio/SOURCES.md`](./artifacts/api-server/quiet-audio/SOURCES.md))
+- **[MakeEmoji](https://makeemoji.com/)** — emoji generation pipeline inspiration / provider path
+- Everyone shipping the open libraries listed in **Tech Stack** above
 
 ---
 

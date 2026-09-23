@@ -44,9 +44,8 @@ async function handleReadyButton(interaction: ButtonInteraction): Promise<void> 
     return;
   }
 
-  // Only the quiet user may bring themselves back (staff can use /quiet @user
-  // isn't a force-leave — user always decides). If somehow another person
-  // clicks, tell them privately.
+  // Only the quiet user may press I'm Ready on their own card.
+  // Staff force-out: `/quiet user:@Member` (toggle) when they are already quiet.
   const state = await getQuietState(interaction.guild.id, member.id);
   if (!state) {
     // Maybe they clicked someone else's card — check message mentions.
