@@ -1,5 +1,9 @@
 {pkgs}: {
   deps = [
+    # ── Quiet Mode audio (curated mix + optional TTS quotes) ──────────────────
+    pkgs.ffmpeg
+    pkgs.flite
+
     # ── headless Chromium (Playwright, used by /emoji) ────────────────────────
     # `ldd` on both the full Chromium and the headless shell reports exactly two
     # missing libraries on this image. Without them the browser aborts at start

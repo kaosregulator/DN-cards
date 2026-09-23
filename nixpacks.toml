@@ -1,3 +1,8 @@
 # Pin Node for Nixpacks / Railway (matches local nvm 24.x requirement).
 [variables]
 NIXPACKS_NODE_VERSION = "24"
+
+# Quiet Mode audio: ffmpeg for mix/encode; flite for optional spoken quotes.
+# aptPkgs are additive on Railway's Ubuntu base (does not replace Node).
+[phases.setup]
+aptPkgs = ["ffmpeg", "flite", "libflite1"]

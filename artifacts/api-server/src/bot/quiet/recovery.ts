@@ -51,14 +51,41 @@ export function startQuietRecovery(client: Client): void {
 async function onMemberRemove(member: GuildMember | PartialGuildMember): Promise<void> {
   const guild = member.guild;
   const userId = member.id;
-  const state = await getQuietState(guild.id, userId);
+  let state;
+  try {
+    state = await getQuietState(guild.id, userId);
+  } catch (err) {
+    if (isMissingRelation(err)) return;
+    throw err;
+  }
   if (!state) return;
   await forceClearQuietState(guild.id, userId, guild);
   logger.info({ guildId: guild.id, userId }, "Cleared Quiet Mode after member left");
 }
 
+function isMissingRelation(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  const e = err as { code?: string; message?: string; cause?: { code?: string; message?: string } };
+  if (e.code === "42P01") return true;
+  if (e.cause?.code === "42P01") return true;
+  const msg = `${e.message ?? ""} ${e.cause?.message ?? ""}`;
+  return /relation ["']?quiet_/i.test(msg) && /does not exist/i.test(msg);
+}
+
 async function recoverAll(client: Client): Promise<void> {
-  const states = await listQuietStates();
+  let states;
+  try {
+    states = await listQuietStates();
+  } catch (err) {
+    if (isMissingRelation(err)) {
+      logger.warn(
+        "Quiet recovery skipped — quiet_* tables not ready yet " +
+          "(boot migration / start-production will create them on this deploy)",
+      );
+      return;
+    }
+    throw err;
+  }
   if (states.length === 0) {
     logger.info("Quiet recovery: nobody in Quiet Mode");
     return;
@@ -73,7 +100,13 @@ async function recoverAll(client: Client): Promise<void> {
 }
 
 async function recoverNeedsAttention(client: Client): Promise<void> {
-  const rows = await listNeedsRecovery();
+  let rows;
+  try {
+    rows = await listNeedsRecovery();
+  } catch (err) {
+    if (isMissingRelation(err)) return;
+    throw err;
+  }
   for (const state of rows) {
     await recoverOne(client, state.guildId, state.userId).catch(() => {});
   }

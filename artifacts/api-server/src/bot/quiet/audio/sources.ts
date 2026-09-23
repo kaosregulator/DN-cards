@@ -1,3 +1,4 @@
+import { accessSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { QuietAudioCategory } from "./catalog.js";
@@ -15,10 +16,33 @@ import type { QuietAudioCategory } from "./catalog.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-/** Bundled source root: artifacts/api-server/quiet-audio/sources */
+function dirExists(p: string): boolean {
+  try { accessSync(p); return true; } catch { return false; }
+}
+
+/**
+ * Bundled source root: artifacts/api-server/quiet-audio/sources
+ *
+ * Must work both from TypeScript source (`src/bot/quiet/audio`) and from the
+ * production esbuild bundle (`dist/index.mjs`), where `__dirname` is `dist/`
+ * and a naive `../../../../` walks past the repo root.
+ */
 export function quietSourcesRoot(): string {
-  // generate.ts lives in …/bot/quiet/audio → four levels up to api-server package root
-  return path.resolve(__dirname, "../../../../quiet-audio/sources");
+  const candidates = [
+    // Railway / production start cwd = monorepo root
+    path.resolve(process.cwd(), "artifacts/api-server/quiet-audio/sources"),
+    // If cwd is already artifacts/api-server
+    path.resolve(process.cwd(), "quiet-audio/sources"),
+    // Dev: …/src/bot/quiet/audio → api-server package root
+    path.resolve(__dirname, "../../../../quiet-audio/sources"),
+    // Bundled: …/dist → api-server package root
+    path.resolve(__dirname, "../quiet-audio/sources"),
+  ];
+  for (const c of candidates) {
+    if (dirExists(c)) return c;
+  }
+  // Prefer the monorepo-relative path even if not yet harvested (on-demand download).
+  return candidates[0]!;
 }
 
 export interface QuietSourceAsset {
