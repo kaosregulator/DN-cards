@@ -53,6 +53,22 @@ Postgres database and your usual secrets (bot token, guild id, session secret).
 | `AUTO_DB_PUSH` | Unset = push schema only when tables are missing. `1` = always push on start. `0` = never. |
 | `DN_DEPLOYMENT` | `1` if you host somewhere that is not Replit/Railway |
 
+### Quiet Mode audio (automatic on Railway)
+
+Railway builds install **ffmpeg** + **flite** via `nixpacks.toml` `aptPkgs`.
+Quiet Mode tables (`quiet_*`) are created automatically on start:
+
+1. `start-production.mjs` creates them if `quiet_state` is missing
+2. Boot migrations also `CREATE TABLE IF NOT EXISTS` for the same tables
+
+No manual `drizzle-kit push` is required for Quiet Mode on an existing database.
+
+After deploy, confirm logs show:
+
+- `Quiet Mode tables ready` *(first boot after this change, if tables were missing)*
+- or later: `Quiet recording prepared` / `Quiet native voice message succeeded`
+- **not** `spawn ffmpeg ENOENT` or `relation "quiet_state" does not exist`
+
 ## First deploy checklist
 
 1. Link Postgres → confirm `DATABASE_URL` is present on the **bot service**.

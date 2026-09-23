@@ -10,6 +10,9 @@
  *   AUTO_DB_PUSH=0  — never push; only start
  *   (unset)         — push only when `guild_settings` is missing
  *
+ * Also ensures Quiet Mode (`quiet_*`) tables exist on already-provisioned DBs
+ * (guild_settings present → drizzle push is skipped, so we CREATE IF NOT EXISTS).
+ *
  * This is the default `pnpm start` for @workspace/api-server so Railway
  * custom start commands that call package start still bootstrap schema.
  */
@@ -58,6 +61,86 @@ async function baseSchemaMissing() {
     if (err && typeof err === "object" && err.code === "42P01") return true;
     console.error("Database check failed:", err?.message ?? err);
     process.exit(1);
+  } finally {
+    await pool.end().catch(() => {});
+  }
+}
+
+/** Quiet Mode tables — create when missing on an already-provisioned DB. */
+async function ensureQuietTables() {
+  const url = process.env.DATABASE_URL;
+  if (!url) return;
+  const pool = new pg.Pool(buildPoolConfig(url));
+  try {
+    await pool.query("SELECT 1 FROM quiet_state LIMIT 1");
+    return;
+  } catch (err) {
+    if (!(err && typeof err === "object" && err.code === "42P01")) {
+      console.warn("Quiet schema check skipped:", err?.message ?? err);
+      return;
+    }
+  }
+
+  console.log("Quiet Mode tables missing — creating quiet_* schema…");
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS quiet_guild_settings (
+        id                 SERIAL PRIMARY KEY,
+        guild_id           TEXT NOT NULL UNIQUE,
+        enabled            BOOLEAN NOT NULL DEFAULT TRUE,
+        quiet_channel_id   TEXT,
+        quiet_category_id  TEXT,
+        whitelist_role_id  TEXT,
+        blacklist_role_id  TEXT,
+        audio_enabled      BOOLEAN NOT NULL DEFAULT TRUE,
+        updated_at         TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS quiet_state (
+        id                 SERIAL PRIMARY KEY,
+        guild_id           TEXT NOT NULL,
+        user_id            TEXT NOT NULL,
+        entered_at         TIMESTAMP NOT NULL DEFAULT NOW(),
+        entered_by         TEXT NOT NULL,
+        theme              TEXT,
+        quote_id           TEXT,
+        quote_text         TEXT,
+        audio_id           TEXT,
+        last_channel_id    TEXT,
+        room_message_ids   JSONB NOT NULL DEFAULT '[]'::jsonb,
+        overwrite_targets  JSONB NOT NULL DEFAULT '[]'::jsonb,
+        needs_recovery     BOOLEAN NOT NULL DEFAULT FALSE,
+        admin_bypass       BOOLEAN NOT NULL DEFAULT FALSE
+      )
+    `);
+    await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS quiet_state_guild_user_uniq ON quiet_state (guild_id, user_id)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS quiet_state_guild_idx ON quiet_state (guild_id)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS quiet_state_recovery_idx ON quiet_state (needs_recovery)`);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS quiet_user_prefs (
+        id                 SERIAL PRIMARY KEY,
+        guild_id           TEXT NOT NULL,
+        user_id            TEXT NOT NULL,
+        recent_audio_ids   JSONB NOT NULL DEFAULT '[]'::jsonb,
+        recent_quote_ids   JSONB NOT NULL DEFAULT '[]'::jsonb,
+        updated_at         TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS quiet_user_prefs_guild_user_uniq ON quiet_user_prefs (guild_id, user_id)`);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS quiet_audio_config (
+        id          SERIAL PRIMARY KEY,
+        audio_id    TEXT NOT NULL UNIQUE,
+        enabled     BOOLEAN NOT NULL DEFAULT TRUE,
+        weight      INTEGER NOT NULL DEFAULT 1,
+        updated_at  TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    console.log("Quiet Mode tables ready");
+  } catch (err) {
+    console.error("Failed to create Quiet Mode tables:", err?.message ?? err);
+    // Non-fatal here — boot migrations in the app also try; start anyway.
   } finally {
     await pool.end().catch(() => {});
   }
@@ -112,6 +195,12 @@ async function main() {
       console.log("Base tables missing — running one-time schema push…");
       runDbPush();
     }
+  }
+
+  // Existing Railway DBs skip drizzle push (guild_settings already present).
+  // Quiet Mode was added later — ensure its tables exist before the bot starts.
+  if (mode !== "0") {
+    await ensureQuietTables();
   }
 
   const child = spawnSync(process.execPath, ["--enable-source-maps", entry], {

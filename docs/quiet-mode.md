@@ -83,7 +83,15 @@ artifacts/api-server/src/bot/quiet/
     voice-message.ts
 ```
 
-## External sound sources (for future sample packs)
+## Deploy note
+
+On Railway, Quiet Mode tables are created automatically by `start-production.mjs`
+and boot migrations (`CREATE TABLE IF NOT EXISTS quiet_*`). Existing databases
+that already have `guild_settings` do **not** need `AUTO_DB_PUSH=1`.
+
+The Railway image installs **ffmpeg** + **flite** via `nixpacks.toml` so curated
+ambience mixes and spoken quotes work in production.
+
 
 Current ship uses procedural audio only. Good places for **legally redistributable** ambient samples later:
 
