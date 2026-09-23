@@ -1,58 +1,45 @@
 # UnbelievaBoat addon
 
-Addon for DN Cards — does **not** replace shards, packs, or the existing bot. Public messages from this addon post **as UnbelievaBoat** (channel webhook with their name + avatar) so members can see it is powered by the UnbelievaBoat API token you authorized.
+Addon for DN Cards — does **not** replace shards, packs, or the existing bot. Public results post **as UnbelievaBoat** (channel webhook).
 
-## What you get
+## Money
 
-1. **Discord dashboard** — `/unbelievaboat` (Administrator)
-   - Live cash leaderboard (sort total / cash / bank)
-   - Adjust cash (delta) or **set** absolute cash
-   - Toggle API link, pet spend, **mini-games**, **perk store**
-   - **Add perk** — pick a Discord role, price, description, optional icon GIF/URL + purchase message
-   - Pets summary + pet tools
-   - Optional website mirror still at `/admin/unbelievaboat`
+Bets and store purchases spend **cash first, then bank** via the UnbelievaBoat API. Wins credit **cash**.
 
-2. **Cash Check-In** — `/cashcheck`
-   - Daily UnbelievaBoat cash claim (stacks with UnbelievaBoat’s own rewards)
-   - Animated coin spin using the guild currency symbol from the API
+## Cooldowns
 
-3. **Mini-games** (UnbelievaBoat cash, GIF results, webhook-posted)
-   - `/cashgames` — hub
-   - `/roulette` — red / black / green
-   - `/blackjack` — beat the dealer
-   - `/russian` — AI avatar duel or live challenge
-   - `/rob` — stick-figure stickup
-   - `/slut` — PG dramatic beg (command name blurred in embeds)
+UnbelievaBoat’s Discord `set-cooldown` / `set-game-cooldown` settings are **not** on their public REST API. We mirror FAQ defaults in `/unbelievaboat` → **Cooldowns** (editable):
 
-4. **Perk store** — `/cashstore`
-   - Browse admin-linked role perks
-   - Buy with UnbelievaBoat cash → grant role + optional purchase embed
-
-5. **Tamagotchi pets** — `/pet` · `/petadmin` (unchanged; spends UnbelievaBoat cash when enabled)
-
-## Railway secrets
-
-| Variable | Notes |
+| Kind | Default |
 | --- | --- |
-| `UNBELIEVABOAT_TOKEN` | From https://unbelievaboat.com/applications — raw token in `Authorization` (no Bearer). Alias: `UNB_TOKEN`. |
-| `HOME_GUILD_ID` | Website hub scoped to the home guild. |
+| Cash Check-In | 20h |
+| Work / Crime / Beg | 4h |
+| Rob | 24h |
+| Games | 4 plays / 5 minutes |
 
-Bot also needs **Manage Webhooks** in channels where games/store post publicly (falls back to normal bot messages if missing).
+## Discord dashboard — `/unbelievaboat`
 
-## Discord commands
+Leaderboard · adjust/set cash · toggles · add perk · **cooldowns** · pets tools.
 
-| Command | Who | Purpose |
-| --- | --- | --- |
-| `/unbelievaboat` | Admins | Discord economy dashboard |
-| `/cashcheck` | Everyone | Cash Check-In (daily) |
-| `/cashgames` | Everyone | Games hub |
-| `/cashstore` | Everyone | Role perk storefront |
-| `/roulette` · `/blackjack` · `/russian` · `/rob` · `/slut` | Everyone | Cash mini-games |
-| `/pet` · `/petadmin` | Everyone / admins | Pets addon |
+## Player commands
+
+| Command | Notes |
+| --- | --- |
+| `/cashcheck` | Daily Cash Check-In (coin spin) |
+| `/cashwork` · `/cashcrime` | Income (safe / risky) |
+| `/blackjack` | **Interactive 21** — Hit / Stand / Double Down |
+| `/higherlower` | Guess next card |
+| `/redblack` | Color flip ×2 |
+| `/roulette` | Felt-table spin |
+| `/slots` | Three-reel machine |
+| `/russian` · `/rob` · `/slut` | Challenge / stick-up / PG beg |
+| `/cashgames` | Hub |
+| `/cashstore` | Role perk store |
 
 ## Schema
 
-- `lib/db/src/schema/unbelievaboat.ts` — settings, role links, catalog, audit, **game state**
-- `lib/db/src/schema/pets.ts` — pets tables
+`ub_settings.cooldowns` jsonb · `ub_game_state` (+ `last_work_at`, `last_crime_at`) · boot ALTERs included.
 
-Boot migrations create `ub_*` / `pet_*` / `ub_game_state` and add `games_enabled`, `store_enabled`, `daily_min`, `daily_max` on `ub_settings`.
+## Secrets
+
+`UNBELIEVABOAT_TOKEN` · bot needs **Manage Webhooks** for public UnbelievaBoat posting.

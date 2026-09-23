@@ -1036,6 +1036,21 @@ export async function startBot() {
       } else if (cmd === "blackjack") {
         const { handleBlackjack } = await import("./unbelievaboat/games.js");
         await handleBlackjack(interaction);
+      } else if (cmd === "higherlower") {
+        const { handleHigherLower } = await import("./unbelievaboat/games.js");
+        await handleHigherLower(interaction);
+      } else if (cmd === "redblack") {
+        const { handleRedBlack } = await import("./unbelievaboat/games.js");
+        await handleRedBlack(interaction);
+      } else if (cmd === "slots") {
+        const { handleSlots } = await import("./unbelievaboat/games.js");
+        await handleSlots(interaction);
+      } else if (cmd === "cashwork") {
+        const { handleCashWork } = await import("./unbelievaboat/games.js");
+        await handleCashWork(interaction);
+      } else if (cmd === "cashcrime") {
+        const { handleCashCrime } = await import("./unbelievaboat/games.js");
+        await handleCashCrime(interaction);
       } else if (cmd === "russian") {
         const { handleRussian } = await import("./unbelievaboat/games.js");
         await handleRussian(interaction);
@@ -1082,7 +1097,9 @@ export async function startBot() {
     "collection_hub", "hq", "hqadmin", "hqbuild",
     "pet", "petadmin", "ubadmin", "unbelievaboat",
     "cashcheck", "cashgames", "cashstore",
-    "roulette", "blackjack", "russian", "rob", "slut",
+    "roulette", "blackjack", "higherlower", "redblack", "slots",
+    "cashwork", "cashcrime",
+    "russian", "rob", "slut",
     "valuehelp", "valuelist", "info_mttv", "giveall", "editpack", "postcalculator",
     "postboard", "massrole", "emoji",
   ]);

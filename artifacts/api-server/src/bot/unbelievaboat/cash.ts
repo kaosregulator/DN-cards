@@ -1,5 +1,5 @@
-// UnbelievaBoat cash helpers for games & store — always talk to the live API.
-// Unlike pets soft-free mode, economy games require a configured token + link.
+// UnbelievaBoat cash helpers — spend from cash first, then bank if needed.
+// Payouts always land in cash (matches UnbelievaBoat income behaviour).
 
 import { isUbConfigured, ubApi, type UbUserBalance } from "../../lib/unbelievaboat/client.js";
 import { getOrCreateUbSettings } from "../../lib/unbelievaboat/db.js";
@@ -37,22 +37,55 @@ export async function getCashBalance(guildId: string, userId: string): Promise<U
   return { ...bal, symbol };
 }
 
+export type SpendBreakdown = {
+  fromCash: number;
+  fromBank: number;
+  balance: UbUserBalance & { symbol: string };
+};
+
+/**
+ * Spend `amount` using wallet cash first, then bank. Throws if total is short.
+ * Returns how much came from each pocket.
+ */
+export async function spendFunds(
+  guildId: string,
+  userId: string,
+  amount: number,
+  reason: string,
+): Promise<SpendBreakdown> {
+  if (amount <= 0) throw new CashError("Amount must be positive.");
+  const { ubGuildId, symbol } = await requireEconomy(guildId);
+  const bal = await ubApi.getUserBalance(ubGuildId, userId);
+  const cash = bal.cash ?? 0;
+  const bank = bal.bank ?? 0;
+  const total = cash + bank;
+  if (total < amount) {
+    throw new CashError(
+      `Not enough UnbelievaBoat funds. Need **${fmtCash(amount)}** ${symbol}, ` +
+      `have **${fmtCash(cash)}** cash + **${fmtCash(bank)}** bank = **${fmtCash(total)}**.`,
+    );
+  }
+  const fromCash = Math.min(cash, amount);
+  const fromBank = amount - fromCash;
+  const patch: { cash?: number; bank?: number; reason: string } = { reason };
+  if (fromCash > 0) patch.cash = -fromCash;
+  if (fromBank > 0) patch.bank = -fromBank;
+  const next = await ubApi.patchUserBalance(ubGuildId, userId, patch);
+  return { fromCash, fromBank, balance: { ...next, symbol } };
+}
+
+/** @deprecated Prefer spendFunds — kept for call sites that only meant cash. */
 export async function spendCash(
   guildId: string,
   userId: string,
   amount: number,
   reason: string,
 ): Promise<UbUserBalance & { symbol: string }> {
-  if (amount <= 0) throw new CashError("Amount must be positive.");
-  const { ubGuildId, symbol } = await requireEconomy(guildId);
-  const bal = await ubApi.getUserBalance(ubGuildId, userId);
-  if ((bal.cash ?? 0) < amount) {
-    throw new CashError(`Not enough UnbelievaBoat cash. Need **${amount}** ${symbol}, have **${bal.cash ?? 0}**.`);
-  }
-  const next = await ubApi.patchUserBalance(ubGuildId, userId, { cash: -amount, reason });
-  return { ...next, symbol };
+  const r = await spendFunds(guildId, userId, amount, reason);
+  return r.balance;
 }
 
+/** Credit cash (not bank). */
 export async function earnCash(
   guildId: string,
   userId: string,
@@ -67,4 +100,10 @@ export async function earnCash(
 
 export function fmtCash(n: number): string {
   return new Intl.NumberFormat().format(Math.trunc(n));
+}
+
+export function formatSpendNote(fromCash: number, fromBank: number, symbol: string): string {
+  if (fromBank <= 0) return `Paid **${fmtCash(fromCash)}** ${symbol} from cash`;
+  if (fromCash <= 0) return `Paid **${fmtCash(fromBank)}** ${symbol} from bank`;
+  return `Paid **${fmtCash(fromCash)}** cash + **${fmtCash(fromBank)}** bank ${symbol}`;
 }

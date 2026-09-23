@@ -1,4 +1,5 @@
-// UnbelievaBoat mini-games slash commands — cash games posted as UnbelievaBoat.
+// UnbelievaBoat mini-games — interactive blackjack + casino table games.
+// Bets pull from cash first, then bank. Results post as UnbelievaBoat.
 
 import type {
   ChatInputCommandInteraction,
@@ -14,51 +15,57 @@ import {
   AttachmentBuilder,
   MessageFlags,
 } from "discord.js";
-import { getOrCreateUbSettings, getOrCreateGameState, touchGameState, writeUbAudit } from "../../lib/unbelievaboat/db.js";
+import {
+  getOrCreateUbSettings,
+  getOrCreateGameState,
+  touchGameState,
+  writeUbAudit,
+} from "../../lib/unbelievaboat/db.js";
 import { UNBELIEVABOAT_AUTHOR, UNBELIEVABOAT_COLOR } from "./branding.js";
-import { CashError, earnCash, spendCash, getCashBalance, fmtCash } from "./cash.js";
+import {
+  CashError, earnCash, spendFunds, getCashBalance, fmtCash, formatSpendNote,
+} from "./cash.js";
+import {
+  assertGameCooldown, assertIncomeCooldown, markGameCooldown, markIncomeCooldown,
+  getGuildCooldowns, cdText, DEFAULT_COOLDOWNS,
+} from "./cooldowns.js";
+import {
+  freshDeck, draw, cardLabel, handTotal, isNaturalBlackjack, formatHand,
+  isRed, rankValue, type Card,
+} from "./cards.js";
 import { replyThenPostAsUnbelievaBoat } from "./webhook.js";
 import {
-  renderBegGif,
-  renderBlackjackGif,
-  renderCoinSpinGif,
-  renderRobGif,
-  renderRouletteGif,
-  renderRussianGif,
+  renderBegGif, renderBlackjackTableGif, renderCoinSpinGif, renderHigherLowerGif,
+  renderRedBlackGif, renderRobGif, renderRouletteGif, renderRussianGif,
+  renderSlotsGif, renderWorkGif,
 } from "./render-games.js";
 
 const EPHEMERAL = { flags: MessageFlags.Ephemeral } as const;
 
-const DAILY_CD_MS = 20 * 60 * 60 * 1000;
-const ROB_CD_MS = 10 * 60 * 1000;
-const BEG_CD_MS = 15 * 60 * 1000;
-const GAME_CD_MS = 8 * 1000;
-
-/** Pending Russian Roulette challenges: key = `${guild}:${challenger}:${target}` */
-const russianChallenges = new Map<string, {
+type BjSession = {
   guildId: string;
-  challengerId: string;
-  targetId: string;
+  userId: string;
   bet: number;
+  fromCash: number;
+  fromBank: number;
+  deck: Card[];
+  player: Card[];
+  dealer: Card[];
+  doubled: boolean;
   expires: number;
+};
+
+const bjSessions = new Map<string, BjSession>();
+const higherSessions = new Map<string, {
+  guildId: string; userId: string; bet: number; shown: Card; deck: Card[]; expires: number;
+  fromCash: number; fromBank: number;
 }>();
 
-function cdLeft(at: Date | null | undefined, ms: number): number {
-  if (!at) return 0;
-  return Math.max(0, at.getTime() + ms - Date.now());
-}
+const russianChallenges = new Map<string, {
+  guildId: string; challengerId: string; targetId: string; bet: number; expires: number;
+}>();
 
-function cdText(ms: number): string {
-  const s = Math.ceil(ms / 1000);
-  if (s < 60) return `${s}s`;
-  const m = Math.ceil(s / 60);
-  return `${m}m`;
-}
-
-async function assertGamesOn(guildId: string) {
-  const s = await getOrCreateUbSettings(guildId);
-  if (!s.gamesEnabled) throw new CashError("UnbelievaBoat mini-games are disabled on this server.");
-}
+function bjKey(guildId: string, userId: string) { return `${guildId}:${userId}`; }
 
 function brandEmbed(title: string, description: string): EmbedBuilder {
   return new EmbedBuilder()
@@ -66,13 +73,30 @@ function brandEmbed(title: string, description: string): EmbedBuilder {
     .setAuthor(UNBELIEVABOAT_AUTHOR)
     .setTitle(title)
     .setDescription(description)
-    .setFooter({ text: "Powered by the UnbelievaBoat API you authorized" });
+    .setFooter({ text: "Powered by the UnbelievaBoat API you authorized · cash then bank" });
 }
 
 async function attachGif(result: Awaited<ReturnType<typeof renderCoinSpinGif>>, name: string) {
   if (!result) return { files: [] as AttachmentBuilder[], imageName: null as string | null };
-  const file = new AttachmentBuilder(result.buffer, { name });
-  return { files: [file], imageName: name };
+  return { files: [new AttachmentBuilder(result.buffer, { name })], imageName: name };
+}
+
+async function assertGamesOn(guildId: string) {
+  const s = await getOrCreateUbSettings(guildId);
+  if (!s.gamesEnabled) throw new CashError("UnbelievaBoat mini-games are disabled on this server.");
+}
+
+function bjButtons(userId: string, canDouble: boolean) {
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId(`unbgame:bj:hit:${userId}`).setLabel("Hit").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId(`unbgame:bj:stand:${userId}`).setLabel("Stand").setStyle(ButtonStyle.Secondary),
+  );
+  if (canDouble) {
+    row.addComponents(
+      new ButtonBuilder().setCustomId(`unbgame:bj:double:${userId}`).setLabel("Double Down").setStyle(ButtonStyle.Success),
+    );
+  }
+  return [row];
 }
 
 // ── Command builders ──────────────────────────────────────────────────────────
@@ -80,74 +104,169 @@ async function attachGif(result: Awaited<ReturnType<typeof renderCoinSpinGif>>, 
 export function buildCashCheckCommandJson() {
   return new SlashCommandBuilder()
     .setName("cashcheck")
-    .setDescription("Cash Check-In — claim UnbelievaBoat cash here too (on top of their rewards)")
-    .setDMPermission(false)
-    .toJSON();
+    .setDescription("Cash Check-In — claim UnbelievaBoat cash (stacks with their rewards)")
+    .setDMPermission(false).toJSON();
 }
 
 export function buildCashGamesCommandJson() {
   return new SlashCommandBuilder()
     .setName("cashgames")
-    .setDescription("UnbelievaBoat mini-games hub — roulette, blackjack, rob, and more")
-    .setDMPermission(false)
-    .toJSON();
+    .setDescription("UnbelievaBoat casino hub — blackjack, slots, roulette, and more")
+    .setDMPermission(false).toJSON();
 }
 
 export function buildRouletteCommandJson() {
   return new SlashCommandBuilder()
     .setName("roulette")
-    .setDescription("UnbelievaBoat roulette — bet cash on red, black, or green")
+    .setDescription("Casino roulette — bet on red, black, or green (cash then bank)")
     .setDMPermission(false)
-    .addIntegerOption(o => o.setName("bet").setDescription("Cash to wager").setRequired(true).setMinValue(10).setMaxValue(100_000))
-    .addStringOption(o => o.setName("color").setDescription("Pick a color").setRequired(true)
+    .addIntegerOption(o => o.setName("bet").setDescription("Wager").setRequired(true).setMinValue(10).setMaxValue(100_000))
+    .addStringOption(o => o.setName("color").setDescription("Color").setRequired(true)
       .addChoices(
         { name: "Red (2×)", value: "red" },
         { name: "Black (2×)", value: "black" },
-        { name: "Green (14×)", value: "green" },
-      ))
-    .toJSON();
+        { name: "Green 0 (14×)", value: "green" },
+      )).toJSON();
 }
 
 export function buildBlackjackCommandJson() {
   return new SlashCommandBuilder()
     .setName("blackjack")
-    .setDescription("UnbelievaBoat blackjack — beat the dealer for cash")
+    .setDescription("Interactive 21 — Hit / Stand / Double Down")
     .setDMPermission(false)
-    .addIntegerOption(o => o.setName("bet").setDescription("Cash to wager").setRequired(true).setMinValue(10).setMaxValue(100_000))
+    .addIntegerOption(o => o.setName("bet").setDescription("Wager").setRequired(true).setMinValue(10).setMaxValue(100_000))
     .toJSON();
+}
+
+export function buildHigherLowerCommandJson() {
+  return new SlashCommandBuilder()
+    .setName("higherlower")
+    .setDescription("Higher or Lower — guess the next card")
+    .setDMPermission(false)
+    .addIntegerOption(o => o.setName("bet").setDescription("Wager").setRequired(true).setMinValue(10).setMaxValue(50_000))
+    .toJSON();
+}
+
+export function buildRedBlackCommandJson() {
+  return new SlashCommandBuilder()
+    .setName("redblack")
+    .setDescription("Red or Black — flip a card for 2×")
+    .setDMPermission(false)
+    .addIntegerOption(o => o.setName("bet").setDescription("Wager").setRequired(true).setMinValue(10).setMaxValue(50_000))
+    .addStringOption(o => o.setName("color").setDescription("Pick a color").setRequired(true)
+      .addChoices({ name: "Red", value: "red" }, { name: "Black", value: "black" }))
+    .toJSON();
+}
+
+export function buildSlotsCommandJson() {
+  return new SlashCommandBuilder()
+    .setName("slots")
+    .setDescription("Slot machine — three in a row pays")
+    .setDMPermission(false)
+    .addIntegerOption(o => o.setName("bet").setDescription("Wager").setRequired(true).setMinValue(10).setMaxValue(50_000))
+    .toJSON();
+}
+
+export function buildWorkCommandJson() {
+  return new SlashCommandBuilder()
+    .setName("cashwork")
+    .setDescription("Safe work shift — earn UnbelievaBoat cash (no risk)")
+    .setDMPermission(false).toJSON();
+}
+
+export function buildCrimeCommandJson() {
+  return new SlashCommandBuilder()
+    .setName("cashcrime")
+    .setDescription("Risky crime — bigger payout or a fine")
+    .setDMPermission(false).toJSON();
 }
 
 export function buildRussianCommandJson() {
   return new SlashCommandBuilder()
     .setName("russian")
-    .setDescription("UnbelievaBoat Russian roulette — AI duel with their avatar or challenge them")
+    .setDescription("Russian roulette — AI duel or live challenge")
     .setDMPermission(false)
-    .addUserOption(o => o.setName("target").setDescription("Who to aim at").setRequired(true))
-    .addIntegerOption(o => o.setName("bet").setDescription("Cash stake").setRequired(true).setMinValue(10).setMaxValue(50_000))
-    .addStringOption(o => o.setName("mode").setDescription("AI simulation or live challenge")
-      .addChoices(
-        { name: "AI vs their avatar", value: "ai" },
-        { name: "Challenge them live", value: "challenge" },
-      ))
+    .addUserOption(o => o.setName("target").setDescription("Target").setRequired(true))
+    .addIntegerOption(o => o.setName("bet").setDescription("Stake").setRequired(true).setMinValue(10).setMaxValue(50_000))
+    .addStringOption(o => o.setName("mode").setDescription("Mode")
+      .addChoices({ name: "AI vs their avatar", value: "ai" }, { name: "Challenge them live", value: "challenge" }))
     .toJSON();
 }
 
 export function buildRobCommandJson() {
   return new SlashCommandBuilder()
     .setName("rob")
-    .setDescription("Attempt a stick-figure stickup for UnbelievaBoat cash")
+    .setDescription("Stick-figure stickup for UnbelievaBoat cash")
     .setDMPermission(false)
-    .addUserOption(o => o.setName("target").setDescription("Who to rob").setRequired(true))
+    .addUserOption(o => o.setName("target").setDescription("Target").setRequired(true))
     .toJSON();
 }
 
 export function buildSlutCommandJson() {
-  // Command name kept as requested; embeds blur it and keep content PG.
   return new SlashCommandBuilder()
     .setName("slut")
-    .setDescription("Dramatic PG cash beg (name blurred in embeds) — UnbelievaBoat currency")
-    .setDMPermission(false)
-    .toJSON();
+    .setDescription("PG dramatic cash beg (name blurred in embeds)")
+    .setDMPermission(false).toJSON();
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+async function finishBlackjack(
+  interaction: ChatInputCommandInteraction | ButtonInteraction,
+  session: BjSession,
+  playerStood: boolean,
+) {
+  const key = bjKey(session.guildId, session.userId);
+  bjSessions.delete(key);
+
+  // Dealer draws to 17
+  while (handTotal(session.dealer).total < 17) {
+    session.dealer.push(draw(session.deck));
+  }
+
+  const p = handTotal(session.player).total;
+  const d = handTotal(session.dealer).total;
+  let outcome: "win" | "lose" | "push" = "lose";
+  if (p > 21) outcome = "lose";
+  else if (d > 21 || p > d) outcome = "win";
+  else if (p === d) outcome = "push";
+
+  const payout = outcome === "win" ? session.bet * 2 : outcome === "push" ? session.bet : 0;
+  let bal = await getCashBalance(session.guildId, session.userId);
+  if (payout > 0) bal = await earnCash(session.guildId, session.userId, payout, `Blackjack ${outcome}`);
+
+  const gif = await renderBlackjackTableGif({
+    player: session.player,
+    dealer: session.dealer,
+    hideDealer: false,
+    banner: outcome.toUpperCase(),
+  });
+  const { files, imageName } = await attachGif(gif, "blackjack.gif");
+  const embed = brandEmbed(
+    "Blackjack — 21",
+    [
+      `<@${session.userId}>`,
+      `You ${formatHand(session.player)} (**${p}**)`,
+      `Dealer ${formatHand(session.dealer)} (**${d}**)`,
+      outcome === "win"
+        ? `🎉 Win **${fmtCash(payout)}** ${bal.symbol}`
+        : outcome === "push"
+          ? `🤝 Push — stake returned`
+          : `💀 Bust / lose stake **${fmtCash(session.bet)}**`,
+      formatSpendNote(session.fromCash, session.fromBank, bal.symbol),
+      `Cash **${fmtCash(bal.cash)}** · bank **${fmtCash(bal.bank)}**`,
+    ].join("\n"),
+  );
+  if (imageName) embed.setImage(`attachment://${imageName}`);
+
+  if (interaction.deferred || interaction.replied) {
+    await interaction.editReply({ content: "✅ Hand complete — posting result as **UnbelievaBoat**.", embeds: [], components: [], files: [] });
+  }
+  await replyThenPostAsUnbelievaBoat(
+    interaction as ChatInputCommandInteraction,
+    { embeds: [embed], files },
+    "✅ Blackjack result posted as **UnbelievaBoat**.",
+  );
 }
 
 // ── Handlers ──────────────────────────────────────────────────────────────────
@@ -157,37 +276,28 @@ export async function handleCashCheck(interaction: ChatInputCommandInteraction):
   await interaction.deferReply({ ephemeral: true });
   try {
     await assertGamesOn(interaction.guildId);
+    await assertIncomeCooldown(interaction.guildId, interaction.user.id, "daily");
     const settings = await getOrCreateUbSettings(interaction.guildId);
     const state = await getOrCreateGameState(interaction.guildId, interaction.user.id);
-    const left = cdLeft(state.lastDailyAt, DAILY_CD_MS);
-    if (left > 0) {
-      await interaction.editReply(`Cash Check-In cools down in **${cdText(left)}**. Come back later.`);
-      return;
-    }
     const now = Date.now();
     const prev = state.lastDailyAt?.getTime() ?? 0;
-    const streak = prev && now - prev < DAILY_CD_MS * 2 ? (state.dailyStreak || 0) + 1 : 1;
+    const cds = await getGuildCooldowns(interaction.guildId);
+    const streak = prev && now - prev < cds.dailySec * 1000 * 2 ? (state.dailyStreak || 0) + 1 : 1;
     const lo = Math.min(settings.dailyMin, settings.dailyMax);
     const hi = Math.max(settings.dailyMin, settings.dailyMax);
     const amount = lo + Math.floor(Math.random() * (hi - lo + 1));
     const bal = await earnCash(interaction.guildId, interaction.user.id, amount, "Cash Check-In");
-    await touchGameState(interaction.guildId, interaction.user.id, {
-      lastDailyAt: new Date(),
-      dailyStreak: streak,
-    });
+    await markIncomeCooldown(interaction.guildId, interaction.user.id, "daily");
+    await touchGameState(interaction.guildId, interaction.user.id, { dailyStreak: streak });
     const gif = await renderCoinSpinGif({ amount, symbol: bal.symbol, streak });
     const { files, imageName } = await attachGif(gif, "cashcheck.gif");
-    const embed = brandEmbed(
-      "Cash Check-In",
-      [
-        `${interaction.user} claimed **${fmtCash(amount)}** ${bal.symbol}`,
-        `Streak **${streak}** · wallet now **${fmtCash(bal.cash)}** ${bal.symbol}`,
-        "",
-        "_This is our addon check-in — it stacks with UnbelievaBoat’s own role/income rewards._",
-      ].join("\n"),
-    );
+    const embed = brandEmbed("Cash Check-In", [
+      `${interaction.user} claimed **${fmtCash(amount)}** ${bal.symbol}`,
+      `Streak **${streak}** · cash **${fmtCash(bal.cash)}** · bank **${fmtCash(bal.bank)}**`,
+      "_Stacks with UnbelievaBoat’s own income/role rewards._",
+    ].join("\n"));
     if (imageName) embed.setImage(`attachment://${imageName}`);
-    await replyThenPostAsUnbelievaBoat(interaction, { embeds: [embed], files }, "✅ Cash Check-In posted as **UnbelievaBoat**.");
+    await replyThenPostAsUnbelievaBoat(interaction, { embeds: [embed], files });
   } catch (err) {
     await interaction.editReply(err instanceof CashError ? err.message : `Failed: ${err instanceof Error ? err.message : err}`);
   }
@@ -199,20 +309,79 @@ export async function handleCashGamesHub(interaction: ChatInputCommandInteractio
   try {
     await assertGamesOn(interaction.guildId);
     const bal = await getCashBalance(interaction.guildId, interaction.user.id);
-    const embed = brandEmbed(
-      "Mini-Games",
-      [
-        `Your cash: **${fmtCash(bal.cash)}** ${bal.symbol} · bank **${fmtCash(bal.bank)}**`,
-        "",
-        "`/cashcheck` — Cash Check-In (daily spin)",
-        "`/roulette` · `/blackjack` · `/russian` · `/rob`",
-        "`/slut` — PG dramatic beg (name blurred)",
-        "`/cashstore` — role perk storefront",
-        "",
-        "Wins & losses settle on the **UnbelievaBoat** leaderboard via the API.",
-      ].join("\n"),
-    );
+    const cds = await getGuildCooldowns(interaction.guildId);
+    const embed = brandEmbed("Casino Hub", [
+      `Wallet: **${fmtCash(bal.cash)}** cash · **${fmtCash(bal.bank)}** bank ${bal.symbol}`,
+      `_Bets spend cash first, then bank._`,
+      "",
+      "**Cards:** `/blackjack` (Hit/Stand) · `/higherlower` · `/redblack`",
+      "**Table:** `/roulette` · `/slots`",
+      "**Income:** `/cashcheck` · `/cashwork` · `/cashcrime`",
+      "**Chaos:** `/rob` · `/russian` · `/slut`",
+      "",
+      `Game limit: **${cds.gameUses}** / **${cdText(cds.gameWindowSec * 1000)}** (edit in \`/unbelievaboat\`)`,
+    ].join("\n"));
     await interaction.editReply({ embeds: [embed] });
+  } catch (err) {
+    await interaction.editReply(err instanceof CashError ? err.message : `Failed: ${err instanceof Error ? err.message : err}`);
+  }
+}
+
+export async function handleBlackjack(interaction: ChatInputCommandInteraction): Promise<void> {
+  if (!interaction.guildId) { await interaction.reply({ content: "Server only.", ...EPHEMERAL }); return; }
+  await interaction.deferReply({ ephemeral: true });
+  try {
+    await assertGamesOn(interaction.guildId);
+    await assertGameCooldown(interaction.guildId, interaction.user.id);
+    const bet = interaction.options.getInteger("bet", true);
+    const key = bjKey(interaction.guildId, interaction.user.id);
+    if (bjSessions.has(key)) {
+      await interaction.editReply("You already have a hand open — finish Hit/Stand first.");
+      return;
+    }
+
+    const spent = await spendFunds(interaction.guildId, interaction.user.id, bet, "Blackjack bet");
+    await markGameCooldown(interaction.guildId, interaction.user.id);
+
+    const deck = freshDeck();
+    const player = [draw(deck), draw(deck)];
+    const dealer = [draw(deck), draw(deck)];
+
+    // Natural checks
+    if (isNaturalBlackjack(dealer) || isNaturalBlackjack(player)) {
+      const session: BjSession = {
+        guildId: interaction.guildId, userId: interaction.user.id, bet,
+        fromCash: spent.fromCash, fromBank: spent.fromBank,
+        deck, player, dealer, doubled: false, expires: Date.now() + 120_000,
+      };
+      await finishBlackjack(interaction, session, true);
+      return;
+    }
+
+    const session: BjSession = {
+      guildId: interaction.guildId, userId: interaction.user.id, bet,
+      fromCash: spent.fromCash, fromBank: spent.fromBank,
+      deck, player, dealer, doubled: false, expires: Date.now() + 3 * 60_000,
+    };
+    bjSessions.set(key, session);
+
+    const p = handTotal(player);
+    const gif = await renderBlackjackTableGif({ player, dealer, hideDealer: true });
+    const { files, imageName } = await attachGif(gif, "bj-deal.gif");
+    const embed = brandEmbed("Blackjack — your move", [
+      `${formatSpendNote(spent.fromCash, spent.fromBank, spent.balance.symbol)}`,
+      `You: ${formatHand(player)} (**${p.total}**${p.soft ? " soft" : ""})`,
+      `Dealer: ${formatHand(dealer, true)}`,
+      "",
+      "Choose **Hit**, **Stand**, or **Double Down**.",
+    ].join("\n"));
+    if (imageName) embed.setImage(`attachment://${imageName}`);
+
+    await interaction.editReply({
+      embeds: [embed],
+      files,
+      components: bjButtons(interaction.user.id, true),
+    });
   } catch (err) {
     await interaction.editReply(err instanceof CashError ? err.message : `Failed: ${err instanceof Error ? err.message : err}`);
   }
@@ -223,35 +392,30 @@ export async function handleRoulette(interaction: ChatInputCommandInteraction): 
   await interaction.deferReply({ ephemeral: true });
   try {
     await assertGamesOn(interaction.guildId);
+    await assertGameCooldown(interaction.guildId, interaction.user.id);
     const bet = interaction.options.getInteger("bet", true);
     const color = interaction.options.getString("color", true) as "red" | "black" | "green";
-    const state = await getOrCreateGameState(interaction.guildId, interaction.user.id);
-    const left = cdLeft(state.lastRouletteAt, GAME_CD_MS);
-    if (left > 0) { await interaction.editReply(`Roulette cools down **${cdText(left)}**.`); return; }
+    const spent = await spendFunds(interaction.guildId, interaction.user.id, bet, `Roulette ${color}`);
+    await markGameCooldown(interaction.guildId, interaction.user.id);
 
-    await spendCash(interaction.guildId, interaction.user.id, bet, `Roulette bet ${color}`);
-    const landing = Math.floor(Math.random() * 37); // 0..36
+    const landing = Math.floor(Math.random() * 37);
     const landed: "red" | "black" | "green" =
       landing === 0 ? "green" : landing % 2 === 0 ? "black" : "red";
     const mult = color === "green" ? 14 : 2;
     const win = color === landed;
     const payout = win ? bet * mult : 0;
-    let bal = await getCashBalance(interaction.guildId, interaction.user.id);
-    if (payout > 0) bal = await earnCash(interaction.guildId, interaction.user.id, payout, `Roulette win ${landed}`);
-    await touchGameState(interaction.guildId, interaction.user.id, { lastRouletteAt: new Date() });
+    let bal = spent.balance;
+    if (payout > 0) bal = await earnCash(interaction.guildId, interaction.user.id, payout, "Roulette win");
 
     const gif = await renderRouletteGif({ landing, color: landed });
     const { files, imageName } = await attachGif(gif, "roulette.gif");
-    const embed = brandEmbed(
-      "Roulette",
-      [
-        `${interaction.user} bet **${fmtCash(bet)}** on **${color}**`,
-        `Ball landed **${landing}** (${landed})`,
-        win
-          ? `🎉 Won **${fmtCash(payout)}** ${bal.symbol} · cash **${fmtCash(bal.cash)}**`
-          : `💀 Lost **${fmtCash(bet)}** ${bal.symbol} · cash **${fmtCash(bal.cash)}**`,
-      ].join("\n"),
-    );
+    const embed = brandEmbed("Roulette Table", [
+      `${interaction.user} bet **${fmtCash(bet)}** on **${color}**`,
+      formatSpendNote(spent.fromCash, spent.fromBank, bal.symbol),
+      `Ball → **${landing}** (${landed})`,
+      win ? `🎉 Won **${fmtCash(payout)}**` : `💀 Lost stake`,
+      `Cash **${fmtCash(bal.cash)}** · bank **${fmtCash(bal.bank)}**`,
+    ].join("\n"));
     if (imageName) embed.setImage(`attachment://${imageName}`);
     await replyThenPostAsUnbelievaBoat(interaction, { embeds: [embed], files });
   } catch (err) {
@@ -259,48 +423,67 @@ export async function handleRoulette(interaction: ChatInputCommandInteraction): 
   }
 }
 
-function drawHand(): number {
-  // Simplified blackjack total 12–21 weighted
-  const r = Math.random();
-  if (r < 0.08) return 21;
-  if (r < 0.2) return 20;
-  return 12 + Math.floor(Math.random() * 8);
-}
-
-export async function handleBlackjack(interaction: ChatInputCommandInteraction): Promise<void> {
+export async function handleHigherLower(interaction: ChatInputCommandInteraction): Promise<void> {
   if (!interaction.guildId) { await interaction.reply({ content: "Server only.", ...EPHEMERAL }); return; }
   await interaction.deferReply({ ephemeral: true });
   try {
     await assertGamesOn(interaction.guildId);
+    await assertGameCooldown(interaction.guildId, interaction.user.id);
     const bet = interaction.options.getInteger("bet", true);
-    const state = await getOrCreateGameState(interaction.guildId, interaction.user.id);
-    const left = cdLeft(state.lastBlackjackAt, GAME_CD_MS);
-    if (left > 0) { await interaction.editReply(`Blackjack cools down **${cdText(left)}**.`); return; }
-
-    await spendCash(interaction.guildId, interaction.user.id, bet, "Blackjack bet");
-    const player = drawHand();
-    let dealer = drawHand();
-    if (dealer < 17) dealer = Math.min(21, dealer + 1 + Math.floor(Math.random() * 4));
-    let outcome: "win" | "lose" | "push" = "lose";
-    if (player > 21) outcome = "lose";
-    else if (dealer > 21 || player > dealer) outcome = "win";
-    else if (player === dealer) outcome = "push";
-
-    let bal = await getCashBalance(interaction.guildId, interaction.user.id);
-    if (outcome === "win") bal = await earnCash(interaction.guildId, interaction.user.id, bet * 2, "Blackjack win");
-    else if (outcome === "push") bal = await earnCash(interaction.guildId, interaction.user.id, bet, "Blackjack push");
-    await touchGameState(interaction.guildId, interaction.user.id, { lastBlackjackAt: new Date() });
-
-    const gif = await renderBlackjackGif({ playerTotal: player, dealerTotal: dealer, outcome });
-    const { files, imageName } = await attachGif(gif, "blackjack.gif");
-    const embed = brandEmbed(
-      "Blackjack",
-      [
-        `${interaction.user} · bet **${fmtCash(bet)}** ${bal.symbol}`,
-        `You **${player}** vs dealer **${dealer}** → **${outcome.toUpperCase()}**`,
-        `Cash now **${fmtCash(bal.cash)}** ${bal.symbol}`,
-      ].join("\n"),
+    const key = bjKey(interaction.guildId, interaction.user.id);
+    if (higherSessions.has(key)) {
+      await interaction.editReply("Finish your Higher/Lower round first.");
+      return;
+    }
+    const spent = await spendFunds(interaction.guildId, interaction.user.id, bet, "Higher/Lower bet");
+    await markGameCooldown(interaction.guildId, interaction.user.id);
+    const deck = freshDeck();
+    const shown = draw(deck);
+    higherSessions.set(key, {
+      guildId: interaction.guildId, userId: interaction.user.id, bet, shown, deck,
+      fromCash: spent.fromCash, fromBank: spent.fromBank, expires: Date.now() + 90_000,
+    });
+    const gif = await renderHigherLowerGif({ shown: cardLabel(shown) });
+    const { files, imageName } = await attachGif(gif, "hl.gif");
+    const embed = brandEmbed("Higher or Lower", [
+      `${formatSpendNote(spent.fromCash, spent.fromBank, spent.balance.symbol)}`,
+      `Showing **${cardLabel(shown)}** — will the next card be higher or lower?`,
+      "_(Aces high · ties lose)_",
+    ].join("\n"));
+    if (imageName) embed.setImage(`attachment://${imageName}`);
+    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId(`unbgame:hl:higher:${interaction.user.id}`).setLabel("Higher").setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId(`unbgame:hl:lower:${interaction.user.id}`).setLabel("Lower").setStyle(ButtonStyle.Danger),
     );
+    await interaction.editReply({ embeds: [embed], files, components: [row] });
+  } catch (err) {
+    await interaction.editReply(err instanceof CashError ? err.message : `Failed: ${err instanceof Error ? err.message : err}`);
+  }
+}
+
+export async function handleRedBlack(interaction: ChatInputCommandInteraction): Promise<void> {
+  if (!interaction.guildId) { await interaction.reply({ content: "Server only.", ...EPHEMERAL }); return; }
+  await interaction.deferReply({ ephemeral: true });
+  try {
+    await assertGamesOn(interaction.guildId);
+    await assertGameCooldown(interaction.guildId, interaction.user.id);
+    const bet = interaction.options.getInteger("bet", true);
+    const pick = interaction.options.getString("color", true) as "red" | "black";
+    const spent = await spendFunds(interaction.guildId, interaction.user.id, bet, `Red/Black ${pick}`);
+    await markGameCooldown(interaction.guildId, interaction.user.id);
+    const card = draw(freshDeck());
+    const landed: "red" | "black" = isRed(card) ? "red" : "black";
+    const win = pick === landed;
+    let bal = spent.balance;
+    if (win) bal = await earnCash(interaction.guildId, interaction.user.id, bet * 2, "Red/Black win");
+    const gif = await renderRedBlackGif({ pick, landed, win });
+    const { files, imageName } = await attachGif(gif, "redblack.gif");
+    const embed = brandEmbed("Red or Black", [
+      `${interaction.user} picked **${pick}** · card **${cardLabel(card)}** (${landed})`,
+      formatSpendNote(spent.fromCash, spent.fromBank, bal.symbol),
+      win ? `🎉 Doubled → **${fmtCash(bet * 2)}**` : `💀 Lost **${fmtCash(bet)}**`,
+      `Cash **${fmtCash(bal.cash)}** · bank **${fmtCash(bal.bank)}**`,
+    ].join("\n"));
     if (imageName) embed.setImage(`attachment://${imageName}`);
     await replyThenPostAsUnbelievaBoat(interaction, { embeds: [embed], files });
   } catch (err) {
@@ -308,45 +491,89 @@ export async function handleBlackjack(interaction: ChatInputCommandInteraction):
   }
 }
 
-async function runRussianRound(
-  interaction: ChatInputCommandInteraction | ButtonInteraction,
-  guildId: string,
-  actor: User,
-  target: User,
-  bet: number,
-  label: string,
-) {
-  await spendCash(guildId, actor.id, bet, `Russian roulette vs ${target.id}`);
-  // Target also risked in challenge mode — AI mode only actor pays.
-  const chamber = Math.floor(Math.random() * 6);
-  const click = Math.floor(Math.random() * 6);
-  const actorSurvived = click !== chamber;
-  // 50/50 narrative for who "holds" the gun last — AI uses target avatar flavor.
-  const survivor = actorSurvived ? actor : target;
-  const loser = actorSurvived ? target : actor;
-
-  let bal = await getCashBalance(guildId, actor.id);
-  if (actorSurvived) {
-    bal = await earnCash(guildId, actor.id, bet * 2, "Russian roulette win");
+export async function handleSlots(interaction: ChatInputCommandInteraction): Promise<void> {
+  if (!interaction.guildId) { await interaction.reply({ content: "Server only.", ...EPHEMERAL }); return; }
+  await interaction.deferReply({ ephemeral: true });
+  try {
+    await assertGamesOn(interaction.guildId);
+    await assertGameCooldown(interaction.guildId, interaction.user.id);
+    const bet = interaction.options.getInteger("bet", true);
+    const spent = await spendFunds(interaction.guildId, interaction.user.id, bet, "Slots bet");
+    await markGameCooldown(interaction.guildId, interaction.user.id);
+    const pool = ["🍒", "🍋", "🔔", "⭐", "💎", "7️⃣"];
+    const reels = [0, 1, 2].map(() => pool[Math.floor(Math.random() * pool.length)]!);
+    const win = reels[0] === reels[1] && reels[1] === reels[2];
+    const mult = reels[0] === "7️⃣" ? 10 : reels[0] === "💎" ? 6 : 2;
+    let bal = spent.balance;
+    if (win) bal = await earnCash(interaction.guildId, interaction.user.id, bet * mult, "Slots win");
+    const gif = await renderSlotsGif({ reels, win });
+    const { files, imageName } = await attachGif(gif, "slots.gif");
+    const embed = brandEmbed("Slot Machine", [
+      `${interaction.user} · ${reels.join(" | ")}`,
+      formatSpendNote(spent.fromCash, spent.fromBank, bal.symbol),
+      win ? `🎉 Line pays **${fmtCash(bet * mult)}** (${mult}×)` : `No line — lost **${fmtCash(bet)}**`,
+      `Cash **${fmtCash(bal.cash)}** · bank **${fmtCash(bal.bank)}**`,
+    ].join("\n"));
+    if (imageName) embed.setImage(`attachment://${imageName}`);
+    await replyThenPostAsUnbelievaBoat(interaction, { embeds: [embed], files });
+  } catch (err) {
+    await interaction.editReply(err instanceof CashError ? err.message : `Failed: ${err instanceof Error ? err.message : err}`);
   }
-  await touchGameState(guildId, actor.id, { lastRussianAt: new Date() });
+}
 
-  const gif = await renderRussianGif({ survived: actorSurvived, chamber });
-  const { files, imageName } = await attachGif(gif, "russian.gif");
-  const embed = brandEmbed(
-    "Russian Roulette",
-    [
-      `${label}`,
-      `${actor} vs ${target}`,
-      actorSurvived
-        ? `🟢 Click — ${survivor} keeps cool. **+${fmtCash(bet)}** net for ${actor}`
-        : `🔴 Bang (sim) — ${loser} flinches. ${actor} loses the stake.`,
-      `Cash **${fmtCash(bal.cash)}** ${bal.symbol}`,
-    ].join("\n"),
-  );
-  if (target.displayAvatarURL()) embed.setThumbnail(target.displayAvatarURL({ size: 128 }));
-  if (imageName) embed.setImage(`attachment://${imageName}`);
-  await replyThenPostAsUnbelievaBoat(interaction as ChatInputCommandInteraction, { embeds: [embed], files });
+export async function handleCashWork(interaction: ChatInputCommandInteraction): Promise<void> {
+  if (!interaction.guildId) { await interaction.reply({ content: "Server only.", ...EPHEMERAL }); return; }
+  await interaction.deferReply({ ephemeral: true });
+  try {
+    await assertGamesOn(interaction.guildId);
+    await assertIncomeCooldown(interaction.guildId, interaction.user.id, "work");
+    const payout = 20 + Math.floor(Math.random() * 231);
+    const bal = await earnCash(interaction.guildId, interaction.user.id, payout, "Cash work");
+    await markIncomeCooldown(interaction.guildId, interaction.user.id, "work");
+    const gif = await renderWorkGif({ payout });
+    const { files, imageName } = await attachGif(gif, "work.gif");
+    const embed = brandEmbed("Work Shift", [
+      `${interaction.user} finished a shift · **+${fmtCash(payout)}** ${bal.symbol}`,
+      `Cash **${fmtCash(bal.cash)}** · bank **${fmtCash(bal.bank)}**`,
+    ].join("\n"));
+    if (imageName) embed.setImage(`attachment://${imageName}`);
+    await replyThenPostAsUnbelievaBoat(interaction, { embeds: [embed], files });
+  } catch (err) {
+    await interaction.editReply(err instanceof CashError ? err.message : `Failed: ${err instanceof Error ? err.message : err}`);
+  }
+}
+
+export async function handleCashCrime(interaction: ChatInputCommandInteraction): Promise<void> {
+  if (!interaction.guildId) { await interaction.reply({ content: "Server only.", ...EPHEMERAL }); return; }
+  await interaction.deferReply({ ephemeral: true });
+  try {
+    await assertGamesOn(interaction.guildId);
+    await assertIncomeCooldown(interaction.guildId, interaction.user.id, "crime");
+    const fail = Math.random() < 0.55;
+    await markIncomeCooldown(interaction.guildId, interaction.user.id, "crime");
+    if (fail) {
+      const finePct = 0.2 + Math.random() * 0.2;
+      const bal0 = await getCashBalance(interaction.guildId, interaction.user.id);
+      const fine = Math.max(10, Math.floor((bal0.cash + bal0.bank) * finePct * 0.05));
+      const spent = await spendFunds(interaction.guildId, interaction.user.id, Math.min(fine, bal0.cash + bal0.bank), "Crime fine");
+      const embed = brandEmbed("Crime — Caught", [
+        `${interaction.user} got pinched.`,
+        formatSpendNote(spent.fromCash, spent.fromBank, spent.balance.symbol),
+        `Cash **${fmtCash(spent.balance.cash)}** · bank **${fmtCash(spent.balance.bank)}**`,
+      ].join("\n"));
+      await replyThenPostAsUnbelievaBoat(interaction, { embeds: [embed] });
+      return;
+    }
+    const payout = 250 + Math.floor(Math.random() * 451);
+    const bal = await earnCash(interaction.guildId, interaction.user.id, payout, "Crime payout");
+    const embed = brandEmbed("Crime — Clean Getaway", [
+      `${interaction.user} pulled it off · **+${fmtCash(payout)}** ${bal.symbol}`,
+      `Cash **${fmtCash(bal.cash)}** · bank **${fmtCash(bal.bank)}**`,
+    ].join("\n"));
+    await replyThenPostAsUnbelievaBoat(interaction, { embeds: [embed] });
+  } catch (err) {
+    await interaction.editReply(err instanceof CashError ? err.message : `Failed: ${err instanceof Error ? err.message : err}`);
+  }
 }
 
 export async function handleRussian(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -354,38 +581,46 @@ export async function handleRussian(interaction: ChatInputCommandInteraction): P
   await interaction.deferReply({ ephemeral: true });
   try {
     await assertGamesOn(interaction.guildId);
+    await assertGameCooldown(interaction.guildId, interaction.user.id);
     const target = interaction.options.getUser("target", true);
     const bet = interaction.options.getInteger("bet", true);
     const mode = interaction.options.getString("mode") ?? "ai";
-    if (target.bot) { await interaction.editReply("Pick a real member, not a bot."); return; }
-    if (target.id === interaction.user.id) { await interaction.editReply("You can't spin on yourself."); return; }
-
-    const state = await getOrCreateGameState(interaction.guildId, interaction.user.id);
-    const left = cdLeft(state.lastRussianAt, GAME_CD_MS);
-    if (left > 0) { await interaction.editReply(`Russian roulette cools down **${cdText(left)}**.`); return; }
-
+    if (target.bot || target.id === interaction.user.id) {
+      await interaction.editReply("Pick another real member.");
+      return;
+    }
     if (mode === "challenge") {
       const key = `${interaction.guildId}:${interaction.user.id}:${target.id}`;
       russianChallenges.set(key, {
-        guildId: interaction.guildId,
-        challengerId: interaction.user.id,
-        targetId: target.id,
-        bet,
-        expires: Date.now() + 5 * 60_000,
+        guildId: interaction.guildId, challengerId: interaction.user.id,
+        targetId: target.id, bet, expires: Date.now() + 5 * 60_000,
       });
       const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder().setCustomId(`unbgame:russian:accept:${interaction.user.id}:${bet}`).setLabel("Accept").setStyle(ButtonStyle.Danger),
         new ButtonBuilder().setCustomId(`unbgame:russian:decline:${interaction.user.id}`).setLabel("Decline").setStyle(ButtonStyle.Secondary),
       );
-      const embed = brandEmbed(
-        "Russian Roulette — Challenge",
-        `${interaction.user} challenges ${target} for **${fmtCash(bet)}** cash.\n${target} — accept within 5 minutes.`,
-      );
-      await replyThenPostAsUnbelievaBoat(interaction, { embeds: [embed], components: [row] }, "✅ Challenge posted as **UnbelievaBoat**.");
+      const embed = brandEmbed("Russian Roulette — Challenge",
+        `${interaction.user} challenges ${target} for **${fmtCash(bet)}** (cash then bank).`);
+      await replyThenPostAsUnbelievaBoat(interaction, { embeds: [embed], components: [row] });
       return;
     }
-
-    await runRussianRound(interaction, interaction.guildId, interaction.user, target, bet, "AI duel (avatar flavor)");
+    const spent = await spendFunds(interaction.guildId, interaction.user.id, bet, `Russian vs ${target.id}`);
+    await markGameCooldown(interaction.guildId, interaction.user.id);
+    const chamber = Math.floor(Math.random() * 6);
+    const survived = Math.floor(Math.random() * 6) !== chamber;
+    let bal = spent.balance;
+    if (survived) bal = await earnCash(interaction.guildId, interaction.user.id, bet * 2, "Russian win");
+    const gif = await renderRussianGif({ survived, chamber });
+    const { files, imageName } = await attachGif(gif, "russian.gif");
+    const embed = brandEmbed("Russian Roulette", [
+      `${interaction.user} vs ${target} (AI)`,
+      formatSpendNote(spent.fromCash, spent.fromBank, bal.symbol),
+      survived ? `🟢 Click — net win` : `🔴 Bang — lost stake`,
+      `Cash **${fmtCash(bal.cash)}** · bank **${fmtCash(bal.bank)}**`,
+    ].join("\n"));
+    if (target.displayAvatarURL()) embed.setThumbnail(target.displayAvatarURL({ size: 128 }));
+    if (imageName) embed.setImage(`attachment://${imageName}`);
+    await replyThenPostAsUnbelievaBoat(interaction, { embeds: [embed], files });
   } catch (err) {
     await interaction.editReply(err instanceof CashError ? err.message : `Failed: ${err instanceof Error ? err.message : err}`);
   }
@@ -396,50 +631,43 @@ export async function handleRob(interaction: ChatInputCommandInteraction): Promi
   await interaction.deferReply({ ephemeral: true });
   try {
     await assertGamesOn(interaction.guildId);
+    await assertIncomeCooldown(interaction.guildId, interaction.user.id, "rob");
     const target = interaction.options.getUser("target", true);
     if (target.bot || target.id === interaction.user.id) {
-      await interaction.editReply("Pick someone else (not yourself / not a bot).");
+      await interaction.editReply("Pick someone else.");
       return;
     }
-    const state = await getOrCreateGameState(interaction.guildId, interaction.user.id);
-    const left = cdLeft(state.lastRobAt, ROB_CD_MS);
-    if (left > 0) { await interaction.editReply(`Rob cools down **${cdText(left)}**.`); return; }
-
     const their = await getCashBalance(interaction.guildId, target.id);
-    const takeMax = Math.min(500, Math.max(25, Math.floor((their.cash ?? 0) * 0.08)));
-    if ((their.cash ?? 0) < 50) {
-      await interaction.editReply(`${target} is too broke to rob (need ≥50 cash on them).`);
+    if ((their.cash ?? 0) + (their.bank ?? 0) < 50) {
+      await interaction.editReply(`${target} is too broke to rob.`);
       return;
     }
-    const success = Math.random() < 0.42;
-    let embed: EmbedBuilder;
-    let files: AttachmentBuilder[] = [];
+    const success = Math.random() < 0.4;
+    await markIncomeCooldown(interaction.guildId, interaction.user.id, "rob");
     if (success) {
-      const amount = 25 + Math.floor(Math.random() * takeMax);
-      await spendCash(interaction.guildId, target.id, amount, `Robbed by ${interaction.user.id}`);
+      const amount = 25 + Math.floor(Math.random() * Math.min(500, Math.max(25, Math.floor(their.cash * 0.1))));
+      await spendFunds(interaction.guildId, target.id, amount, `Robbed by ${interaction.user.id}`);
       const bal = await earnCash(interaction.guildId, interaction.user.id, amount, `Robbed ${target.id}`);
       const gif = await renderRobGif({ success: true });
-      const att = await attachGif(gif, "rob.gif");
-      files = att.files;
-      embed = brandEmbed(
-        "Stick-up",
-        `${interaction.user} robbed ${target} for **${fmtCash(amount)}** ${bal.symbol}!\nYour cash **${fmtCash(bal.cash)}**`,
-      );
-      if (att.imageName) embed.setImage(`attachment://${att.imageName}`);
+      const { files, imageName } = await attachGif(gif, "rob.gif");
+      const embed = brandEmbed("Stick-up", [
+        `${interaction.user} robbed ${target} for **${fmtCash(amount)}** ${bal.symbol}`,
+        `Your cash **${fmtCash(bal.cash)}**`,
+      ].join("\n"));
+      if (imageName) embed.setImage(`attachment://${imageName}`);
+      await replyThenPostAsUnbelievaBoat(interaction, { embeds: [embed], files });
     } else {
-      const fine = 40 + Math.floor(Math.random() * 120);
-      const bal = await spendCash(interaction.guildId, interaction.user.id, fine, `Failed rob of ${target.id}`);
+      const fine = 50 + Math.floor(Math.random() * 150);
+      const spent = await spendFunds(interaction.guildId, interaction.user.id, fine, `Failed rob`);
       const gif = await renderRobGif({ success: false });
-      const att = await attachGif(gif, "rob.gif");
-      files = att.files;
-      embed = brandEmbed(
-        "Stick-up failed",
-        `${interaction.user} tried to rob ${target} and got fined **${fmtCash(fine)}** ${bal.symbol}.\nCash **${fmtCash(bal.cash)}**`,
-      );
-      if (att.imageName) embed.setImage(`attachment://${att.imageName}`);
+      const { files, imageName } = await attachGif(gif, "rob.gif");
+      const embed = brandEmbed("Stick-up failed", [
+        `${interaction.user} got fined trying to rob ${target}.`,
+        formatSpendNote(spent.fromCash, spent.fromBank, spent.balance.symbol),
+      ].join("\n"));
+      if (imageName) embed.setImage(`attachment://${imageName}`);
+      await replyThenPostAsUnbelievaBoat(interaction, { embeds: [embed], files });
     }
-    await touchGameState(interaction.guildId, interaction.user.id, { lastRobAt: new Date() });
-    await replyThenPostAsUnbelievaBoat(interaction, { embeds: [embed], files });
   } catch (err) {
     await interaction.editReply(err instanceof CashError ? err.message : `Failed: ${err instanceof Error ? err.message : err}`);
   }
@@ -450,38 +678,28 @@ export async function handleSlut(interaction: ChatInputCommandInteraction): Prom
   await interaction.deferReply({ ephemeral: true });
   try {
     await assertGamesOn(interaction.guildId);
-    const state = await getOrCreateGameState(interaction.guildId, interaction.user.id);
-    const left = cdLeft(state.lastBegAt, BEG_CD_MS);
-    if (left > 0) { await interaction.editReply(`That cools down **${cdText(left)}**.`); return; }
-
-    // Blur the command name in public copy; keep the ask PG.
-    const blurred = "s░░t";
+    await assertIncomeCooldown(interaction.guildId, interaction.user.id, "beg");
     const pity = Math.random() < 0.55;
     const amount = pity ? 15 + Math.floor(Math.random() * 90) : 0;
     let bal = await getCashBalance(interaction.guildId, interaction.user.id);
     if (amount > 0) bal = await earnCash(interaction.guildId, interaction.user.id, amount, "PG cash beg");
-    await touchGameState(interaction.guildId, interaction.user.id, { lastBegAt: new Date() });
-
+    await markIncomeCooldown(interaction.guildId, interaction.user.id, "beg");
     const gif = await renderBegGif();
     const { files, imageName } = await attachGif(gif, "beg.gif");
-    const embed = brandEmbed(
-      `${blurred} · dramatic beg`,
-      [
-        `${interaction.user} puts on a PG drama show for spare cash…`,
-        amount > 0
-          ? `Someone took pity — **+${fmtCash(amount)}** ${bal.symbol}`
-          : `The street is cold tonight — **0** this time.`,
-        `Cash **${fmtCash(bal.cash)}** ${bal.symbol}`,
-        "",
-        "_Wholesome meme beg only — no NSFW._",
-      ].join("\n"),
-    );
+    const embed = brandEmbed("s░░t · dramatic beg", [
+      `${interaction.user} puts on a PG drama show…`,
+      amount > 0 ? `Pity payout **+${fmtCash(amount)}** ${bal.symbol}` : `Street is cold — **0**`,
+      `Cash **${fmtCash(bal.cash)}** · bank **${fmtCash(bal.bank)}**`,
+      "_Wholesome meme beg only — no NSFW._",
+    ].join("\n"));
     if (imageName) embed.setImage(`attachment://${imageName}`);
     await replyThenPostAsUnbelievaBoat(interaction, { embeds: [embed], files });
   } catch (err) {
     await interaction.editReply(err instanceof CashError ? err.message : `Failed: ${err instanceof Error ? err.message : err}`);
   }
 }
+
+// ── Component router ──────────────────────────────────────────────────────────
 
 export async function handleUnbGameComponent(interaction: ButtonInteraction): Promise<void> {
   const id = interaction.customId;
@@ -490,27 +708,117 @@ export async function handleUnbGameComponent(interaction: ButtonInteraction): Pr
     return;
   }
 
-  if (id.startsWith("unbgame:russian:decline:")) {
-    const challengerId = id.slice("unbgame:russian:decline:".length);
-    if (interaction.user.id !== interaction.message.mentions.users.first()?.id &&
-        interaction.user.id !== challengerId &&
-        !interaction.message.content.includes(interaction.user.id)) {
-      // Allow target: we stored target in challenge map
-    }
-    // Find challenge where this user is target
-    let foundKey: string | null = null;
-    for (const [k, v] of russianChallenges) {
-      if (v.targetId === interaction.user.id && v.challengerId === challengerId) {
-        foundKey = k;
-        break;
-      }
-    }
-    if (!foundKey) {
-      await interaction.reply({ content: "No open challenge for you.", ...EPHEMERAL });
+  // Blackjack moves
+  if (id.startsWith("unbgame:bj:")) {
+    const parts = id.split(":");
+    const action = parts[2]!;
+    const ownerId = parts[3]!;
+    if (interaction.user.id !== ownerId) {
+      await interaction.reply({ content: "Not your hand.", ...EPHEMERAL });
       return;
     }
-    russianChallenges.delete(foundKey);
-    await interaction.reply({ content: "Challenge declined.", ...EPHEMERAL });
+    const key = bjKey(interaction.guildId, ownerId);
+    const session = bjSessions.get(key);
+    if (!session || session.expires < Date.now()) {
+      bjSessions.delete(key);
+      await interaction.reply({ content: "Hand expired — start `/blackjack` again.", ...EPHEMERAL });
+      return;
+    }
+    await interaction.deferUpdate();
+
+    if (action === "hit") {
+      session.player.push(draw(session.deck));
+      const p = handTotal(session.player);
+      if (p.total > 21) {
+        await finishBlackjack(interaction, session, true);
+        return;
+      }
+      const gif = await renderBlackjackTableGif({ player: session.player, dealer: session.dealer, hideDealer: true });
+      const { files, imageName } = await attachGif(gif, "bj-hit.gif");
+      const embed = brandEmbed("Blackjack — your move", [
+        `You: ${formatHand(session.player)} (**${p.total}**${p.soft ? " soft" : ""})`,
+        `Dealer: ${formatHand(session.dealer, true)}`,
+      ].join("\n"));
+      if (imageName) embed.setImage(`attachment://${imageName}`);
+      await interaction.editReply({ embeds: [embed], files, components: bjButtons(ownerId, false) });
+      return;
+    }
+
+    if (action === "double") {
+      try {
+        const extra = await spendFunds(session.guildId, session.userId, session.bet, "Blackjack double");
+        session.bet *= 2;
+        session.fromCash += extra.fromCash;
+        session.fromBank += extra.fromBank;
+        session.doubled = true;
+        session.player.push(draw(session.deck));
+        await finishBlackjack(interaction, session, true);
+      } catch (err) {
+        await interaction.followUp({
+          content: err instanceof CashError ? err.message : "Can't double.",
+          ...EPHEMERAL,
+        });
+      }
+      return;
+    }
+
+    if (action === "stand") {
+      await finishBlackjack(interaction, session, true);
+      return;
+    }
+  }
+
+  // Higher / lower
+  if (id.startsWith("unbgame:hl:")) {
+    const parts = id.split(":");
+    const pick = parts[2] as "higher" | "lower";
+    const ownerId = parts[3]!;
+    if (interaction.user.id !== ownerId) {
+      await interaction.reply({ content: "Not your round.", ...EPHEMERAL });
+      return;
+    }
+    const key = bjKey(interaction.guildId, ownerId);
+    const session = higherSessions.get(key);
+    if (!session || session.expires < Date.now()) {
+      higherSessions.delete(key);
+      await interaction.reply({ content: "Round expired.", ...EPHEMERAL });
+      return;
+    }
+    higherSessions.delete(key);
+    await interaction.deferUpdate();
+    const next = draw(session.deck);
+    const shownV = rankValue(session.shown);
+    const nextV = rankValue(next);
+    const win = pick === "higher" ? nextV > shownV : nextV < shownV;
+    let bal = await getCashBalance(session.guildId, session.userId);
+    if (win) bal = await earnCash(session.guildId, session.userId, session.bet * 2, "Higher/Lower win");
+    const gif = await renderHigherLowerGif({
+      shown: cardLabel(session.shown), next: cardLabel(next), result: win ? "win" : "lose",
+    });
+    const { files, imageName } = await attachGif(gif, "hl-result.gif");
+    const embed = brandEmbed("Higher or Lower", [
+      `<@${ownerId}> guessed **${pick}**`,
+      `${cardLabel(session.shown)} → ${cardLabel(next)}`,
+      win ? `🎉 Won **${fmtCash(session.bet * 2)}**` : `💀 Lost **${fmtCash(session.bet)}**`,
+      formatSpendNote(session.fromCash, session.fromBank, bal.symbol),
+      `Cash **${fmtCash(bal.cash)}** · bank **${fmtCash(bal.bank)}**`,
+    ].join("\n"));
+    if (imageName) embed.setImage(`attachment://${imageName}`);
+    await interaction.editReply({ content: "✅ Posting as **UnbelievaBoat**…", embeds: [], components: [], files: [] });
+    await replyThenPostAsUnbelievaBoat(interaction as unknown as ChatInputCommandInteraction, { embeds: [embed], files });
+    return;
+  }
+
+  if (id.startsWith("unbgame:russian:decline:")) {
+    const challengerId = id.slice("unbgame:russian:decline:".length);
+    for (const [k, v] of russianChallenges) {
+      if (v.targetId === interaction.user.id && v.challengerId === challengerId) {
+        russianChallenges.delete(k);
+        await interaction.reply({ content: "Challenge declined.", ...EPHEMERAL });
+        return;
+      }
+    }
+    await interaction.reply({ content: "No open challenge.", ...EPHEMERAL });
     return;
   }
 
@@ -533,9 +841,8 @@ export async function handleUnbGameComponent(interaction: ButtonInteraction): Pr
     await interaction.deferReply({ ephemeral: true });
     try {
       const challenger = await interaction.client.users.fetch(challengerId);
-      // Both pay stake; winner takes pot
-      await spendCash(interaction.guildId, challengerId, bet, "Russian challenge stake");
-      await spendCash(interaction.guildId, interaction.user.id, bet, "Russian challenge stake");
+      await spendFunds(interaction.guildId, challengerId, bet, "Russian challenge stake");
+      await spendFunds(interaction.guildId, interaction.user.id, bet, "Russian challenge stake");
       const chamber = Math.floor(Math.random() * 6);
       const survivorIsChallenger = Math.random() < 0.5;
       const winner = survivorIsChallenger ? challenger : interaction.user;
@@ -544,14 +851,11 @@ export async function handleUnbGameComponent(interaction: ButtonInteraction): Pr
       await writeUbAudit(interaction.guildId, challengerId, "russian_challenge", { bet, winner: winner.id }, interaction.user.id);
       const gif = await renderRussianGif({ survived: true, chamber });
       const { files, imageName } = await attachGif(gif, "russian.gif");
-      const embed = brandEmbed(
-        "Russian Roulette — Live",
-        [
-          `${challenger} vs ${interaction.user} · pot **${fmtCash(pot)}**`,
-          `🏆 ${winner} walks away with the pot.`,
-          `Their cash **${fmtCash(bal.cash)}** ${bal.symbol}`,
-        ].join("\n"),
-      );
+      const embed = brandEmbed("Russian Roulette — Live", [
+        `${challenger} vs ${interaction.user} · pot **${fmtCash(pot)}**`,
+        `🏆 ${winner} takes the pot.`,
+        `Cash **${fmtCash(bal.cash)}** · bank **${fmtCash(bal.bank)}**`,
+      ].join("\n"));
       if (imageName) embed.setImage(`attachment://${imageName}`);
       await replyThenPostAsUnbelievaBoat(interaction as unknown as ChatInputCommandInteraction, { embeds: [embed], files });
     } catch (err) {
@@ -559,3 +863,7 @@ export async function handleUnbGameComponent(interaction: ButtonInteraction): Pr
     }
   }
 }
+
+/** Expose defaults for the admin cooldown panel. */
+export { DEFAULT_COOLDOWNS, getGuildCooldowns, cdText } from "./cooldowns.js";
+export { readCooldowns } from "./cooldowns.js";

@@ -20,6 +20,11 @@ import {
   buildRussianCommandJson,
   buildRobCommandJson,
   buildSlutCommandJson,
+  buildHigherLowerCommandJson,
+  buildRedBlackCommandJson,
+  buildSlotsCommandJson,
+  buildWorkCommandJson,
+  buildCrimeCommandJson,
 } from "../unbelievaboat/games.js";
 import { buildCashStoreCommandJson } from "../unbelievaboat/store.js";
 import { getRaidFrames } from "../cards/frames.js";
@@ -78,6 +83,11 @@ function buildLegacyCommands() {
     buildCashStoreCommandJson(),
     buildRouletteCommandJson(),
     buildBlackjackCommandJson(),
+    buildHigherLowerCommandJson(),
+    buildRedBlackCommandJson(),
+    buildSlotsCommandJson(),
+    buildWorkCommandJson(),
+    buildCrimeCommandJson(),
     buildRussianCommandJson(),
     buildRobCommandJson(),
     buildSlutCommandJson(),
