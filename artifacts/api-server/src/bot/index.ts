@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits, Partials, Events, REST, Routes, type Interaction } from "discord.js";
+import { Client, GatewayIntentBits, Partials, Events, REST, Routes, ApplicationCommandType, type Interaction } from "discord.js";
 import { logger } from "../lib/logger.js";
 import { BRAND_NAME } from "./help-banners.js";
 import {
@@ -52,7 +52,7 @@ import { buildCardLevelEmbed } from "./cards/level-command.js";
 import { handleWhisperCommand, handleAdminSecretCommand, handleEchoCommand } from "./secret/commands.js";
 import { isSecretModal, handleSecretModal, isSecretButton, handleSecretButton } from "./secret/interactions.js";
 import {
-  buildCommands, USER_HUB_COMMANDS, ADMIN_HUB_COMMANDS, internalCommandName,
+  buildCommands, USER_HUB_COMMANDS, ADMIN_HUB_COMMANDS, internalCommandName, HUB_REPLACED_COMMANDS,
 } from "./commands/register.js";
 import { MessageFlags, EmbedBuilder } from "discord.js";
 import { createSetupLink } from "../lib/setup-link.js";
@@ -1165,22 +1165,75 @@ export async function startBot() {
   });
 }
 
-// ── Register: clear globals, register guild-only (instant, no propagation lag) ──
+// ── Register: clear stale globals (keep Activity Entry Point), guild-only slash ─
+// Discord refuses PUT [] on global commands when an Activity Entry Point exists
+// (error 50240). That used to leave OLD flat globals (/gift, /accept, /drop, …)
+// alive next to the new guild hubs — clients then showed both. Preserve type-4
+// Entry Point only, wipe every other global, then overwrite each guild.
 async function registerCommands(appId: string, token: string, client: Client) {
   const rest = new REST().setToken(token);
   const commands = buildCommands();
+  const chatNames = commands
+    .filter((c: { type?: number; name: string }) => (c.type ?? 1) === 1)
+    .map((c: { name: string }) => c.name)
+    .sort();
+  const hubsPresent = ["trade", "vaultvalue", "cardadmin", "secret", "casino", "tatsu", "help"]
+    .filter(n => chatNames.includes(n));
+  const foldedStillRegistered = [...HUB_REPLACED_COMMANDS].filter(n => chatNames.includes(n));
 
-  // Wipe ALL global commands — eliminates any old /card or duplicated globals
-  await rest
-    .put(Routes.applicationCommands(appId), { body: [] })
-    .then(() => logger.info("Global slash commands cleared"))
-    .catch(err => logger.error({ err }, "Failed to clear global commands"));
+  logger.info({
+    chatCount: chatNames.length,
+    hubsPresent,
+    foldedStillRegistered,
+  }, "Slash registration payload");
 
-  // Register guild-specific only — instant effect, no 1-hour propagation
+  if (foldedStillRegistered.length > 0) {
+    logger.error({ foldedStillRegistered }, "HUB_REPLACED names still in buildCommands — hubs filter broken");
+  }
+
+  // 1) Wipe stale GLOBAL chat commands, but keep the Activity Entry Point.
+  try {
+    const existing = (await rest.get(Routes.applicationCommands(appId))) as Array<{
+      id?: string;
+      name: string;
+      type?: number;
+      description?: string;
+      handler?: number;
+      integration_types?: number[];
+      contexts?: number[] | null;
+      options?: unknown[];
+    }>;
+    const entryPoints = existing.filter(c => c.type === ApplicationCommandType.PrimaryEntryPoint);
+    const staleGlobals = existing.filter(c => c.type !== ApplicationCommandType.PrimaryEntryPoint);
+
+    const keepBody = entryPoints.map(c => ({
+      name: c.name,
+      type: ApplicationCommandType.PrimaryEntryPoint,
+      description: c.description || "",
+      ...(c.handler != null ? { handler: c.handler } : {}),
+      ...(c.integration_types ? { integration_types: c.integration_types } : {}),
+      ...(c.contexts !== undefined ? { contexts: c.contexts } : {}),
+    }));
+
+    await rest.put(Routes.applicationCommands(appId), { body: keepBody });
+    logger.info({
+      clearedGlobals: staleGlobals.map(c => c.name),
+      keptEntryPoints: entryPoints.map(c => c.name),
+    }, "Global slash commands cleared (Entry Point preserved)");
+  } catch (err) {
+    logger.error({ err }, "Failed to clear global commands — old flat globals may still appear in Discord");
+  }
+
+  // 2) Register guild-specific only — instant effect, no 1-hour propagation.
+  // Full PUT replaces the guild command set (hubs in, folded flats out).
   for (const [, guild] of client.guilds.cache) {
     await rest
       .put(Routes.applicationGuildCommands(appId, guild.id), { body: commands })
-      .then(() => logger.info({ guildId: guild.id }, "Guild slash commands registered"))
+      .then(() => logger.info({
+        guildId: guild.id,
+        chatCount: chatNames.length,
+        hubs: hubsPresent,
+      }, "Guild slash commands registered"))
       .catch(err => logger.error({ err, guildId: guild.id }, "Guild command registration failed"));
   }
 }
