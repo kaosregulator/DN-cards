@@ -185,6 +185,8 @@ Slash names below are what Discord registers today. Prefer **`/help`** and **`/u
 
 > **Moved into hubs (no longer standalone slash):** many older one-offs. Prefer **`/help`** for the live map.
 >
+> Discord’s autocomplete lists hub subcommands as `/trade propose`, `/vaultvalue info`, etc. — that **is** the hub. Old flats looked like bare `/gift`, `/accept`, `/drop` (no parent). After deploy, those bare names should be gone; if they linger, the bot failed to clear global commands (Activity Entry Point must be kept — see registration logs).
+>
 > - **`/user-hub`:** daily, collection, wishlist, quests, market, squad, and related profile shortcuts
 > - **`/trade`:** gift, pending trades, history, accept, decline
 > - **`/vaultvalue`:** info, calc, list, help, postcalc
