@@ -5,13 +5,18 @@ Does **not** replace DN shards or UnbelievaBoat. No mini-games (unlike `/casino`
 
 Official API: [dev.tatsu.gg](https://dev.tatsu.gg/) · Base `https://api.tatsu.gg/v1`
 
-## Get an API key
+# Get an API key
 
-In any Discord server with Tatsu:
+There is **no public keyless Tatsu API**. Every client (including ours) must use a key
+from Tatsu’s own Discord bot. Official docs: [dev.tatsu.gg](https://dev.tatsu.gg/).
+
+In any Discord server with **Tatsu** invited, run:
 
 ```text
 t!apikey create
 ```
+
+(Some older guides say `t!apikey` — `create` is the current form.)
 
 Put the key in env:
 
@@ -20,6 +25,13 @@ TATSU_API_KEY=your_key_here
 ```
 
 (`TATSU_TOKEN` is also accepted.)
+
+### If you “can’t obtain” a key
+
+- You must be able to use Tatsu’s prefix commands in a server where Tatsu is present.
+- If Tatsu isn’t on your server: invite it from [tatsu.gg](https://tatsu.gg), then run `t!apikey create`.
+- Keys are **per Discord user**, free, and created inside Discord — there is no paid storefront key and no scrape/workaround we can ship (that would violate Tatsu’s API rules).
+- Without `TATSU_API_KEY`, `/tatsu` still loads but overview shows the link as off and live probes fail until the key is set.
 
 **Requirements for edits:** the Discord account that owns the API key must be a **member of the guild** and have **Manage Server** (`MANAGE_GUILD`). Guild-scoped reads also require membership (anti-snooping).
 

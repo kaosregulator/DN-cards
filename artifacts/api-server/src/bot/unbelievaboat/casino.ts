@@ -221,20 +221,7 @@ export async function handleCasinoHubComponent(
     return;
   }
   if (id === "casinohub:roulette" && interaction.isButton()) {
-    const modal = new ModalBuilder()
-      .setCustomId("casinohub:modal:roulette")
-      .setTitle("Roulette")
-      .addComponents(
-        new ActionRowBuilder<TextInputBuilder>().addComponents(
-          new TextInputBuilder().setCustomId("bet").setLabel("Wager (10–100,000)")
-            .setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(12),
-        ),
-        new ActionRowBuilder<TextInputBuilder>().addComponents(
-          new TextInputBuilder().setCustomId("color").setLabel("Color: red | black | green")
-            .setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder("red"),
-        ),
-      );
-    await interaction.showModal(modal);
+    await interaction.showModal(betModal("casinohub:modal:roulette", "Roulette", "10–100,000"));
     return;
   }
   if (id === "casinohub:redblack" && interaction.isButton()) {
@@ -451,15 +438,11 @@ export async function handleCasinoHubModal(interaction: ModalSubmitInteraction):
   }
   if (id === "casinohub:modal:roulette") {
     const bet = parseBet(field("bet"), 10, 100_000);
-    const color = field("color").toLowerCase();
     if (!bet) { await interaction.reply({ content: "Bet must be 10–100,000.", ...EPHEMERAL }); return; }
-    if (!["red", "black", "green"].includes(color)) {
-      await interaction.reply({ content: "Color must be red, black, or green.", ...EPHEMERAL });
-      return;
-    }
+    // Color is chosen on the live table with buttons.
     await handleRoulette(withOptionValues(interaction, {
       integers: { bet },
-      strings: { color },
+      strings: { color: null },
     }));
     return;
   }

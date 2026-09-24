@@ -370,6 +370,10 @@ export async function startBot() {
         await handleCasinoHubModal(interaction);
         return;
       }
+      if (interaction.isModalSubmit() && interaction.customId.startsWith("unbgame:slots:")) {
+        const { handleSlotsModal } = await import("./unbelievaboat/live-slots.js");
+        if (await handleSlotsModal(interaction)) return;
+      }
       // ── Tatsu Discord dashboard (tatsu:* components) ───────────────────────
       if (
         (interaction.isButton() || interaction.isStringSelectMenu() || interaction.isUserSelectMenu()
