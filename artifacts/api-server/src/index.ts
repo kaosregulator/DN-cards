@@ -1118,6 +1118,58 @@ async function runBootMigrations() {
   `);
   await pool.query(`CREATE INDEX IF NOT EXISTS ub_audit_log_guild_idx ON ub_audit_log (guild_id)`);
 
+  // ── Tatsu addon (score/points dashboard) — additive IF NOT EXISTS ──────────
+  // See docs/tatsu.md. API key is env TATSU_API_KEY (from `t!apikey create`).
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS tatsu_settings (
+      id                SERIAL PRIMARY KEY,
+      guild_id          TEXT NOT NULL UNIQUE,
+      tatsu_guild_id    TEXT NOT NULL,
+      enabled           BOOLEAN NOT NULL DEFAULT TRUE,
+      ranking_period    TEXT NOT NULL DEFAULT 'all',
+      log_channel_id    TEXT,
+      spam_score_delta  INTEGER NOT NULL DEFAULT 5000,
+      created_at        TIMESTAMP NOT NULL DEFAULT NOW(),
+      updated_at        TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS tatsu_audit_log (
+      id                SERIAL PRIMARY KEY,
+      guild_id          TEXT NOT NULL,
+      actor_id          TEXT NOT NULL,
+      target_user_id    TEXT,
+      action            TEXT NOT NULL,
+      detail            JSONB NOT NULL DEFAULT '{}'::jsonb,
+      created_at        TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS tatsu_audit_log_guild_idx ON tatsu_audit_log (guild_id)`);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS tatsu_watchlist (
+      id                SERIAL PRIMARY KEY,
+      guild_id          TEXT NOT NULL,
+      user_id           TEXT NOT NULL,
+      note              TEXT,
+      flagged_by        TEXT NOT NULL,
+      created_at        TIMESTAMP NOT NULL DEFAULT NOW(),
+      updated_at        TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `);
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS tatsu_watchlist_guild_user_uidx ON tatsu_watchlist (guild_id, user_id)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS tatsu_watchlist_guild_idx ON tatsu_watchlist (guild_id)`);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS tatsu_snapshots (
+      id                SERIAL PRIMARY KEY,
+      guild_id          TEXT NOT NULL,
+      period            TEXT NOT NULL DEFAULT 'all',
+      rankings          JSONB NOT NULL DEFAULT '[]'::jsonb,
+      taken_by          TEXT,
+      created_at        TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS tatsu_snapshots_guild_idx ON tatsu_snapshots (guild_id)`);
+
   await pool.query(`
     CREATE TABLE IF NOT EXISTS pet_settings (
       id                          SERIAL PRIMARY KEY,

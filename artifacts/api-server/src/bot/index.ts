@@ -309,6 +309,21 @@ export async function startBot() {
         await handleUbAdminModal(interaction);
         return;
       }
+      // ── Tatsu Discord dashboard (tatsu:* components) ───────────────────────
+      if (
+        (interaction.isButton() || interaction.isStringSelectMenu() || interaction.isUserSelectMenu()
+          || interaction.isChannelSelectMenu()) &&
+        interaction.customId.startsWith("tatsu:")
+      ) {
+        const { handleTatsuAdminComponent } = await import("./tatsu/discord-admin.js");
+        await handleTatsuAdminComponent(interaction);
+        return;
+      }
+      if (interaction.isModalSubmit() && interaction.customId.startsWith("tatsu:")) {
+        const { handleTatsuAdminModal } = await import("./tatsu/discord-admin.js");
+        await handleTatsuAdminModal(interaction);
+        return;
+      }
       if (interaction.isButton() && interaction.customId.startsWith("unbgame:")) {
         const { handleUnbGameComponent } = await import("./unbelievaboat/games.js");
         await handleUnbGameComponent(interaction);
@@ -1024,6 +1039,9 @@ export async function startBot() {
       } else if (cmd === "ubadmin" || cmd === "unbelievaboat") {
         const { handleUbAdminCommand } = await import("./unbelievaboat/discord-admin.js");
         await handleUbAdminCommand(interaction);
+      } else if (cmd === "tatsu") {
+        const { handleTatsuAdminCommand } = await import("./tatsu/discord-admin.js");
+        await handleTatsuAdminCommand(interaction);
       } else if (cmd === "casino") {
         const { handleCasinoCommand } = await import("./unbelievaboat/casino.js");
         await handleCasinoCommand(interaction);
@@ -1071,7 +1089,7 @@ export async function startBot() {
     "begin", "show_shiny",
     "quote",
     "collection_hub", "hq", "hqadmin", "hqbuild",
-    "pet", "petadmin", "ubadmin", "unbelievaboat",
+    "pet", "petadmin", "ubadmin", "unbelievaboat", "tatsu",
     "casino", "vaultvalue", "cardadmin", "secret",
     "valuehelp", "valuelist", "info_mttv", "giveall", "editpack", "postcalculator",
     "postboard", "massrole", "emoji",
