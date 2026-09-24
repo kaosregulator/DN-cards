@@ -86,6 +86,7 @@ SESSION_SECRET=long-random-string
 NODE_ENV=development
 PUBLIC_BASE_URL=https://your-public-host.example
 UNBELIEVABOAT_TOKEN=your_unb_api_token    # optional — UnbelievaBoat hub + pet shop (see docs/unbelievaboat.md)
+TATSU_API_KEY=your_tatsu_api_key          # optional — Tatsu dashboard (t!apikey create — see docs/tatsu.md)
 ```
 
 ### Deploy on Railway
@@ -157,6 +158,7 @@ Slash names below are what Discord registers today. Prefer **`/help`** and **`/u
 | `/pet` | Pets (when enabled) |
 | `/casino` | UnbelievaBoat casino hub — deposit/withdraw, daily, collect, games, UNO, leaderboard, store |
 | `/unbelievaboat` | Admin Discord dashboard (cooldowns, cash, store, logs, rob immunity) |
+| `/tatsu` | Admin Tatsu dashboard (leaderboard, points/score, spam watch) |
 
 ### Staff / admin
 | Command | Description |
@@ -182,6 +184,8 @@ Slash names below are what Discord registers today. Prefer **`/help`** and **`/u
 | `!settings` | View current server configuration |
 
 > **Moved into hubs (no longer standalone slash):** many older one-offs. Prefer **`/help`** for the live map.
+>
+> Discord’s autocomplete lists hub subcommands as `/trade propose`, `/vaultvalue info`, etc. — that **is** the hub. Old flats looked like bare `/gift`, `/accept`, `/drop` (no parent). After deploy, those bare names should be gone; if they linger, the bot failed to clear global commands (Activity Entry Point must be kept — see registration logs).
 >
 > - **`/user-hub`:** daily, collection, wishlist, quests, market, squad, and related profile shortcuts
 > - **`/trade`:** gift, pending trades, history, accept, decline
@@ -249,6 +253,8 @@ tank · aircraft · ship · vehicle · infantry · boss · community · event ·
 |-----|--------|
 | [`replit.md`](./replit.md) | Full product / command reference & architecture notes |
 | [`docs/quiet-mode.md`](./docs/quiet-mode.md) | Quiet Room quarantine role + audio |
+| [`docs/unbelievaboat.md`](./docs/unbelievaboat.md) | UnbelievaBoat + casino |
+| [`docs/tatsu.md`](./docs/tatsu.md) | Tatsu score/points Discord dashboard |
 | [`docs/railway.md`](./docs/railway.md) | Railway deploy |
 | [`docs/battle-system.md`](./docs/battle-system.md) | Battles |
 | [`docs/headquarters.md`](./docs/headquarters.md) | Player HQ |

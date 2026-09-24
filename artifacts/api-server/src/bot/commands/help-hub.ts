@@ -219,7 +219,8 @@ const PAGES: Record<HelpSection, PageFn> = {
           "`/casino` — deposit/withdraw, daily, collect, blackjack, UNO, slots, store, leaderboard\n" +
           "`/vaultvalue info|calc|list|help` — Military Tycoon prices from [Vault Values](https://valuevaultx.com)\n" +
           "`/vaultvalue postcalc` — (admin) post a persistent calculator hub\n" +
-          "`/unbelievaboat` — (admin) economy dashboard, log channel, rob immunity" },
+          "`/unbelievaboat` — (admin) economy dashboard, log channel, rob immunity\n" +
+          "`/tatsu` — (admin) Tatsu score/points leaderboard, lookup, spam strip" },
       );
   },
 
@@ -358,7 +359,8 @@ const PAGES: Record<HelpSection, PageFn> = {
           "`/giveaway` → **⚙️ Admin** — quick-create, manage, end, cancel & reroll giveaways\n" +
           "`/echo` — Echo-Whisper config · `/secret whisper|staff` — send encrypted messages\n" +
           "`/quiet_setup` · `/quiet` — sanctuary place **or force out**\n" +
-          "`/unbelievaboat` · `/casino` — UnbelievaBoat economy & casino" },
+          "`/unbelievaboat` · `/casino` — UnbelievaBoat economy & casino\n" +
+          "`/tatsu` — Tatsu score/points dashboard & spam tools" },
         { name: "🌐 Website", value: `Public: **[${site}](${site})** · Admin dashboard: run \`/dashboard\` for your login link.` },
       );
   },
