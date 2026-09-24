@@ -214,11 +214,10 @@ const PAGES: Record<HelpSection, PageFn> = {
         { name: "♻️ Card Recycle", value:
           "`/card_recycle name:<card>` — recycle **duplicate copies** of a card to raise its ⭐ **Star Rank** (a permanent battle-stat boost). One copy is always kept and the rarity never changes." },
         { name: "🎁 Gifting", value:
-          "`/trade gift user:@Member amount:<n>` — send shards to a friend." },
+          "`/trade` → **Gift shards** — send shards to a friend." },
         { name: "💵 Casino (UnbelievaBoat)", value:
-          "`/casino` — deposit/withdraw, daily, collect, blackjack, UNO, slots, store, leaderboard\n" +
-          "`/vaultvalue info|calc|list|help` — Military Tycoon prices from [Vault Values](https://valuevaultx.com)\n" +
-          "`/vaultvalue postcalc` — (admin) post a persistent calculator hub\n" +
+          "`/casino` — floor panel: wallet, mega slots, public blackjack, UNO, collect, store, leaderboard\n" +
+          "`/vaultvalue` — Vault Values panel (info · calc · list · help)\n" +
           "`/unbelievaboat` — (admin) economy dashboard, log channel, rob immunity\n" +
           "`/tatsu` — (admin) Tatsu score/points leaderboard, lookup, spam strip" },
       );
@@ -229,12 +228,9 @@ const PAGES: Record<HelpSection, PageFn> = {
     e.setTitle("🔄 Trading & Marketplace")
       .setDescription("Move cards between players — directly, or on the open market." + NAV_HINT)
       .addFields(
-        { name: "🤝 Direct Trades (`/trade` hub)", value:
-          "`/trade propose user:@Member offer:<card> want:<card>` — propose a trade\n" +
-          "Add `offer_shards:<n>` / `want_shards:<n>` to mix in 💠 (or trade pure shards)\n" +
-          "`/trade pending` — pending offers · `/trade history [user]`\n" +
-          "`/trade accept id:<n>` · `/trade decline id:<n>` (or use the buttons on the offer)\n" +
-          "`/trade gift` — send shards\n" +
+        { name: "🤝 Direct Trades (`/trade` panel)", value:
+          "`/trade` opens a hub — **Propose**, **Pending**, **History**, **Accept**, **Decline**, **Gift**\n" +
+          "Propose mixes cards and/or 💠 shards. Accept/Decline by trade ID or use buttons on the offer.\n" +
           "Deals over **3:1** in value show an orange ⚠️ fairness warning (informational)." },
         { name: "📌 Wishlist", value:
           "**/user-hub → Wishlist** — add cards you want (get pinged when they spawn), see your list, and remove entries." },
@@ -311,8 +307,7 @@ const PAGES: Record<HelpSection, PageFn> = {
           "**Target 2 Msgs** — fuse setup + reply (full picker each: recent / user / ID / custom → 14 styles)\n" +
           "Then **Post to Channel** or **Save / Download** the PNG" },
         { name: "🔐 Echo-Whisper (`/secret` + `/echo`)", value:
-          "`/secret whisper user:@Member` — encrypted message only that member can reveal\n" +
-          "`/secret staff` — encrypted staff message (viewer roles / admin override)\n" +
+          "`/secret` panel — **Whisper** (one member) or **Staff secret**\n" +
           "`/echo` — (admin) viewer roles, override, stats, config\n" +
           "Recipients click **🔐 View** to decrypt — nobody else can read it." },
         { name: "💤 AFK Secretary", value:
@@ -339,15 +334,14 @@ const PAGES: Record<HelpSection, PageFn> = {
           "`/config` — visual config panel · `/admin_hub` — admins, timeouts, channels, state\n" +
           "`/dashboard` — DM yourself a website login link · this **Admin** help page is the reference" },
         { name: "🎁 Drops, Gives & Events (`/cardadmin`)", value:
-          "`/cardadmin drop` · `mass_drop` · `give` · `take` · `give_shards` · `take_shards` · `giveall`\n" +
+          "`/cardadmin` panel — Drop · Mass drop · Give · Take · Shards · Give all\n" +
           "*star/level make the card arrive pre-fused/levelled (battle-ready).*\n" +
           "`/event start|list|stop` — limited-time spawn boosts" },
         { name: "✨ Reveals & Card Progression", value:
           "`/config → 🎞️ Reveals` — spawn reveal style (**Auto**/Blur/Puzzle/Silhouette/Off) + **shiny catch animation** toggle\n" +
           "`/progression_default` · `/progression_card` — default / per-card Star/Level on spawn/pull/drop" },
         { name: "🗂️ Cards & Sets (`/cardadmin`)", value:
-          "`/cardadmin create` — upload · `create_kitsu` — [Kitsu](https://kitsu.io) · `create_vault` — [Vault Values](https://valuevaultx.com)\n" +
-          "`/cardadmin library` · `edit` · `edit_image` · `delete` · `edituser`\n" +
+          "`/cardadmin` panel — Create · Kitsu · Vault Values · Library · Edit · Delete\n" +
           "`/set_hub` · `/set_admin` — set manager\n" +
           "`/rarity` — names, colors, worth, burn, weights, order" },
         { name: "🎨 Appearance & Embeds", value:
@@ -357,7 +351,7 @@ const PAGES: Record<HelpSection, PageFn> = {
           "`/battle_admin` — battle system hub (setup, rules, rewards, seasons)\n" +
           "`/raid_admin create|edit|list|enable|delete` — co-op raid bosses\n" +
           "`/giveaway` → **⚙️ Admin** — quick-create, manage, end, cancel & reroll giveaways\n" +
-          "`/echo` — Echo-Whisper config · `/secret whisper|staff` — send encrypted messages\n" +
+          "`/echo` — Echo-Whisper config · `/secret` panel — whisper / staff secret\n" +
           "`/quiet_setup` · `/quiet` — sanctuary place **or force out**\n" +
           "`/unbelievaboat` · `/casino` — UnbelievaBoat economy & casino\n" +
           "`/tatsu` — Tatsu score/points dashboard & spam tools" },

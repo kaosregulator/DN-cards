@@ -309,6 +309,67 @@ export async function startBot() {
         await handleUbAdminModal(interaction);
         return;
       }
+      // ── Panel hubs: trade / vaultvalue / cardadmin / secret / casino ────────
+      if (
+        (interaction.isButton() || interaction.isUserSelectMenu()) &&
+        interaction.customId.startsWith("tradehub:")
+      ) {
+        const { handleTradeHubComponent } = await import("./commands/trade-hub.js");
+        await handleTradeHubComponent(interaction);
+        return;
+      }
+      if (interaction.isModalSubmit() && interaction.customId.startsWith("tradehub:")) {
+        const { handleTradeHubModal } = await import("./commands/trade-hub.js");
+        await handleTradeHubModal(interaction);
+        return;
+      }
+      if (
+        (interaction.isButton() || interaction.isChannelSelectMenu()) &&
+        interaction.customId.startsWith("vvhub:")
+      ) {
+        const { handleVaultValueHubComponent } = await import("./commands/vaultvalue-hub.js");
+        await handleVaultValueHubComponent(interaction);
+        return;
+      }
+      if (interaction.isModalSubmit() && interaction.customId.startsWith("vvhub:")) {
+        const { handleVaultValueHubModal } = await import("./commands/vaultvalue-hub.js");
+        await handleVaultValueHubModal(interaction);
+        return;
+      }
+      if (
+        (interaction.isButton() || interaction.isUserSelectMenu()) &&
+        interaction.customId.startsWith("cahub:")
+      ) {
+        const { handleCardAdminHubComponent } = await import("./commands/cardadmin-hub.js");
+        await handleCardAdminHubComponent(interaction);
+        return;
+      }
+      if (interaction.isModalSubmit() && interaction.customId.startsWith("cahub:")) {
+        const { handleCardAdminHubModal } = await import("./commands/cardadmin-hub.js");
+        await handleCardAdminHubModal(interaction);
+        return;
+      }
+      if (
+        (interaction.isButton() || interaction.isUserSelectMenu()) &&
+        interaction.customId.startsWith("secrethub:")
+      ) {
+        const { handleSecretHubComponent } = await import("./commands/secret-hub.js");
+        await handleSecretHubComponent(interaction);
+        return;
+      }
+      if (
+        (interaction.isButton() || interaction.isUserSelectMenu() || interaction.isStringSelectMenu()) &&
+        interaction.customId.startsWith("casinohub:")
+      ) {
+        const { handleCasinoHubComponent } = await import("./unbelievaboat/casino.js");
+        await handleCasinoHubComponent(interaction);
+        return;
+      }
+      if (interaction.isModalSubmit() && interaction.customId.startsWith("casinohub:")) {
+        const { handleCasinoHubModal } = await import("./unbelievaboat/casino.js");
+        await handleCasinoHubModal(interaction);
+        return;
+      }
       // ── Tatsu Discord dashboard (tatsu:* components) ───────────────────────
       if (
         (interaction.isButton() || interaction.isStringSelectMenu() || interaction.isUserSelectMenu()

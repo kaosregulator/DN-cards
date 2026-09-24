@@ -6,18 +6,27 @@ import { cardLabel, type Card } from "./cards.js";
 
 const W = 480;
 const H = 280;
+const SLOTS_W = 560;
+const SLOTS_H = 320;
+const BJ_W = 560;
+const BJ_H = 340;
 
-function felt(ctx: Ctx) {
-  ctx.fillStyle = "#0d3b2e";
-  ctx.fillRect(0, 0, W, H);
-  ctx.fillStyle = "#0a2f24";
-  ctx.fillRect(16, 16, W - 32, H - 32);
-  // Rail
-  ctx.strokeStyle = "#8b5a2b";
-  ctx.lineWidth = 10;
-  ctx.beginPath();
-  ctx.rect(10, 10, W - 20, H - 20);
-  ctx.stroke();
+function felt(ctx: Ctx, w = W, h = H) {
+  // Deep casino felt with subtle vignette + wood rail (no flashy glows).
+  const g = ctx.createLinearGradient(0, 0, 0, h);
+  g.addColorStop(0, "#0f4a38");
+  g.addColorStop(0.5, "#0a3228");
+  g.addColorStop(1, "#06221b");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = "rgba(0,0,0,0.18)";
+  ctx.fillRect(18, 18, w - 36, h - 36);
+  ctx.strokeStyle = "#6b4423";
+  ctx.lineWidth = 14;
+  ctx.strokeRect(7, 7, w - 14, h - 14);
+  ctx.strokeStyle = "#c4a574";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(14, 14, w - 28, h - 28);
 }
 
 function roundRect(ctx: Ctx, x: number, y: number, w: number, h: number, r: number) {
@@ -31,23 +40,45 @@ function roundRect(ctx: Ctx, x: number, y: number, w: number, h: number, r: numb
   ctx.closePath();
 }
 
-function drawCardFace(ctx: Ctx, x: number, y: number, label: string, faceDown = false) {
-  roundRect(ctx, x, y, 56, 78, 6);
-  if (faceDown) {
+/** Draw a card with optional horizontal flip (0 = face-down edge, 1 = face-up). */
+function drawCardFace(
+  ctx: Ctx,
+  x: number,
+  y: number,
+  label: string,
+  faceDown = false,
+  flip = 1,
+  cardW = 56,
+  cardH = 78,
+) {
+  const scaleX = Math.max(0.04, Math.abs(Math.cos(flip * Math.PI)));
+  const showBack = faceDown || flip < 0.5;
+  const cx = x + cardW / 2;
+  const drawW = cardW * scaleX;
+  const left = cx - drawW / 2;
+
+  roundRect(ctx, left, y, drawW, cardH, 6 * scaleX);
+  if (showBack) {
     ctx.fillStyle = "#1e3a8a";
     ctx.fill();
-    ctx.fillStyle = "#3b82f6";
-    ctx.fillRect(x + 8, y + 10, 40, 58);
+    if (drawW > 10) {
+      ctx.fillStyle = "#2563eb";
+      ctx.fillRect(left + drawW * 0.15, y + cardH * 0.12, drawW * 0.7, cardH * 0.76);
+      ctx.strokeStyle = "#93c5fd";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(left + drawW * 0.22, y + cardH * 0.18, drawW * 0.56, cardH * 0.64);
+    }
     return;
   }
   ctx.fillStyle = "#f8fafc";
   ctx.fill();
+  if (drawW < 14) return;
   const red = label.includes("♥") || label.includes("♦");
   ctx.fillStyle = red ? "#dc2626" : "#0f172a";
-  ctx.font = "bold 16px sans-serif";
+  ctx.font = `bold ${Math.max(10, Math.floor(16 * scaleX))}px sans-serif`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(label, x + 28, y + 39);
+  ctx.fillText(label, cx, y + cardH / 2);
 }
 
 export async function renderCoinSpinGif(opts: {
@@ -127,31 +158,84 @@ export async function renderBlackjackTableGif(opts: {
   dealer: Card[];
   hideDealer: boolean;
   banner?: string;
+  /** When true, animate the hole card flipping face-up (reveal). */
+  revealHole?: boolean;
 }): Promise<AnimationResult | null> {
+  const cardW = 64;
+  const cardH = 90;
+  const gap = 14;
   return encodeAnimation({
-    width: W, height: H, durationMs: 900, speed: "normal", maxFrames: 10, quality: 12,
+    width: BJ_W, height: BJ_H, durationMs: 1800, speed: "normal", maxFrames: 24, quality: 14,
     render: async ({ ctx, t }) => {
-      felt(ctx);
+      felt(ctx, BJ_W, BJ_H);
+
+      // Oval table cloth highlight
+      ctx.fillStyle = "rgba(16, 185, 129, 0.12)";
+      ctx.beginPath();
+      ctx.ellipse(BJ_W / 2, BJ_H / 2 + 10, 220, 110, 0, 0, Math.PI * 2);
+      ctx.fill();
+
       ctx.fillStyle = "#ecfdf5";
-      ctx.font = "bold 14px sans-serif";
+      ctx.font = "bold 15px sans-serif";
       ctx.textAlign = "left";
-      ctx.fillText("DEALER", 36, 36);
-      ctx.fillText("YOU", 36, 150);
+      ctx.fillText("DEALER", 40, 40);
+      ctx.fillText("YOU", 40, 200);
+
+      const dealerY = 52;
+      const playerY = 214;
+      const dealerStartX = Math.max(40, (BJ_W - (opts.dealer.length * (cardW + gap) - gap)) / 2);
+      const playerStartX = Math.max(40, (BJ_W - (opts.player.length * (cardW + gap) - gap)) / 2);
+
       opts.dealer.forEach((c, i) => {
-        const faceDown = opts.hideDealer && i === 1;
-        const slide = Math.min(1, t * 2 + i * 0.1);
-        drawCardFace(ctx, 36 + i * 64, 48, cardLabel(c), faceDown || slide < 0.3);
+        const dealT = Math.min(1, Math.max(0, (t - i * 0.08) / 0.28));
+        if (dealT <= 0) return;
+        const slideY = (1 - dealT) * -40;
+        const isHole = opts.hideDealer && i === 1;
+        let flip = 1;
+        if (isHole && !opts.revealHole) flip = 0;
+        else if (isHole && opts.revealHole) {
+          // Smooth flip mid-animation — no hard flash between faces
+          const flipT = Math.min(1, Math.max(0, (t - 0.45) / 0.35));
+          flip = flipT;
+        } else {
+          // Deal flip from back → face
+          flip = Math.min(1, dealT * 1.4);
+        }
+        drawCardFace(
+          ctx,
+          dealerStartX + i * (cardW + gap),
+          dealerY + slideY,
+          cardLabel(c),
+          false,
+          flip,
+          cardW,
+          cardH,
+        );
       });
+
       opts.player.forEach((c, i) => {
-        const slide = Math.min(1, t * 2 + i * 0.1);
-        if (slide < 0.2) return;
-        drawCardFace(ctx, 36 + i * 64, 162, cardLabel(c));
+        const dealT = Math.min(1, Math.max(0, (t - 0.12 - i * 0.08) / 0.28));
+        if (dealT <= 0) return;
+        const slideY = (1 - dealT) * 36;
+        const flip = Math.min(1, dealT * 1.4);
+        drawCardFace(
+          ctx,
+          playerStartX + i * (cardW + gap),
+          playerY + slideY,
+          cardLabel(c),
+          false,
+          flip,
+          cardW,
+          cardH,
+        );
       });
-      if (opts.banner && t > 0.4) {
-        ctx.fillStyle = "#fbbf24";
-        ctx.font = "bold 22px sans-serif";
+
+      if (opts.banner && t > 0.55) {
+        const fade = Math.min(1, (t - 0.55) / 0.2);
+        ctx.fillStyle = `rgba(251, 191, 36, ${fade})`;
+        ctx.font = "bold 28px sans-serif";
         ctx.textAlign = "center";
-        ctx.fillText(opts.banner, W - 120, H / 2);
+        ctx.fillText(opts.banner, BJ_W / 2, BJ_H / 2 + 8);
       }
     },
   });
@@ -234,31 +318,121 @@ export async function renderRedBlackGif(opts: {
 export async function renderSlotsGif(opts: {
   reels: string[];
   win: boolean;
+  /** Payout multiplier (0 if loss). */
+  mult?: number;
+  /** Server economy symbol for jackpot banner. */
+  symbol?: string;
+  /** Formatted payout text for the win banner. */
+  payoutLabel?: string;
+  /** "jackpot" | "line" | "pair" | "lose" */
+  tier?: "jackpot" | "line" | "pair" | "lose";
 }): Promise<AnimationResult | null> {
-  const pool = ["🍒", "🍋", "🔔", "⭐", "💎", "7️⃣"];
+  const pool = ["🍒", "🍋", "🔔", "⭐", "💎", "7️⃣", "🃏", "💰"];
+  const reelCount = opts.reels.length;
+  // Staggered stop times — last reel locks near the end for a long live spin.
+  const stopAt = reelCount === 5
+    ? [0.42, 0.54, 0.66, 0.78, 0.88]
+    : [0.45, 0.65, 0.82];
+  const symbol = opts.symbol || "💵";
+  const tier = opts.tier ?? (opts.win ? "line" : "lose");
+
   return encodeAnimation({
-    width: W, height: H, durationMs: 1600, speed: "normal", maxFrames: 18, quality: 12,
+    width: SLOTS_W, height: SLOTS_H, durationMs: 5200, speed: "normal", maxFrames: 48, quality: 16,
     render: async ({ ctx, t }) => {
-      felt(ctx);
-      roundRect(ctx, 60, 60, W - 120, 140, 16);
+      felt(ctx, SLOTS_W, SLOTS_H);
+
+      // Machine chrome
+      roundRect(ctx, 28, 36, SLOTS_W - 56, 200, 18);
       ctx.fillStyle = "#111827";
       ctx.fill();
-      for (let i = 0; i < 3; i++) {
-        const x = 100 + i * 110;
-        roundRect(ctx, x, 80, 90, 100, 10);
-        ctx.fillStyle = "#1f2937";
+      ctx.strokeStyle = "#fbbf24";
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      // Title plate
+      ctx.fillStyle = "#fbbf24";
+      ctx.font = "bold 18px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("MEGA SLOTS", SLOTS_W / 2, 28);
+
+      const cellW = Math.min(88, (SLOTS_W - 80) / reelCount - 8);
+      const totalW = reelCount * (cellW + 8) - 8;
+      const startX = (SLOTS_W - totalW) / 2;
+
+      for (let i = 0; i < reelCount; i++) {
+        const x = startX + i * (cellW + 8);
+        const y = 70;
+        roundRect(ctx, x, y, cellW, 140, 12);
+        ctx.fillStyle = "#0f172a";
         ctx.fill();
-        const sym = t < 0.75 ? pool[Math.floor((t * 30 + i * 3) % pool.length)]! : opts.reels[i]!;
-        ctx.font = "48px sans-serif";
+
+        const stopped = t >= (stopAt[i] ?? 0.85);
+        let sym: string;
+        if (stopped) {
+          sym = opts.reels[i]!;
+        } else {
+          // Blur-strip scroll before lock
+          const scroll = Math.floor(t * 55 + i * 7);
+          sym = pool[scroll % pool.length]!;
+          // Motion streak
+          ctx.fillStyle = "rgba(251, 191, 36, 0.08)";
+          ctx.fillRect(x + 4, y + 4, cellW - 8, 132);
+        }
+
+        ctx.font = `${Math.floor(cellW * 0.55)}px sans-serif`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText(sym, x + 45, 130);
+        // Slight bounce when locking
+        const bounce = stopped && t < (stopAt[i]! + 0.06)
+          ? Math.sin(((t - stopAt[i]!) / 0.06) * Math.PI) * 6
+          : 0;
+        ctx.fillText(sym, x + cellW / 2, y + 70 + bounce);
       }
-      if (t > 0.8) {
-        ctx.fillStyle = opts.win ? "#4ade80" : "#94a3b8";
-        ctx.font = "bold 20px sans-serif";
+
+      // Payline
+      if (t > 0.4) {
+        ctx.strokeStyle = "rgba(251, 191, 36, 0.55)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(startX - 4, 140);
+        ctx.lineTo(startX + totalW + 4, 140);
+        ctx.stroke();
+      }
+
+      // Result banner
+      if (t > 0.9) {
+        const fade = Math.min(1, (t - 0.9) / 0.08);
+        if (tier === "jackpot") {
+          ctx.fillStyle = `rgba(251, 191, 36, ${0.9 * fade})`;
+          ctx.font = "bold 26px sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText(`★ JACKPOT ${symbol} ★`, SLOTS_W / 2, 270);
+          if (opts.payoutLabel) {
+            ctx.fillStyle = `rgba(254, 243, 199, ${fade})`;
+            ctx.font = "bold 20px sans-serif";
+            ctx.fillText(opts.payoutLabel, SLOTS_W / 2, 300);
+          }
+        } else if (tier === "line" || tier === "pair") {
+          ctx.fillStyle = `rgba(74, 222, 128, ${fade})`;
+          ctx.font = "bold 22px sans-serif";
+          ctx.textAlign = "center";
+          const label = tier === "pair" ? "PAIR PAY" : "LINE WIN";
+          ctx.fillText(
+            opts.payoutLabel ? `${label} · ${opts.payoutLabel}` : label,
+            SLOTS_W / 2,
+            280,
+          );
+        } else {
+          ctx.fillStyle = `rgba(148, 163, 184, ${fade})`;
+          ctx.font = "bold 20px sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText("No line — try again", SLOTS_W / 2, 280);
+        }
+      } else if (t > 0.15 && t < 0.9) {
+        ctx.fillStyle = "#94a3b8";
+        ctx.font = "14px sans-serif";
         ctx.textAlign = "center";
-        ctx.fillText(opts.win ? "JACKPOT LINE!" : "No line", W / 2, H - 36);
+        ctx.fillText("spinning…", SLOTS_W / 2, 280);
       }
     },
   });
