@@ -394,7 +394,7 @@ export async function handleListTrades(interaction: ChatInputCommandInteraction)
   const trades = await getPendingTradesFor(interaction.guild.id, interaction.user.id);
 
   if (trades.length === 0) {
-    await interaction.editReply("You have no pending trades.\nPropose one with `/trade user:@Member offer:<card> want:<card>`");
+    await interaction.editReply("You have no pending trades.\nPropose one with `/trade propose user:@Member offer:<card> want:<card>`");
     return;
   }
 
@@ -410,7 +410,7 @@ export async function handleListTrades(interaction: ChatInputCommandInteraction)
   const embed = new EmbedBuilder()
     .setTitle("🔄 Your Pending Trades")
     .setColor(0x0984e3)
-    .setDescription(lines.join("\n") + "\n\nUse the Accept/Decline buttons on the trade message, or `/accept id:<ID>` / `/decline id:<ID>`.");
+    .setDescription(lines.join("\n") + "\n\nUse the Accept/Decline buttons on the trade message, or `/trade accept id:<ID>` / `/trade decline id:<ID>`.");
 
   await interaction.editReply({ embeds: [embed] });
 }
@@ -431,7 +431,7 @@ export async function handleTradeHistory(interaction: ChatInputCommandInteractio
   if (rows.length === 0) {
     await interaction.editReply(
       isSelf
-        ? "📜 You don't have any completed trades yet. Propose one with `/trade`!"
+        ? "📜 You don't have any completed trades yet. Propose one with `/trade propose`!"
         : `📜 **${target.username}** has no completed trades yet.`,
     );
     return;

@@ -13,6 +13,10 @@ import { buildQuoteCommandJson, buildQuoteContextMenuJson } from "../quote/defin
 import { buildPetCommandJson, buildPetAdminCommandJson } from "../pets/command.js";
 import { buildUbAdminCommandJson } from "../unbelievaboat/discord-admin.js";
 import { buildCasinoCommandJson } from "../unbelievaboat/casino.js";
+import { buildVaultValueCommandJson } from "./vaultvalue-hub.js";
+import { buildTradeHubCommandJson } from "./trade-hub.js";
+import { buildCardAdminCommandJson } from "./cardadmin-hub.js";
+import { buildSecretCommandJson } from "./secret-hub.js";
 import { getRaidFrames } from "../cards/frames.js";
 import {
   buildMaterialChoices, buildWallpaperChoices, buildCanvasChoices, BUILD_LIMITS,
@@ -157,31 +161,11 @@ function buildLegacyCommands() {
     cmd("shards", "Check your DN Shards balance", s => s
       .addUserOption(o => o.setName("user").setDescription("View another member's balance"))),
 
-    cmd("trade", "Propose a trade — cards, shards, or both", s => s
-      .addUserOption(o => o.setName("user").setDescription("Member to trade with").setRequired(true))
-      .addStringOption(o => o.setName("offer").setDescription("Name you are offering").setAutocomplete(true))
-      .addStringOption(o => o.setName("want").setDescription("Name you want in return").setAutocomplete(true))
-      .addIntegerOption(o => o.setName("offer_shards").setDescription("💠 shards you offer (optional)").setMinValue(1))
-      .addIntegerOption(o => o.setName("want_shards").setDescription("💠 shards you want (optional)").setMinValue(1))),
-
-    cmd("gift", "Gift DN Shards to another member", s => s
-      .addUserOption(o => o.setName("user").setDescription("Member to send shards to").setRequired(true))
-      .addIntegerOption(o => o.setName("amount").setDescription("Amount of 💠 shards to gift").setRequired(true).setMinValue(1))),
-
-    cmd("trades", "View your pending trade offers", s => s),
-    cmd("tradehistory", "View recent completed trades", s => s
-      .addUserOption(o => o.setName("user").setDescription("Whose history to view (default: you)").setRequired(false))),
-
-    cmd("accept", "Accept a pending trade offer", s => s
-      .addIntegerOption(o => o.setName("id").setDescription("Trade ID from /trades").setRequired(true).setMinValue(1))),
-
-    cmd("decline", "Decline or cancel a trade offer", s => s
-      .addIntegerOption(o => o.setName("id").setDescription("Trade ID from /trades").setRequired(true).setMinValue(1))),
+    buildTradeHubCommandJson(),
 
     // Admin-only: /welcome posts a public, server-wide welcome message, so it is
     // hidden from non-admins in the slash menu (the bot also enforces this server-side).
     adminCmd("welcome", "Post the server welcome message (admin)", s => s),
-    cmd("battles_welcome", "Welcome guide to card battles", s => s),
     cmd("funfact", "A random Military Tycoon fun fact from the wiki", s => s),
 
     // ── /begin (interactive onboarding adventure — one-time, real rewards) ─────
@@ -192,8 +176,6 @@ function buildLegacyCommands() {
     cmd("help", "Show player commands", s => s),
 
     cmd("user-hub", "Your profile, collection & stats", s => s),
-
-    adminCmd("adminhelp", "Show admin & setup commands", s => s),
 
     cmd("daily", "Claim your daily DN Shards reward", s => s),
 
@@ -258,20 +240,7 @@ function buildLegacyCommands() {
 
     adminCmd("set_admin", "Interactive set hub — full set management with buttons and dropdowns, no subcommands needed", s => s),
 
-    adminCmd("deletecard", "Permanently delete a card from the roster", s => s
-      .addStringOption(o => o.setName("name").setDescription("Card to delete").setRequired(true).setAutocomplete(true))),
-
-    adminCmd("welcomeadmin", "Post the admin onboarding guide — setup, card editing, website, and commands", s => s),
-
-    adminCmd("drop", "Force-drop a card — for events and giveaways", s => s
-      .addStringOption(o => o.setName("name").setDescription("Card name — leave empty for a random drop from active set").setAutocomplete(true))
-      .addStringOption(o => o.setName("set").setDescription("Pick a specific set to drop from (ignores active set)").setAutocomplete(true))
-      .addIntegerOption(o => o.setName("star").setDescription("Star Rank the caught card arrives at (0-5)").setMinValue(0).setMaxValue(5))
-      .addIntegerOption(o => o.setName("level").setDescription("Level the caught card arrives at (1-100)").setMinValue(1).setMaxValue(100))),
-
-    adminCmd("massdrop", "Drop a big batch of cards — mostly low tier with a few bangers", s => s
-      .addIntegerOption(o => o.setName("amount").setDescription("How many cards to drop (10-25, default 15)").setMinValue(10).setMaxValue(25))
-      .addStringOption(o => o.setName("set").setDescription("Pick a specific set to drop from (ignores active set)").setAutocomplete(true))),
+    buildCardAdminCommandJson(),
 
     // Variable card progression — set the DEFAULT Star/Level a card arrives with
     // per acquisition source (guild-wide), then override specific cards below.
@@ -295,38 +264,11 @@ function buildLegacyCommands() {
       .addIntegerOption(o => o.setName("level_max").setDescription("Maximum Level (1-100)").setMinValue(1).setMaxValue(100))
       .addBooleanOption(o => o.setName("clear").setDescription("Remove this card's override instead of setting it"))),
 
-    adminCmd("give", "Give a card directly to a member", s => s
-      .addUserOption(o => o.setName("user").setDescription("Member to receive the card").setRequired(true))
-      .addStringOption(o => o.setName("name").setDescription("Card name").setRequired(true).setAutocomplete(true))
-      .addIntegerOption(o => o.setName("amount").setDescription("How many copies to give (default 1, max 100)").setMinValue(1).setMaxValue(100))
-      .addIntegerOption(o => o.setName("star").setDescription("Star Rank the card arrives at (0-5)").setMinValue(0).setMaxValue(5))
-      .addIntegerOption(o => o.setName("level").setDescription("Level the card arrives at (1-100)").setMinValue(1).setMaxValue(100))),
-
-    adminCmd("giveall", "Give one copy of every card to a member — random shiny chance, filter by set or rarity", s => s
-      .addUserOption(o => o.setName("user").setDescription("Member to receive the cards").setRequired(true))
-      .addStringOption(o => o.setName("set").setDescription("Only cards from this set (leave blank for all cards)").setAutocomplete(true))
-      .addStringOption(o => o.setName("rarity").setDescription("Only cards of this rarity (leave blank for all rarities)")
-        .addChoices({ name: "Common", value: "common" }, { name: "Uncommon", value: "uncommon" }, { name: "Rare", value: "rare" }, { name: "Epic", value: "epic" }, { name: "Legendary", value: "legendary" }, { name: "Mythic", value: "mythic" }))
-      .addIntegerOption(o => o.setName("shinyrate").setDescription("Shiny chance 0-100% (default 0.5)").setMinValue(0).setMaxValue(100))),
-
-    adminCmd("giveshards", "Give DN Shards to a member", s => s
-      .addUserOption(o => o.setName("user").setDescription("Member to receive shards").setRequired(true))
-      .addIntegerOption(o => o.setName("amount").setDescription("Amount of shards").setRequired(true).setMinValue(1))),
-
-    adminCmd("takeback", "Remove a card from a member's collection", s => s
-      .addUserOption(o => o.setName("user").setDescription("Member to take the card from").setRequired(true))
-      .addStringOption(o => o.setName("name").setDescription("Card name").setRequired(true).setAutocomplete(true))
-      .addIntegerOption(o => o.setName("amount").setDescription("How many copies to remove (default 1, max 100)").setMinValue(1).setMaxValue(100))),
-
     adminCmd("battleforceend", "Force-cancel a member's stuck battle (e.g. the battle message got deleted)", s => s
       .addUserOption(o => o.setName("user").setDescription("Member whose battle should be cancelled").setRequired(true))),
 
     adminCmd("collectorrole", "Set the opt-in role that gets pinged on every spawn", s => s
       .addRoleOption(o => o.setName("role").setDescription("Role to ping on spawns (leave empty to clear)"))),
-
-    adminCmd("takeshards", "Deduct DN Shards from a member", s => s
-      .addUserOption(o => o.setName("user").setDescription("Member to deduct shards from").setRequired(true))
-      .addIntegerOption(o => o.setName("amount").setDescription("Amount to deduct").setRequired(true).setMinValue(1))),
 
     // ── Card Events (limited-time spawn boosts) ──────────────────────────────
     adminCmd("event", "Run limited-time card events — boost a card's spawn rate", s => s
@@ -337,64 +279,6 @@ function buildLegacyCommands() {
       .addSubcommand(sc => sc.setName("list").setDescription("Show active card events in this server"))
       .addSubcommand(sc => sc.setName("stop").setDescription("Stop an active event early")
         .addIntegerOption(o => o.setName("id").setDescription("Event ID from /event list").setRequired(true).setMinValue(1)))),
-
-    adminCmd("addcard", "Create a new card — upload an image/GIF from Discord", s => s
-      .addStringOption(o => o.setName("name").setDescription("Card name").setRequired(true).setMaxLength(80))
-      .addStringOption(o => o.setName("rarity").setDescription("Built-in rarity tier — type to search").setRequired(true).setAutocomplete(true))
-      .addStringOption(o => o.setName("type").setDescription("Card type/tag — type to search existing types or enter a new one").setRequired(true).setAutocomplete(true))
-      .addAttachmentOption(o => o.setName("image").setDescription("Upload card image/GIF with Discord's file picker"))
-      .addStringOption(o => o.setName("set").setDescription("Optional set to add this card to immediately").setAutocomplete(true))
-      .addStringOption(o => o.setName("description").setDescription("Card description (up to 500 chars)").setMaxLength(500))
-      .addBooleanOption(o => o.setName("limited").setDescription("Limited edition — capped copy count?"))
-      .addIntegerOption(o => o.setName("max_copies").setDescription("Max copies if limited (default 50)").setMinValue(1))
-      .addBooleanOption(o => o.setName("event_exclusive").setDescription("Event exclusive — never spawns randomly?"))),
-
-    adminCmd("createcardfrommttv", "Create a new DN card from a Vault Values item — image + value pulled from Vault Values", s => s
-      .addStringOption(o => o.setName("item").setDescription("Vault Values item name — type to search").setRequired(true).setAutocomplete(true))
-      .addStringOption(o => o.setName("rarity").setDescription("DN rarity tier — type to search").setRequired(true).setAutocomplete(true))
-      .addStringOption(o => o.setName("type").setDescription("Card type/tag — type to search existing types or enter a new one").setRequired(true).setAutocomplete(true))
-      .addStringOption(o => o.setName("set").setDescription("Optional set to add this card to immediately").setAutocomplete(true))
-      .addStringOption(o => o.setName("description").setDescription("Override the card description (up to 500 chars)").setMaxLength(500))
-      .addBooleanOption(o => o.setName("limited").setDescription("Limited edition — capped copy count?"))
-      .addIntegerOption(o => o.setName("max_copies").setDescription("Max copies if limited (default 50)").setMinValue(1))
-      .addBooleanOption(o => o.setName("event_exclusive").setDescription("Event exclusive — never spawns randomly?"))),
-
-    adminCmd("createcardfrom", "Create a new DN card from Kitsu — anime, manga, or character", s => s
-      .addStringOption(o => o.setName("category").setDescription("Kitsu library to search").setRequired(true)
-        .addChoices(
-          { name: "Anime", value: "anime" },
-          { name: "Manga", value: "manga" },
-          { name: "Character", value: "character" },
-        ))
-      .addStringOption(o => o.setName("item").setDescription("Title or character name — type to search").setRequired(true).setAutocomplete(true))
-      .addStringOption(o => o.setName("rarity").setDescription("DN rarity tier — type to search").setRequired(true).setAutocomplete(true))
-      .addStringOption(o => o.setName("type").setDescription("Card type/tag — type to search existing types or enter a new one").setRequired(true).setAutocomplete(true))
-      .addStringOption(o => o.setName("set").setDescription("Optional set to add this card to immediately").setAutocomplete(true))
-      .addStringOption(o => o.setName("description").setDescription("Override the card description (up to 500 chars)").setMaxLength(500))
-      .addBooleanOption(o => o.setName("limited").setDescription("Limited edition — capped copy count?"))
-      .addIntegerOption(o => o.setName("max_copies").setDescription("Max copies if limited (default 50)").setMinValue(1))
-      .addBooleanOption(o => o.setName("event_exclusive").setDescription("Event exclusive — never spawns randomly?"))),
-
-    adminCmd("library", "Search the Kitsu library by category and preview the bio + image", s => s
-      .addStringOption(o => o.setName("category").setDescription("Kitsu library to search").setRequired(true)
-        .addChoices(
-          { name: "Anime", value: "anime" },
-          { name: "Manga", value: "manga" },
-          { name: "Character", value: "character" },
-        ))
-      .addStringOption(o => o.setName("name").setDescription("Title or character name — type to search").setRequired(true).setAutocomplete(true))),
-
-    adminCmd("editcard", "Edit a card — optionally upload a replacement image/GIF", s => s
-      .addStringOption(o => o.setName("name").setDescription("Card to edit").setRequired(true).setAutocomplete(true))
-      .addAttachmentOption(o => o.setName("image").setDescription("Optional replacement image/GIF upload"))
-      .addIntegerOption(o => o.setName("max_copies").setDescription("Max copies for a limited edition card (set 0 or blank to remove limit)").setMinValue(0))
-      .addIntegerOption(o => o.setName("total_minted").setDescription("Current number of copies that exist (careful: manual override)").setMinValue(0))
-      .addBooleanOption(o => o.setName("limited").setDescription("Mark this card as limited edition (enforces max_copies cap)"))),
-
-    adminCmd("editimage", "Update a card's image and description from Vault Values or an uploaded file", s => s
-      .addStringOption(o => o.setName("name").setDescription("Card to edit").setRequired(true).setAutocomplete(true))
-      .addAttachmentOption(o => o.setName("image").setDescription("Upload image/GIF (overrides Vault Values search)"))),
-
 
     // ── /rarity — hub command: display names, economy overrides, custom tiers, card assignments
     adminCmd("rarity", "Edit built-in rarity names, colors, spawn %, worth, and burn", s => s),
@@ -484,10 +368,6 @@ function buildLegacyCommands() {
     // ── Dashboard ──────��──────────────────────────────────────────────────[...]
     adminCmd("dashboard", "Get a one-time link to set up or reset your web dashboard login", s => s),
 
-    // ── /edituser — interactive member editor (cards, shinies, shards) ─────────
-    adminCmd("edituser", "Edit a member: 💳 Core Profile & Economy + ⚔️ Battle Profile", s => s
-      .addUserOption(o => o.setName("user").setDescription("Member to edit").setRequired(true))),
-
     adminCmd("editpack", "Edit a custom pack — rename, change cost/size, add/remove cards, set emoji", s => s
       .addStringOption(o => o.setName("pack").setDescription("Pack to edit — type to search").setRequired(true).setAutocomplete(true))
       .addStringOption(o => o.setName("new_name").setDescription("Rename the pack").setMaxLength(50))
@@ -521,32 +401,8 @@ function buildLegacyCommands() {
       .addSubcommand(sc => sc.setName("give").setDescription("Give thanks to a helpful member (24h cooldown per person)")
         .addUserOption(o => o.setName("user").setDescription("Member to thank").setRequired(true)))
       .addSubcommand(sc => sc.setName("top").setDescription("Top 10 most appreciated members on this server"))),
-    // ── /info_mttv /calc /valuehelp /valuelist (Vault Values) ─────────────────
-    cmd("info_mttv", "Show details for one item — prices from Vault Values", s => s
-      .addStringOption(o => o.setName("item").setDescription("Item name to look up").setRequired(true).setAutocomplete(true))),
+    buildVaultValueCommandJson(),
 
-    cmd("calc", "Vault Values trade calculator — two-sided offer with buttons", s => s),
-
-    cmd("valuehelp", "How Vault Values pricing works", s => s),
-
-    cmd("valuelist", "Top items by value — prices from Vault Values", s => s),
-
-    // ── /mass_role (admin, bulk role assignment) ──────────────────────────────
-    adminCmd("massrole", "Give or remove a role from everyone who has a specific role", s => s
-      .addSubcommand(sc => sc
-        .setName("give")
-        .setDescription("Give a role to all members who have a specific role")
-        .addRoleOption(o => o.setName("role").setDescription("The role to give").setRequired(true))
-        .addRoleOption(o => o.setName("target_role").setDescription("Only affect members who have this role").setRequired(true)))
-      .addSubcommand(sc => sc
-        .setName("remove")
-        .setDescription("Remove a role from all members who have a specific role")
-        .addRoleOption(o => o.setName("role").setDescription("The role to remove").setRequired(true))
-        .addRoleOption(o => o.setName("target_role").setDescription("Only affect members who have this role").setRequired(true)))),
-
-    adminCmd("postcalculator", "Post a persistent Vault Values trade calculator hub in a channel", s => s
-      .addChannelOption(o => o.setName("channel").setDescription("Channel to post the calculator in").setRequired(true))
-      .addChannelOption(o => o.setName("result_channel").setDescription("Optional channel to post calculation results in").setRequired(false))),
 
     // /postboard is registered via buildPostboardCommandJson() alongside /emoji.
 
@@ -670,13 +526,10 @@ function buildLegacyCommands() {
       .addSubcommand(sc => sc.setName("mine").setDescription("View your listings and active bids"))),
 
     // ── Echo-Whisper (encrypted messaging addon) ──────────────────────────────
-    cmd("whisper", "Send an encrypted whisper only a chosen member can read", s => s
-      .addUserOption(o => o.setName("user").setDescription("The member who can read this message").setRequired(true))),
-
-    cmd("adminsecret", "Post an encrypted staff message only authorized roles can reveal", s => s),
+    buildSecretCommandJson(),
 
     adminCmd("echo", "Echo-Whisper hub — viewer roles, admin override, stats, config", s => s
-      .addSubcommand(sc => sc.setName("role").setDescription("Manage roles allowed to reveal /admin_secret messages")
+      .addSubcommand(sc => sc.setName("role").setDescription("Manage roles allowed to reveal /secret staff messages")
         .addStringOption(o => o.setName("action").setDescription("Add, remove, or list").setRequired(true)
           .addChoices({ name: "add", value: "add" }, { name: "remove", value: "remove" }, { name: "list", value: "list" }))
         .addRoleOption(o => o.setName("role").setDescription("Role to add or remove")))
@@ -684,7 +537,7 @@ function buildLegacyCommands() {
         .addStringOption(o => o.setName("mode").setDescription("Enable or disable admin override").setRequired(true)
           .addChoices({ name: "enable", value: "enable" }, { name: "disable", value: "disable" })))
       .addSubcommand(sc => sc.setName("whisper").setDescription("View whisper configuration"))
-      .addSubcommand(sc => sc.setName("adminsecret").setDescription("View adminsecret configuration"))
+      .addSubcommand(sc => sc.setName("adminsecret").setDescription("View staff-secret configuration"))
       .addSubcommand(sc => sc.setName("stats").setDescription("View Echo-Whisper usage stats"))
       .addSubcommand(sc => sc.setName("config").setDescription("View Echo-Whisper configuration"))),
 
@@ -782,6 +635,21 @@ export const HUB_REPLACED_COMMANDS = new Set<string>([
   "cashcheck", "cashgames", "cashstore",
   "roulette", "blackjack", "higherlower", "redblack", "slots",
   "cashwork", "cashcrime", "russian", "rob", "slut",
+  // Folded into /trade hub (propose / pending / history / accept / decline / gift).
+  "gift", "trades", "tradehistory", "accept", "decline",
+  // Folded into /vaultvalue hub (info / calc / list / help / postcalc).
+  "info_mttv", "calc", "valuehelp", "valuelist", "postcalculator",
+  // Folded into /cardadmin hub (create / Kitsu / Vault Values / edit / give / drop…).
+  "addcard", "createcardfrom", "createcardfrommttv", "library",
+  "editcard", "editimage", "deletecard",
+  "give", "takeback", "giveall", "drop", "massdrop",
+  "giveshards", "takeshards", "edituser",
+  // Folded into /secret hub (whisper / staff). /echo stays as config.
+  "whisper", "adminsecret",
+  // Sanctuary entry aliases — use /quiet mode:vacation|loa (handlers kept).
+  "vacation", "loa",
+  // Docs folded into /help sections (handlers kept for legacy/prefix).
+  "adminhelp", "battles_welcome", "welcomeadmin",
 ]);
 
 export function buildCommands() {
@@ -805,7 +673,7 @@ export function buildCommands() {
   return all;
 }
 
-// Commands are FLAT top-level slash commands — e.g. `/burn`, `/daily`, `/drop`
+// Commands are FLAT top-level slash commands — e.g. `/burn`, `/pack`, `/user-hub`
 // — rather than being nested under `/cards …` / `/admin …` hubs. These two sets
 // name the flattened commands so the interaction dispatcher (index.ts) knows
 // whether each one is handled by handleUserCommand or handleAdminCommand. The

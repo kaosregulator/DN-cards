@@ -341,7 +341,7 @@ export async function handleMttvHubButton(interaction: ButtonInteraction): Promi
   const hub = await getRegisteredHub(messageId);
   if (!hub) {
     await interaction.reply({
-      content: "❌ This calculator hub is no longer registered. Ask an admin to post a new one with `/postcalculator`.",
+      content: "❌ This calculator hub is no longer registered. Ask an admin to post a new one with `/vaultvalue postcalc`.",
       flags: MessageFlags.Ephemeral,
     }).catch(() => {});
     return;
@@ -643,7 +643,7 @@ export async function handleMttvHubModal(interaction: ModalSubmitInteraction): P
   const hub = await getRegisteredHub(messageId);
   if (!hub) {
     await interaction.editReply({
-      content: "❌ This calculator hub is no longer registered. Ask an admin to post a new one with `/postcalculator`.",
+      content: "❌ This calculator hub is no longer registered. Ask an admin to post a new one with `/vaultvalue postcalc`.",
       embeds: [],
       components: [],
     }).catch(() => {});

@@ -264,7 +264,7 @@ export async function handleInfoMTTV(interaction: ChatInputCommandInteraction): 
   }
 
   if (!item) {
-    await interaction.editReply(`❌ Could not find "${name}". Use /vaultvalue_list to browse items or /vaultvalue_calc to compare values.`);
+    await interaction.editReply(`❌ Could not find "${name}". Use \`/vaultvalue list\` to browse items or \`/vaultvalue calc\` to compare values.`);
     deleteReplyAfterDelay();
     return;
   }
@@ -325,7 +325,7 @@ export async function handleCreateCardFromMTTV(interaction: ChatInputCommandInte
   }
 
   if (!item) {
-    await interaction.editReply(`❌ Could not find item "${itemName}". Use /vaultvalue_info to search first.`);
+    await interaction.editReply(`❌ Could not find item "${itemName}". Use \`/vaultvalue info\` to search first.`);
     return;
   }
 
@@ -422,9 +422,9 @@ export async function handleValueHelp(interaction: ChatInputCommandInteraction):
       "• 🛠️ **Functionality** — how useful the item is in-game (1–10).\n" +
       "• 🏷️ **Tags** — market trends like `rising`, `dropping`, `stable`.\n\n" +
       "**Commands:**\n" +
-      "• `/vaultvalue_info name:<item>` — full details for one item.\n" +
-      "• `/vaultvalue_calc` — trade calculator with two offer sides.\n" +
-      "• `/vaultvalue_list` — top items by value.\n\n" +
+      "• `/vaultvalue info item:<item>` — full details for one item.\n" +
+      "• `/vaultvalue calc` — trade calculator with two offer sides.\n" +
+      "• `/vaultvalue list` — top items by value.\n\n" +
       "All prices are pulled live from Vault Values.",
     )
     .setFooter({ text: "Prices from Vault Values" });
@@ -691,7 +691,7 @@ function isCalcOwner(interaction: ButtonInteraction | ModalSubmitInteraction, st
 
 async function denyUnauthorized(interaction: ButtonInteraction | ModalSubmitInteraction): Promise<void> {
   const payload: InteractionReplyOptions = {
-    content: "❌ This calculator belongs to someone else. Use your own `/calc`.",
+    content: "❌ This calculator belongs to someone else. Use your own `/vaultvalue calc`.",
     flags: MessageFlags.Ephemeral,
   };
   if (interaction.deferred || interaction.replied) {

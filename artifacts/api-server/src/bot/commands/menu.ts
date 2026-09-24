@@ -635,10 +635,10 @@ async function buildTradeScreen(guildId: string, userId: string): Promise<{
       `**Pending inbound:** ${inbound.length}  ·  **Pending outbound:** ${outbound.length}\n\n` +
       (inbound.length > 0
         ? inbound.slice(0, 5).map(t =>
-            `📥 **Trade #${t.id}** — use \`/accept id:${t.id}\` or \`/decline id:${t.id}\``
+            `📥 **Trade #${t.id}** — use \`/trade accept id:${t.id}\` or \`/trade decline id:${t.id}\``
           ).join("\n") + "\n\n"
         : "*No inbound trade offers.*\n\n") +
-      `*To propose a trade, use:*\n\`/trade user:@Member offer:<card> want:<card>\`\n\n` +
+      `*To propose a trade, use:*\n\`/trade propose user:@Member offer:<card> want:<card>\`\n\n` +
       `*Tip: Trades work best in the trade channel — ask an admin to set one up.*`,
     )
     .setFooter({ text: footerText("Trades") });
@@ -855,7 +855,7 @@ export async function handleMenuCommand(interaction: ChatInputCommandInteraction
             });
           } else if (action === "tradehistory") {
             await i.editReply({
-              embeds: [new EmbedBuilder().setTitle("📜 Trade History").setColor(ACTION_COLOR).setDescription("Use `/tradehistory` to see your recent completed trades with full details.").setFooter({ text: footerText("Trade History") })],
+              embeds: [new EmbedBuilder().setTitle("📜 Trade History").setColor(ACTION_COLOR).setDescription("Use `/trade history` to see your recent completed trades with full details.").setFooter({ text: footerText("Trade History") })],
               components: [row(backBtn("trade"))],
             });
           } else if (action === "achievements") {
