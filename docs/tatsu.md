@@ -70,9 +70,11 @@ Administrator-only, ephemeral. Same spirit as `/unbelievaboat`, without games/st
 | Control | What it does |
 | --- | --- |
 | **Overview** | Key status, period, log channel, watchlist size, live top probe |
-| **Leaderboard** | Paginated score board (all / month / week) |
+| **Leaderboard** | Paginated score board (20/page — Discord embed limit; all/month/week) |
+| **Prune left** | Find board accounts no longer in the Discord server; zero their points/score |
+| **Edit user** | Live lookup + adjust points/score + zero-out (supports raw user ID for leavers) |
 | **Lookup user** | Points + all/month/week score ranks + global profile |
-| **Adjust points / score** | Add or remove (chunked) |
+| **Adjust points / score** | Add or remove (chunked); member pick or user ID |
 | **Strip spam** | Bulk remove points + score, auto-watchlist |
 | **Watchlist** | Local suspect list + notes (DN-side only) |
 | **Snapshot + climbers** | Save board slice; flag score Δ ≥ threshold |
