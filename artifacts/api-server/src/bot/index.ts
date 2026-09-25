@@ -1110,6 +1110,9 @@ export async function startBot() {
       } else if (cmd === "casino") {
         const { handleCasinoCommand } = await import("./unbelievaboat/casino.js");
         await handleCasinoCommand(interaction);
+      } else if (cmd.endsWith("_ub")) {
+        const { handleUbSlashCommand } = await import("./unbelievaboat/ub-slash-router.js");
+        await handleUbSlashCommand(interaction, cmd);
       } else if (cmd === "vaultvalue") {
         const { handleVaultValueCommand } = await import("./commands/vaultvalue-hub.js");
         await handleVaultValueCommand(interaction);
@@ -1156,6 +1159,9 @@ export async function startBot() {
     "collection_hub", "hq", "hqadmin", "hqbuild",
     "pet", "petadmin", "ubadmin", "unbelievaboat", "tatsu",
     "casino", "vaultvalue", "cardadmin", "secret",
+    "daily_ub", "collect_ub", "bal_ub", "deposit_ub", "withdraw_ub",
+    "slots_ub", "blackjack_ub", "roulette_ub", "uno_ub", "higherlower_ub", "redblack_ub",
+    "work_ub", "crime_ub", "beg_ub", "rob_ub", "russian_ub", "store_ub", "top_ub",
     "valuehelp", "valuelist", "info_mttv", "giveall", "editpack", "postcalculator",
     "postboard", "massrole", "emoji",
   ]);

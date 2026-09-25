@@ -427,6 +427,7 @@ export async function handleUno(interaction: ChatInputCommandInteraction): Promi
       embeds: [embed],
       files,
       components: playButtons(session),
+      slashHint: `/uno_ub bet:${bet}`,
     }, "✅ Mini UNO opened as **UnbelievaBoat** — play on the floor.");
   } catch (err) {
     await interaction.editReply(err instanceof CashError ? err.message : `Failed: ${err instanceof Error ? err.message : err}`);

@@ -273,6 +273,7 @@ export async function handleSlots(interaction: ChatInputCommandInteraction): Pro
       embeds: [embed],
       files,
       components: machineButtons(session),
+      slashHint: `/slots_ub bet:${buyIn}`,
     }, "✅ Slots opened as **UnbelievaBoat** — play on the floor.");
   } catch (err) {
     await interaction.editReply(err instanceof CashError ? err.message : `Failed: ${err instanceof Error ? err.message : err}`);
