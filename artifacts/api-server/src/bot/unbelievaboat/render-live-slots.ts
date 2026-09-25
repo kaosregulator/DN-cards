@@ -8,7 +8,7 @@ import {
   hexToRgba, roundRectPath, type Ctx, type CanvasMod,
 } from "../animations/engine.js";
 import type { AnimationResult } from "../animations/types.js";
-import { drawConfetti, drawSparks, shakeOffset } from "../animations/particles.js";
+import { drawSparks, shakeOffset } from "../animations/particles.js";
 
 const W = 560;
 const H = 440;
@@ -358,15 +358,16 @@ function drawInsertCoins(
 }
 
 /**
- * True Vegas hopper fountain: coins erupt from the tray under the reels,
- * arc outward in every direction, then fall under gravity. Never a flat row
- * and never a shatter crack across the glass.
+ * Vegas hopper payout: coins pour DOWN from the tray mouth into a catch
+ * basin and bounce/pile — not a shatter crack and not a flat flying row.
  */
 function drawHopperCascade(ctx: Ctx, t: number, symbol: string, intensity: number, hopperY: number) {
-  const count = Math.floor(28 + intensity * 36);
-  const cx = W / 2 - 20;
-  const cy = hopperY + 6;
-  const g = 520; // gravity — strong fall so arcs clear the glass
+  const count = Math.floor(22 + intensity * 30);
+  const mouthL = W / 2 - 90;
+  const mouthR = W / 2 + 50;
+  const mouthY = hopperY + 4;
+  const trayY = H - 28;
+  const g = 680;
 
   for (let i = 0; i < count; i++) {
     const seed = Math.sin((i + 1) * 12.9898) * 43758.5453;
@@ -376,30 +377,32 @@ function drawHopperCascade(ctx: Ctx, t: number, symbol: string, intensity: numbe
     const seed3 = Math.sin((i + 1) * 39.417) * 43758.5453;
     const w = seed3 - Math.floor(seed3);
 
-    // Staggered continuous dump from the tray
-    const local = clamp01((t - u * 0.5) / 0.9);
+    // Staggered pour — continuous stream from the mouth
+    const local = clamp01((t - u * 0.55) / 0.7);
     if (local <= 0) continue;
 
-    // Fan ±~80° centered straight up — fills the cabinet, not a diagonal streak
-    const fan = (u - 0.5) * Math.PI * 0.9;
-    const launchAngle = -Math.PI / 2 + fan;
-    const speed = 200 + v * 260 + intensity * 50;
-    const vx = Math.cos(launchAngle) * speed;
-    const vy = Math.sin(launchAngle) * speed;
-    const ox = cx + (w - 0.5) * 70;
-
-    const x = ox + vx * local;
-    const y = cy + vy * local + 0.5 * g * local * local;
-    const r = 6 + v * 7;
-    const spin = 0.55 + Math.abs(Math.sin(local * Math.PI * 4 + i)) * 0.45;
+    const ox = lerp(mouthL, mouthR, w);
+    // Slight outward drift + gravity drop into the tray
+    const drift = (u - 0.5) * 90;
+    const x = ox + drift * local + Math.sin(local * Math.PI * 2 + i) * 6;
+    const fall = 40 * local + 0.5 * g * local * local;
+    let y = mouthY + fall;
+    // Bounce once when hitting the tray floor
+    let squash = 0.85 + Math.sin(local * Math.PI * 3) * 0.15;
+    if (y > trayY) {
+      const over = y - trayY;
+      const bounce = Math.abs(Math.sin(over * 0.08 + v * 4)) * Math.max(0, 18 - over * 0.15);
+      y = trayY - bounce;
+      squash = 0.45 + bounce / 30;
+    }
+    const r = 7 + v * 5;
     const alpha =
-      local < 0.08 ? local / 0.08
-        : local > 0.82 ? Math.max(0, (1 - local) / 0.18)
+      local < 0.06 ? local / 0.06
+        : local > 0.88 ? Math.max(0, (1 - local) / 0.12)
           : 1;
-    // Cull coins that fall off the bottom
-    if (y > H + 20 || alpha <= 0) continue;
+    if (alpha <= 0) continue;
     ctx.globalAlpha = alpha;
-    drawCoin(ctx, x, y, r, symbol, spin);
+    drawCoin(ctx, x, y, r, symbol, squash);
     ctx.globalAlpha = 1;
   }
 }
@@ -547,16 +550,17 @@ export async function renderLiveSlotsMachine(opts: SlotsMachineOpts): Promise<An
       if (mode === "win") {
         const intensity = opts.tier === "jackpot" ? 1 : opts.tier === "line" ? 0.65 : 0.4;
         drawHopperCascade(ctx, t, symbol, intensity, hopperY);
-        if (t > 0.25) {
-          drawConfetti(ctx, W, H, {
-            count: opts.tier === "jackpot" ? 22 : 12,
-            seed: `vegas-${opts.tier}`,
-            colors: [0xffd54a, 0xff5e78, 0xf5c84c],
-          });
+        // Soft tray glow only — no screen shatter / crack overlay
+        if (t > 0.15) {
+          const glow = ctx.createRadialGradient(W / 2 - 20, hopperY + 20, 4, W / 2 - 20, hopperY + 20, 120);
+          glow.addColorStop(0, hexToRgba(0xffd54a, 0.35 * (1 - t * 0.3)));
+          glow.addColorStop(1, "rgba(0,0,0,0)");
+          ctx.fillStyle = glow;
+          ctx.fillRect(0, hopperY - 40, W, H - hopperY + 40);
         }
         if (opts.tier === "jackpot" && t > 0.3) {
-          drawSparks(ctx, W / 2 - 20, hopperY - 10, {
-            count: 8, color: 0xffd54a, seed: `jp-${Math.floor(t * 6)}`, maxLen: 28,
+          drawSparks(ctx, W / 2 - 20, hopperY + 8, {
+            count: 6, color: 0xffd54a, seed: `jp-${Math.floor(t * 5)}`, maxLen: 22,
           });
         }
         const fade = easeOutBack(clamp01((t - 0.18) / 0.22));
