@@ -18,7 +18,7 @@ import {
 } from "./cash.js";
 import { assertGameCooldown, markGameCooldown } from "./cooldowns.js";
 import { getOrCreateUbSettings } from "../../lib/unbelievaboat/db.js";
-import { postAsUnbelievaBoat } from "./webhook.js";
+import { openTableAsUnbelievaBoat } from "./webhook.js";
 import { encodeAnimation, type Ctx } from "../animations/engine.js";
 import { logGameEvent } from "../logging/channel-log.js";
 
@@ -324,10 +324,6 @@ async function finish(
   if (interaction.deferred || interaction.replied) {
     await interaction.editReply({ embeds: [embed], components: [], files }).catch(() => {});
   }
-  await postAsUnbelievaBoat(
-    interaction as ChatInputCommandInteraction,
-    { embeds: [embed], files },
-  );
   void logGameEvent(
     interaction.client,
     session.guildId,
@@ -371,8 +367,8 @@ export async function handleUno(interaction: ChatInputCommandInteraction): Promi
     await interaction.reply({ content: "Server only.", ...EPHEMERAL });
     return;
   }
-  // Public table — spectators can watch the hand.
-  await interaction.deferReply();
+  // Floor table as UnbelievaBoat webhook.
+  await interaction.deferReply({ ephemeral: true });
   try {
     await assertGamesOn(interaction.guildId);
     await assertGameCooldown(interaction.guildId, interaction.user.id);
@@ -427,7 +423,11 @@ export async function handleUno(interaction: ChatInputCommandInteraction): Promi
       "Match color or rank · **Draw** if stuck · first empty hand wins **2×**.",
     ].join("\n"));
     if (gif) embed.setImage(`attachment://${gif.name}`);
-    await interaction.editReply({ embeds: [embed], files, components: playButtons(session) });
+    await openTableAsUnbelievaBoat(interaction, {
+      embeds: [embed],
+      files,
+      components: playButtons(session),
+    }, "✅ Mini UNO opened as **UnbelievaBoat** — play on the floor.");
   } catch (err) {
     await interaction.editReply(err instanceof CashError ? err.message : `Failed: ${err instanceof Error ? err.message : err}`);
   }
