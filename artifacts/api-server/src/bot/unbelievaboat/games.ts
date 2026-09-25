@@ -162,9 +162,9 @@ export function buildRedBlackCommandJson() {
 export function buildSlotsCommandJson() {
   return new SlashCommandBuilder()
     .setName("slots")
-    .setDescription("Slot machine — three in a row pays")
+    .setDescription("Vegas slots — buy credits, bet, spin until empty, cash out")
     .setDMPermission(false)
-    .addIntegerOption(o => o.setName("bet").setDescription("Wager").setRequired(true).setMinValue(10).setMaxValue(50_000))
+    .addIntegerOption(o => o.setName("bet").setDescription("Credits to load (max 5,000)").setRequired(true).setMinValue(10).setMaxValue(5_000))
     .toJSON();
 }
 
@@ -762,8 +762,7 @@ export async function handleUnbGameComponent(interaction: ButtonInteraction): Pr
       `Cash **${fmtCash(bal.cash)}** · bank **${fmtCash(bal.bank)}**`,
     ].join("\n"));
     if (imageName) embed.setImage(`attachment://${imageName}`);
-    await interaction.editReply({ content: "✅ Posting as **UnbelievaBoat**…", embeds: [], components: [], files: [] });
-    await replyThenPostAsUnbelievaBoat(interaction as unknown as ChatInputCommandInteraction, { embeds: [embed], files });
+    await interaction.editReply({ embeds: [embed], files, components: [] });
     return;
   }
 

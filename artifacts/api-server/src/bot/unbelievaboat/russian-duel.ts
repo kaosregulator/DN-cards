@@ -20,7 +20,7 @@ import {
 } from "./cash.js";
 import { assertGameCooldown, markGameCooldown } from "./cooldowns.js";
 import { getOrCreateUbSettings, writeUbAudit } from "../../lib/unbelievaboat/db.js";
-import { replyThenPostAsUnbelievaBoat, postAsUnbelievaBoat } from "./webhook.js";
+import { replyThenPostAsUnbelievaBoat, openTableAsUnbelievaBoat } from "./webhook.js";
 import { renderRussianScene, type RussianScene } from "./render-russian-duel.js";
 import { RESPONSIBLE_PLAY } from "./live-slots.js";
 
@@ -128,7 +128,7 @@ export async function handleRussian(interaction: ChatInputCommandInteraction): P
     await interaction.reply({ content: "Server only.", ...EPHEMERAL });
     return;
   }
-  await interaction.deferReply();
+  await interaction.deferReply({ ephemeral: true });
   try {
     await assertGamesOn(interaction.guildId);
     await assertGameCooldown(interaction.guildId, interaction.user.id);
@@ -159,7 +159,8 @@ export async function handleRussian(interaction: ChatInputCommandInteraction): P
         "",
         `${target} — **Accept duel** to play the scene.`,
       ].join("\n"));
-      await replyThenPostAsUnbelievaBoat(interaction, { embeds: [embed], components: [row] });
+      await openTableAsUnbelievaBoat(interaction, { embeds: [embed], components: [row] },
+        "✅ Challenge posted as **UnbelievaBoat** — wait for accept on the floor.");
       return;
     }
 
@@ -191,8 +192,7 @@ export async function handleRussian(interaction: ChatInputCommandInteraction): P
       ].join("\n"),
     );
     if (imageName) embed.setImage(`attachment://${imageName}`);
-    await interaction.editReply({ embeds: [embed], files, components: [] });
-    await postAsUnbelievaBoat(interaction, { embeds: [embed], files });
+    await replyThenPostAsUnbelievaBoat(interaction, { embeds: [embed], files });
   } catch (err) {
     await interaction.editReply(err instanceof CashError ? err.message : `Failed: ${err instanceof Error ? err.message : err}`);
   }
@@ -231,12 +231,19 @@ export async function handleRussianComponent(interaction: ButtonInteraction): Pr
       return true;
     }
     challenges.delete(mapKey);
-    await interaction.deferReply();
+    // Update the floor challenge message in place (UnbelievaBoat webhook author stays).
+    await interaction.deferUpdate();
     try {
       await assertGamesOn(interaction.guildId);
       const challenger = await interaction.client.users.fetch(challengerId);
       await spendFunds(interaction.guildId, challengerId, bet, "Russian challenge stake");
-      await spendFunds(interaction.guildId, interaction.user.id, bet, "Russian challenge stake");
+      try {
+        await spendFunds(interaction.guildId, interaction.user.id, bet, "Russian challenge stake");
+      } catch (err) {
+        // Target couldn't pay — refund challenger so we don't strand their stake.
+        await earnCash(interaction.guildId, challengerId, bet, "Russian challenge refund").catch(() => null);
+        throw err;
+      }
       const survivorIsChallenger = Math.random() < 0.5;
       const winner = survivorIsChallenger ? challenger : interaction.user;
       const loser = survivorIsChallenger ? interaction.user : challenger;
@@ -253,7 +260,6 @@ export async function handleRussianComponent(interaction: ButtonInteraction): Pr
         loserId: loser.id,
         survived: false, // finale bang on loser
       });
-      // Force bang on loser
       void finale;
 
       const embed = brandEmbed("🔫 Live Duel — Result", [
@@ -262,10 +268,18 @@ export async function handleRussianComponent(interaction: ButtonInteraction): Pr
         `Cash **${fmtCash(bal.cash)}** · bank **${fmtCash(bal.bank)}** ${bal.symbol}`,
       ].join("\n"));
       if (imageName) embed.setImage(`attachment://${imageName}`);
-      await interaction.editReply({ embeds: [embed], files });
-      await postAsUnbelievaBoat(interaction, { embeds: [embed], files });
+      await interaction.editReply({ embeds: [embed], files, components: [] });
     } catch (err) {
-      await interaction.editReply(err instanceof CashError ? err.message : `Failed: ${err instanceof Error ? err.message : err}`);
+      await interaction.followUp({
+        content: err instanceof CashError ? err.message : `Failed: ${err instanceof Error ? err.message : err}`,
+        ...EPHEMERAL,
+      }).catch(() => {});
+      await interaction.editReply({
+        content: "Duel failed — check balances if a stake was taken.",
+        embeds: [],
+        components: [],
+        files: [],
+      }).catch(() => {});
     }
     return true;
   }

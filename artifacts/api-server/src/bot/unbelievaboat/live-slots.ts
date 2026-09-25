@@ -1,5 +1,9 @@
-// Live Las Vegas slots — insert coins, set BET ×1–×5, pull the lever.
-// Credits stay on the machine; cash then bank fund inserts; hard-stop when broke.
+// Mini Vegas slots — simple credit machine.
+// 1) Buy credits with UB (what you type = credits on the machine)
+// 2) Pick BET (how much to risk per spin)
+// 3) SPIN until empty — wins stay on the machine as credits
+// 4) Cash out moves leftover credits back to UB cash
+// 5) + Add more buys more credits anytime
 
 import type {
   ChatInputCommandInteraction,
@@ -32,23 +36,25 @@ import {
 
 const EPHEMERAL = { flags: MessageFlags.Ephemeral } as const;
 
+const MIN_BUY = 10;
+const MAX_BUY = 5_000;
+const MIN_BET = 10;
+
 export const RESPONSIBLE_PLAY =
   "Fun with UnbelievaBoat server cash only — not real-money gambling. Winners do not receive real currency.";
 
 type SlotsSession = {
   guildId: string;
   userId: string;
-  /** Denomination of one coin (server currency units). */
-  coinValue: number;
-  /** Coins sitting in the machine (already paid). */
+  /** Credits on the machine (1 credit = 1 UB unit). Wins add here; cash-out pays this back. */
   credits: number;
-  /** Credits staked per spin (1–5). */
-  betMult: number;
+  /** Stake per spin (taken from credits). */
+  bet: number;
   spins: number;
+  /** Session P/L in UB units (buy-ins negative, cash-out tracked separately). */
   net: number;
   expires: number;
   symbol: string;
-  /** Last known wallet totals for button gating. */
   cash: number;
   bank: number;
 };
@@ -75,15 +81,60 @@ async function assertGamesOn(guildId: string) {
   if (!s.gamesEnabled) throw new CashError("UnbelievaBoat mini-games are disabled on this server.");
 }
 
-function stakeOf(session: SlotsSession): number {
-  return session.coinValue * session.betMult;
+/** Up to 5 simple stake choices from what's on the machine. */
+export function betPresets(credits: number): number[] {
+  if (credits < MIN_BET) return [MIN_BET];
+  const raw = [
+    MIN_BET,
+    Math.min(credits, 50),
+    Math.min(credits, 100),
+    Math.min(credits, 500),
+    Math.min(credits, 1_000),
+    Math.min(credits, Math.max(MIN_BET, Math.floor(credits * 0.1))),
+    credits, // MAX
+  ];
+  const uniq = [...new Set(raw.map((n) => Math.max(MIN_BET, Math.floor(n))))]
+    .filter((n) => n <= credits)
+    .sort((a, b) => a - b);
+  if (uniq.length <= 5) return uniq;
+  // Keep min, a couple mids, near-max, and MAX
+  return [uniq[0]!, uniq[1]!, uniq[Math.floor(uniq.length / 2)]!, uniq[uniq.length - 2]!, uniq[uniq.length - 1]!];
+}
+
+function defaultBet(credits: number): number {
+  const presets = betPresets(credits);
+  // Prefer ~10% of buy-in, else lowest preset
+  const prefer = Math.min(credits, Math.max(MIN_BET, Math.floor(credits * 0.1)));
+  return presets.find((p) => p >= prefer) ?? presets[0] ?? MIN_BET;
+}
+
+function clampBet(session: SlotsSession) {
+  if (session.credits < MIN_BET) {
+    session.bet = MIN_BET;
+    return;
+  }
+  const presets = betPresets(session.credits);
+  if (!presets.includes(session.bet)) {
+    session.bet = presets.find((p) => p <= session.credits) ?? presets[0]!;
+  }
+  session.bet = Math.min(session.bet, session.credits);
+}
+
+function sessionStatus(session: SlotsSession): string {
+  const wallet = session.cash + session.bank;
+  return [
+    `**CREDITS** ${fmtCash(session.credits)} ${session.symbol}  ·  **BET** ${fmtCash(session.bet)} ${session.symbol}/spin`,
+    `_Credits stay on the machine. Wins add credits. **Cash out** sends them to your UB wallet._`,
+    `Wallet: cash **${fmtCash(session.cash)}** · bank **${fmtCash(session.bank)}** ${session.symbol}` +
+      (wallet < MIN_BUY ? ` — _too low to top up_` : ` — top-ups take **cash first, then bank**`),
+    `Spins **${session.spins}** · session net **${session.net >= 0 ? "+" : ""}${fmtCash(session.net)}**`,
+  ].join("\n");
 }
 
 function machineButtons(session: SlotsSession, opts: { busy?: boolean } = {}) {
   const uid = session.userId;
-  const total = session.cash + session.bank;
-  const canInsert = (n: number) => !opts.busy && total >= session.coinValue * n;
-  const canSpin = !opts.busy && session.credits >= session.betMult;
+  const canSpin = !opts.busy && session.credits >= session.bet && session.bet >= MIN_BET;
+  const canTopUp = !opts.busy && (session.cash + session.bank) >= MIN_BUY;
 
   if (opts.busy) {
     return [
@@ -97,57 +148,40 @@ function machineButtons(session: SlotsSession, opts: { busy?: boolean } = {}) {
     ];
   }
 
-  const insertRow = new ActionRowBuilder<ButtonBuilder>();
-  for (const n of [1, 2, 3, 4, 5] as const) {
-    insertRow.addComponents(
-      new ButtonBuilder()
-        .setCustomId(`unbgame:slots:insert:${n}:${uid}`)
-        .setLabel(`+${n} coin${n === 1 ? "" : "s"}`)
-        .setEmoji("🪙")
-        .setStyle(ButtonStyle.Primary)
-        .setDisabled(!canInsert(n)),
-    );
-  }
-
+  const presets = betPresets(session.credits);
   const betRow = new ActionRowBuilder<ButtonBuilder>();
-  for (const m of [1, 2, 3, 4, 5] as const) {
-    const selected = session.betMult === m;
+  for (const amount of presets) {
+    const selected = session.bet === amount;
+    const isMax = amount === session.credits && session.credits > MIN_BET;
     betRow.addComponents(
       new ButtonBuilder()
-        .setCustomId(`unbgame:slots:bet:${m}:${uid}`)
-        .setLabel(selected ? `● BET ×${m}` : `BET ×${m}`)
+        .setCustomId(`unbgame:slots:bet:${amount}:${uid}`)
+        .setLabel(selected ? `● ${isMax ? "MAX" : fmtCash(amount)}` : (isMax ? "MAX" : fmtCash(amount)))
         .setStyle(selected ? ButtonStyle.Success : ButtonStyle.Secondary)
-        .setDisabled(opts.busy),
+        .setDisabled(session.credits < MIN_BET),
     );
   }
 
   const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId(`unbgame:slots:spin:${uid}`)
-      .setLabel(canSpin ? "SPIN" : "Need credits")
+      .setLabel(canSpin ? "SPIN" : (session.credits < MIN_BET ? "Empty — add credits" : "SPIN"))
       .setEmoji("🕹️")
       .setStyle(ButtonStyle.Danger)
       .setDisabled(!canSpin),
     new ButtonBuilder()
-      .setCustomId(`unbgame:slots:coin:${uid}`)
-      .setLabel("Coin value")
-      .setStyle(ButtonStyle.Secondary),
+      .setCustomId(`unbgame:slots:add:${uid}`)
+      .setLabel(canTopUp ? "+ Add credits" : "Wallet empty")
+      .setEmoji("🪙")
+      .setStyle(ButtonStyle.Primary)
+      .setDisabled(!canTopUp),
     new ButtonBuilder()
       .setCustomId(`unbgame:slots:leave:${uid}`)
-      .setLabel("Cash out / leave")
+      .setLabel("Cash out")
       .setStyle(ButtonStyle.Secondary),
   );
 
-  return [insertRow, betRow, actionRow];
-}
-
-function sessionStatus(session: SlotsSession): string {
-  const stake = stakeOf(session);
-  return [
-    `Coin **${fmtCash(session.coinValue)}** ${session.symbol} · Credits **${session.credits}** · BET **×${session.betMult}** (stake **${fmtCash(stake)}**)`,
-    `Wallet: cash **${fmtCash(session.cash)}** · bank **${fmtCash(session.bank)}** ${session.symbol}`,
-    `Spins **${session.spins}** · session net **${session.net >= 0 ? "+" : ""}${fmtCash(session.net)}**`,
-  ].join("\n");
+  return [betRow, actionRow];
 }
 
 async function refreshWallet(session: SlotsSession) {
@@ -173,15 +207,14 @@ async function renderMachine(
     reels: extra.reels ?? ["🍒", "🍋", "🔔"],
     symbol: session.symbol,
     credits: session.credits,
-    betMult: session.betMult,
-    coinValueLabel: fmtCash(session.coinValue),
+    betAmount: session.bet,
     insertCount: extra.insertCount,
     tier: extra.tier,
     payoutLabel: extra.payoutLabel,
   });
 }
 
-/** Open the live table (idle machine) after coin value is chosen — does not spend yet. */
+/** Open machine: buy-in amount becomes credits 1:1. */
 export async function handleSlots(interaction: ChatInputCommandInteraction): Promise<void> {
   if (!interaction.guildId) {
     await interaction.reply({ content: "Server only.", ...EPHEMERAL });
@@ -191,48 +224,48 @@ export async function handleSlots(interaction: ChatInputCommandInteraction): Pro
   try {
     await assertGamesOn(interaction.guildId);
     await assertGameCooldown(interaction.guildId, interaction.user.id);
-    const coinValue = interaction.options.getInteger("bet", true);
-    if (coinValue < 10 || coinValue > 50_000) {
-      await interaction.editReply("Coin value must be 10–50,000.");
+    const buyIn = interaction.options.getInteger("bet", true);
+    if (buyIn < MIN_BUY || buyIn > MAX_BUY) {
+      await interaction.editReply(`Buy credits between **${fmtCash(MIN_BUY)}** and **${fmtCash(MAX_BUY)}**.`);
       return;
     }
 
     const bal = await getCashBalance(interaction.guildId, interaction.user.id);
     const total = (bal.cash ?? 0) + (bal.bank ?? 0);
-    if (total < coinValue) {
+    if (total < buyIn) {
       await interaction.editReply(
-        `Need at least **${fmtCash(coinValue)}** ${bal.symbol} (cash+bank) to insert one coin. ` +
-        `You have **${fmtCash(total)}**.`,
+        `Need **${fmtCash(buyIn)}** ${bal.symbol} (cash+bank) to load the machine. You have **${fmtCash(total)}**.`,
       );
       return;
     }
 
     await markGameCooldown(interaction.guildId, interaction.user.id);
-    const k = key(interaction.guildId, interaction.user.id);
+    const spent = await spendFunds(interaction.guildId, interaction.user.id, buyIn, "Slots buy credits");
+
     const session: SlotsSession = {
       guildId: interaction.guildId,
       userId: interaction.user.id,
-      coinValue,
-      credits: 0,
-      betMult: 1,
+      credits: buyIn,
+      bet: defaultBet(buyIn),
       spins: 0,
-      net: 0,
+      net: -buyIn,
       expires: Date.now() + 30 * 60_000,
-      symbol: bal.symbol,
-      cash: bal.cash ?? 0,
-      bank: bal.bank ?? 0,
+      symbol: spent.balance.symbol,
+      cash: spent.balance.cash ?? 0,
+      bank: spent.balance.bank ?? 0,
     };
-    sessions.set(k, session);
+    sessions.set(key(interaction.guildId, interaction.user.id), session);
 
-    const gif = await renderMachine(session, "idle");
+    const gif = await renderMachine(session, "insert", { insertCount: 3 });
     const { files, imageName } = await attachGif(gif, "slots-idle.gif");
-    const embed = brandEmbed("🎰 Vegas Slot Machine", [
-      `${interaction.user} walks up to the machine.`,
+    const embed = brandEmbed("🎰 Vegas Slots", [
+      `${interaction.user} loaded **${fmtCash(buyIn)}** ${session.symbol} onto the machine.`,
+      formatSpendNote(spent.fromCash, spent.fromBank, session.symbol) + " _(cash first, then bank)_",
+      "",
       sessionStatus(session),
       "",
-      `Jackpot face: **${bal.symbol}${bal.symbol}${bal.symbol}**`,
-      "**Insert coins** (+1…+5) → set **BET ×1–×5** → **SPIN**.",
-      "Keep feeding until cash+bank run dry.",
+      `Max load / top-up: **${fmtCash(MAX_BUY)}** per buy. Jackpot: **${session.symbol}${session.symbol}${session.symbol}** — wins stay as credits until **Cash out**.`,
+      "Pick a **BET** → hit **SPIN**. Run dry? **+ Add credits** (same cash→bank). Wallet empty? You're done for now.",
     ].join("\n"));
     if (imageName) embed.setImage(`attachment://${imageName}`);
 
@@ -240,56 +273,55 @@ export async function handleSlots(interaction: ChatInputCommandInteraction): Pro
       embeds: [embed],
       files,
       components: machineButtons(session),
-    }, "✅ Slot machine opened as **UnbelievaBoat** — play on the floor.");
+    }, "✅ Slots opened as **UnbelievaBoat** — play on the floor.");
   } catch (err) {
     await interaction.editReply(err instanceof CashError ? err.message : `Failed: ${err instanceof Error ? err.message : err}`);
   }
 }
 
-async function runInsert(interaction: ButtonInteraction, session: SlotsSession, count: number) {
-  // Instant busy feedback — encode GIF after so the floor doesn't stutter
+async function runAddCredits(
+  interaction: ButtonInteraction | ModalSubmitInteraction,
+  session: SlotsSession,
+  amount: number,
+) {
   await interaction.editReply({ components: machineButtons(session, { busy: true }) }).catch(() => {});
 
-  const cost = session.coinValue * count;
-  const spent = await spendFunds(session.guildId, session.userId, cost, `Slots insert ×${count}`);
+  const spent = await spendFunds(session.guildId, session.userId, amount, "Slots add credits");
   session.cash = spent.balance.cash ?? 0;
   session.bank = spent.balance.bank ?? 0;
   session.symbol = spent.balance.symbol;
-  session.credits += count;
-  session.net -= cost;
+  session.credits += amount;
+  session.net -= amount;
+  clampBet(session);
   session.expires = Date.now() + 30 * 60_000;
 
-  const insertGif = await renderMachine(session, "insert", { insertCount: count });
-  const { files, imageName } = await attachGif(insertGif, "slots-insert.gif");
-  const embed = brandEmbed("🎰 Vegas Slot Machine", [
-    `${interaction.user} drops **${count}** coin${count === 1 ? "" : "s"} in the slot.`,
-    formatSpendNote(spent.fromCash, spent.fromBank, session.symbol),
+  const gif = await renderMachine(session, "insert", { insertCount: Math.min(5, Math.ceil(amount / 100)) });
+  const { files, imageName } = await attachGif(gif, "slots-add.gif");
+  const embed = brandEmbed("🎰 Vegas Slots", [
+    `${interaction.user} added **${fmtCash(amount)}** ${session.symbol} credits.`,
+    formatSpendNote(spent.fromCash, spent.fromBank, session.symbol) + " _(cash first, then bank)_",
     sessionStatus(session),
     "",
-    session.credits >= session.betMult
-      ? "Ready — hit **SPIN** or feed more coins."
-      : `Need **${session.betMult}** credit${session.betMult === 1 ? "" : "s"} for BET ×${session.betMult} — insert more.`,
+    "Pick a **BET** and hit **SPIN**.",
   ].join("\n"));
   if (imageName) embed.setImage(`attachment://${imageName}`);
-  await interaction.editReply({
-    embeds: [embed],
-    files,
-    components: machineButtons(session),
-  });
+  await interaction.editReply({ embeds: [embed], files, components: machineButtons(session) });
 }
 
 async function runSpin(interaction: ButtonInteraction, session: SlotsSession) {
-  if (session.credits < session.betMult) {
+  clampBet(session);
+  if (session.credits < session.bet || session.bet < MIN_BET) {
     throw new CashError(
-      `Not enough credits on the machine. Have **${session.credits}**, need **${session.betMult}** for BET ×${session.betMult}. Insert more coins.`,
+      session.credits < MIN_BET
+        ? `Machine is empty. Hit **+ Add credits** or **Cash out**.`
+        : `Not enough credits for this bet. Have **${fmtCash(session.credits)}**, bet **${fmtCash(session.bet)}**.`,
     );
   }
 
-  // Instant busy ack before the long encode
   await interaction.editReply({ components: machineButtons(session, { busy: true }) }).catch(() => {});
 
-  const stake = stakeOf(session);
-  session.credits -= session.betMult;
+  const stake = session.bet;
+  session.credits -= stake;
   session.spins += 1;
   session.expires = Date.now() + 30 * 60_000;
 
@@ -297,18 +329,16 @@ async function runSpin(interaction: ButtonInteraction, session: SlotsSession) {
   const scored = scoreSlotsReels(reels, session.symbol);
   const win = scored.mult > 0;
   const payout = win ? stake * scored.mult : 0;
-  await refreshWallet(session);
+
+  // Wins stay ON the machine as credits (true Vegas meter) — cash out later.
   if (payout > 0) {
-    const bal = await earnCash(session.guildId, session.userId, payout, "Live slots win");
-    session.cash = bal.cash ?? 0;
-    session.bank = bal.bank ?? 0;
-    session.symbol = bal.symbol;
+    session.credits += payout;
     session.net += payout;
   }
+  clampBet(session);
+  await refreshWallet(session);
 
-  const payoutLabel = win ? `${fmtCash(payout)} ${session.symbol} (${scored.mult}×)` : undefined;
-
-  // One GIF: slow spin → land → hopper/lose (no double-edit stutter)
+  const payoutLabel = win ? `+${fmtCash(payout)} credits (${scored.mult}×)` : undefined;
   const spinGif = await renderMachine(session, "spin", {
     reels,
     tier: scored.tier,
@@ -316,22 +346,22 @@ async function runSpin(interaction: ButtonInteraction, session: SlotsSession) {
   });
   const { files, imageName } = await attachGif(spinGif, win ? "slots-win.gif" : "slots-spin.gif");
 
-  const canAffordCoin = (session.cash + session.bank) >= session.coinValue;
-  const canSpin = session.credits >= session.betMult;
+  const canSpin = session.credits >= session.bet && session.bet >= MIN_BET;
+  const canBuy = (session.cash + session.bank) >= MIN_BUY;
   const embed = brandEmbed(
-    scored.tier === "jackpot" ? `🎰 JACKPOT ${session.symbol}` : "🎰 Vegas Slot Machine",
+    scored.tier === "jackpot" ? `🎰 JACKPOT ${session.symbol}` : "🎰 Vegas Slots",
     [
-      `${interaction.user}`,
+      `${interaction.user} bet **${fmtCash(stake)}**`,
       reels.join("  │  "),
       win
-        ? `${scored.tier === "jackpot" ? "🏆" : "🎉"} Hopper pays **+${fmtCash(payout)}** ${session.symbol} (**${scored.mult}×**)`
-        : `No line — credits spent.`,
+        ? `${scored.tier === "jackpot" ? "🏆" : "🎉"} **+${fmtCash(payout)}** credits back on the machine (**${scored.mult}×**)`
+        : `No line — lost **${fmtCash(stake)}** credits.`,
       sessionStatus(session),
       canSpin
-        ? "Hit **SPIN** again or insert more coins."
-        : canAffordCoin
-          ? `_Out of machine credits — insert more coins to keep playing._`
-          : `_Broke — cash+bank can't cover another coin. Leave the machine._`,
+        ? "Hit **SPIN** again anytime."
+        : canBuy
+          ? `_Out of credits — **+ Add credits** (cash first, then bank) or **Cash out**._`
+          : `_Out of credits and wallet is empty — **Cash out** or come back when you have more cash/bank._`,
     ].join("\n"),
   );
   if (imageName) embed.setImage(`attachment://${imageName}`);
@@ -350,8 +380,8 @@ export async function handleSlotsComponent(interaction: ButtonInteraction): Prom
   const parts = id.split(":");
   const action = parts[2]!;
 
-  // insert:N:uid | bet:N:uid | spin:uid | coin:uid | leave:uid | busy:uid
-  const ownerId = action === "insert" || action === "bet" ? parts[4]! : parts[3]!;
+  // bet:amount:uid | spin:uid | add:uid | leave:uid | busy:uid
+  const ownerId = action === "bet" ? parts[4]! : parts[3]!;
   if (interaction.user.id !== ownerId) {
     await interaction.reply({ content: "Not your machine — open `/casino` → Slots.", ...EPHEMERAL });
     return true;
@@ -362,45 +392,26 @@ export async function handleSlotsComponent(interaction: ButtonInteraction): Prom
 
   if (action === "leave") {
     const leftover = session?.credits ?? 0;
-    const coinValue = session?.coinValue ?? 0;
-    const refund = leftover * coinValue;
     sessions.delete(k);
     let note = "";
-    if (refund > 0 && session) {
+    if (leftover > 0 && session) {
       try {
-        const bal = await earnCash(session.guildId, session.userId, refund, "Slots cash-out");
-        note = ` Returned **${leftover}** credit${leftover === 1 ? "" : "s"} → **+${fmtCash(refund)}** ${bal.symbol} cash.`;
+        const bal = await earnCash(session.guildId, session.userId, leftover, "Slots cash-out");
+        note = ` Cashed out **${fmtCash(leftover)}** ${bal.symbol} → your cash.`;
       } catch {
-        note = ` Couldn't refund **${leftover}** credit${leftover === 1 ? "" : "s"} — ask an admin.`;
+        note = ` Couldn't cash out **${fmtCash(leftover)}** — ask an admin.`;
       }
+    } else {
+      note = " Machine was empty.";
     }
     await interaction.update({
-      content: `👋 Cashed out of the slot machine.${note}`,
+      content: `👋 Left the slots.${note}`,
       embeds: [],
       components: [],
       files: [],
     }).catch(async () => {
-      await interaction.reply({ content: `Left the machine.${note}`, ...EPHEMERAL });
+      await interaction.reply({ content: `Left the slots.${note}`, ...EPHEMERAL });
     });
-    return true;
-  }
-
-  if (action === "coin") {
-    const modal = new ModalBuilder()
-      .setCustomId(`unbgame:slots:modal:coin:${ownerId}`)
-      .setTitle("Change coin value")
-      .addComponents(
-        new ActionRowBuilder<TextInputBuilder>().addComponents(
-          new TextInputBuilder()
-            .setCustomId("bet")
-            .setLabel("Coin denomination (10–50,000)")
-            .setStyle(TextInputStyle.Short)
-            .setRequired(true)
-            .setMaxLength(12)
-            .setPlaceholder(session ? String(session.coinValue) : "100"),
-        ),
-      );
-    await interaction.showModal(modal);
     return true;
   }
 
@@ -415,61 +426,66 @@ export async function handleSlotsComponent(interaction: ButtonInteraction): Prom
     return true;
   }
 
+  if (action === "add") {
+    await refreshWallet(session).catch(() => null);
+    if (session.cash + session.bank < MIN_BUY) {
+      await interaction.reply({
+        content:
+          `Not enough in cash+bank to top up (need at least **${fmtCash(MIN_BUY)}** ${session.symbol}). ` +
+          `Have **${fmtCash(session.cash)}** cash + **${fmtCash(session.bank)}** bank.`,
+        ...EPHEMERAL,
+      });
+      return true;
+    }
+    const modal = new ModalBuilder()
+      .setCustomId(`unbgame:slots:modal:add:${ownerId}`)
+      .setTitle("Add credits (cash → bank)")
+      .addComponents(
+        new ActionRowBuilder<TextInputBuilder>().addComponents(
+          new TextInputBuilder()
+            .setCustomId("bet")
+            .setLabel(`Amount to add (${MIN_BUY}–${MAX_BUY})`)
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true)
+            .setMaxLength(12)
+            .setPlaceholder("e.g. 500 — paid from cash, then bank"),
+        ),
+      );
+    await interaction.showModal(modal);
+    return true;
+  }
+
   if (action === "bet") {
-    const mult = Number.parseInt(parts[3]!, 10);
-    if (![1, 2, 3, 4, 5].includes(mult)) {
-      await interaction.reply({ content: "Invalid bet multiplier.", ...EPHEMERAL });
+    const amount = Number.parseInt(parts[3]!, 10);
+    if (!Number.isFinite(amount) || amount < MIN_BET) {
+      await interaction.reply({ content: "Invalid bet.", ...EPHEMERAL });
       return true;
     }
     await interaction.deferUpdate();
-    session.betMult = mult;
+    if (amount > session.credits) {
+      await interaction.followUp({
+        content: `Bet **${fmtCash(amount)}** is more than your **${fmtCash(session.credits)}** credits.`,
+        ...EPHEMERAL,
+      }).catch(() => {});
+      return true;
+    }
+    session.bet = amount;
     session.expires = Date.now() + 30 * 60_000;
     try {
       await refreshWallet(session);
-      const gif = await renderMachine(session, "idle");
-      const { files, imageName } = await attachGif(gif, "slots-bet.gif");
-      const embed = brandEmbed("🎰 Vegas Slot Machine", [
-        `${interaction.user} sets BET **×${mult}** · stake **${fmtCash(stakeOf(session))}** ${session.symbol}`,
+      // Text-only update — skip GIF re-encode so Discord edit/rate limits stay happy
+      const embed = brandEmbed("🎰 Vegas Slots", [
+        `${interaction.user} set BET to **${fmtCash(amount)}** ${session.symbol} per spin.`,
         sessionStatus(session),
         "",
-        session.credits >= session.betMult
-          ? "Ready — hit **SPIN**."
-          : `Insert at least **${session.betMult - session.credits}** more coin${session.betMult - session.credits === 1 ? "" : "s"}.`,
+        "Hit **SPIN** — that amount comes off your credits.",
       ].join("\n"));
-      if (imageName) embed.setImage(`attachment://${imageName}`);
-      await interaction.editReply({ embeds: [embed], files, components: machineButtons(session) });
+      await interaction.editReply({ embeds: [embed], components: machineButtons(session) });
     } catch (err) {
       await interaction.followUp({
         content: err instanceof CashError ? err.message : `Failed: ${err instanceof Error ? err.message : err}`,
         ...EPHEMERAL,
       }).catch(() => {});
-    }
-    return true;
-  }
-
-  if (action === "insert") {
-    const count = Number.parseInt(parts[3]!, 10);
-    if (![1, 2, 3, 4, 5].includes(count)) {
-      await interaction.reply({ content: "Invalid insert count.", ...EPHEMERAL });
-      return true;
-    }
-    await interaction.deferUpdate();
-    try {
-      await assertGamesOn(session.guildId);
-      await refreshWallet(session);
-      const cost = session.coinValue * count;
-      if (session.cash + session.bank < cost) {
-        throw new CashError(
-          `Not enough funds to insert **${count}** coin${count === 1 ? "" : "s"}. ` +
-          `Need **${fmtCash(cost)}** ${session.symbol}, have **${fmtCash(session.cash + session.bank)}** (cash+bank).`,
-        );
-      }
-      await runInsert(interaction, session, count);
-    } catch (err) {
-      const msg = err instanceof CashError ? err.message : `Failed: ${err instanceof Error ? err.message : err}`;
-      await refreshWallet(session).catch(() => null);
-      await interaction.followUp({ content: msg, ...EPHEMERAL }).catch(() => {});
-      await interaction.editReply({ components: machineButtons(session) }).catch(() => {});
     }
     return true;
   }
@@ -492,61 +508,50 @@ export async function handleSlotsComponent(interaction: ButtonInteraction): Prom
   return false;
 }
 
+/** Add more credits while seated (or legacy coin-value modal id → treat as add). */
 export async function handleSlotsModal(interaction: ModalSubmitInteraction): Promise<boolean> {
-  if (!interaction.customId.startsWith("unbgame:slots:modal:coin:") || !interaction.guildId) return false;
-  const ownerId = interaction.customId.slice("unbgame:slots:modal:coin:".length);
+  const id = interaction.customId;
+  const isAdd = id.startsWith("unbgame:slots:modal:add:");
+  const isLegacyCoin = id.startsWith("unbgame:slots:modal:coin:");
+  if ((!isAdd && !isLegacyCoin) || !interaction.guildId) return false;
+
+  const ownerId = id.slice(isAdd ? "unbgame:slots:modal:add:".length : "unbgame:slots:modal:coin:".length);
   if (interaction.user.id !== ownerId) {
     await interaction.reply({ content: "Not your machine.", ...EPHEMERAL });
     return true;
   }
-  const coinValue = Number.parseInt(interaction.fields.getTextInputValue("bet").replace(/[,\s]/g, ""), 10);
-  if (!Number.isFinite(coinValue) || coinValue < 10 || coinValue > 50_000) {
-    await interaction.reply({ content: "Coin value must be 10–50,000.", ...EPHEMERAL });
+
+  const amount = Number.parseInt(interaction.fields.getTextInputValue("bet").replace(/[,\s]/g, ""), 10);
+  if (!Number.isFinite(amount) || amount < MIN_BUY || amount > MAX_BUY) {
+    await interaction.reply({ content: `Enter **${fmtCash(MIN_BUY)}–${fmtCash(MAX_BUY)}** to add.`, ...EPHEMERAL });
     return true;
   }
-  await interaction.deferReply({ ephemeral: true });
+
+  const k = key(interaction.guildId, ownerId);
+  const session = sessions.get(k);
+  if (!session || session.expires < Date.now()) {
+    sessions.delete(k);
+    await interaction.reply({ content: "Session expired — open `/casino` → Slots and buy in again.", ...EPHEMERAL });
+    return true;
+  }
+
+  await interaction.deferUpdate();
   try {
-    await assertGamesOn(interaction.guildId);
-    const bal = await getCashBalance(interaction.guildId, interaction.user.id);
-    if ((bal.cash ?? 0) + (bal.bank ?? 0) < coinValue) {
-      await interaction.editReply(
-        `Need at least **${fmtCash(coinValue)}** ${bal.symbol} (cash+bank) for one coin.`,
+    await assertGamesOn(session.guildId);
+    await refreshWallet(session);
+    if (session.cash + session.bank < amount) {
+      throw new CashError(
+        `Not enough cash+bank to add **${fmtCash(amount)}** ${session.symbol}. ` +
+        `Have **${fmtCash(session.cash)}** cash + **${fmtCash(session.bank)}** bank. ` +
+        `Top-ups pull **cash first, then bank**.`,
       );
-      return true;
     }
-    const k = key(interaction.guildId, ownerId);
-    const prev = sessions.get(k);
-    const session: SlotsSession = {
-      guildId: interaction.guildId,
-      userId: ownerId,
-      coinValue,
-      credits: prev?.credits ?? 0,
-      betMult: prev?.betMult ?? 1,
-      spins: prev?.spins ?? 0,
-      net: prev?.net ?? 0,
-      expires: Date.now() + 30 * 60_000,
-      symbol: bal.symbol,
-      cash: bal.cash ?? 0,
-      bank: bal.bank ?? 0,
-    };
-    sessions.set(k, session);
-    const gif = await renderMachine(session, "idle");
-    const { files, imageName } = await attachGif(gif, "slots-idle.gif");
-    const embed = brandEmbed("🎰 Vegas Slot Machine", [
-      `${interaction.user} · coin value set to **${fmtCash(coinValue)}** ${bal.symbol}`,
-      sessionStatus(session),
-      "",
-      `Jackpot face: **${bal.symbol}${bal.symbol}${bal.symbol}**`,
-      "Insert coins, set BET, then **SPIN**.",
-    ].join("\n"));
-    if (imageName) embed.setImage(`attachment://${imageName}`);
-    await openTableAsUnbelievaBoat(interaction, {
-      embeds: [embed],
-      files,
-      components: machineButtons(session),
-    }, "✅ Coin value updated — play on the floor machine.");
+    await runAddCredits(interaction, session, amount);
   } catch (err) {
-    await interaction.editReply(err instanceof CashError ? err.message : `Failed: ${err instanceof Error ? err.message : err}`);
+    const msg = err instanceof CashError ? err.message : `Failed: ${err instanceof Error ? err.message : err}`;
+    await refreshWallet(session).catch(() => null);
+    await interaction.followUp({ content: msg, ...EPHEMERAL }).catch(() => {});
+    await interaction.editReply({ components: machineButtons(session) }).catch(() => {});
   }
   return true;
 }
