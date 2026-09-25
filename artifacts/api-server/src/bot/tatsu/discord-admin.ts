@@ -204,7 +204,7 @@ async function renderLeaderboard(
     .setAuthor({ name: "Tatsu leaderboard", iconURL: TATSU_ICON })
     .setTitle(`Top scores · ${periodLabel(period)} · #${offset + 1}–${offset + Math.max(rowCount, 1)}`)
     .setDescription(desc.slice(0, 4000))
-    .setFooter({ text: `${LB_PAGE}/page (Discord embed limit) · Prune left clears ghosts via score/points remove` });
+    .setFooter({ text: `${LB_PAGE}/page · Go to rank # edits all-time · Prune uses board score` });
 
   const periodMenu = new StringSelectMenuBuilder()
     .setCustomId("tatsu:period_select")
@@ -226,6 +226,7 @@ async function renderLeaderboard(
       .setLabel(`Next ${LB_PAGE}`)
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(rowCount < LB_PAGE),
+    new ButtonBuilder().setCustomId("tatsu:goto_rank").setLabel("Go to rank #").setEmoji("🎯").setStyle(ButtonStyle.Primary),
     new ButtonBuilder().setCustomId("tatsu:prune").setLabel("Prune left").setEmoji("🧹").setStyle(ButtonStyle.Danger),
     new ButtonBuilder().setCustomId("tatsu:overview").setLabel("Home").setStyle(ButtonStyle.Primary),
   );
@@ -245,6 +246,10 @@ type GhostRow = { userId: string; rank: number; score: number };
 /** In-memory prune preview (guildId → ghosts), short-lived. */
 const prunePreview = new Map<string, { period: TatsuPeriod; ghosts: GhostRow[]; expires: number }>();
 
+/** Board scores for leavers — member APIs often return 0 while the all-time board still lists them. */
+const editBoardCtx = new Map<string, { userId: string; boardRank: number; boardScore: number; expires: number }>();
+function editCtxKey(guildId: string, userId: string) { return `${guildId}:${userId}`; }
+
 async function memberStillHere(guild: NonNullable<ButtonInteraction["guild"]>, userId: string): Promise<boolean> {
   if (guild.members.cache.has(userId)) return true;
   try {
@@ -255,31 +260,97 @@ async function memberStillHere(guild: NonNullable<ButtonInteraction["guild"]>, u
   }
 }
 
-async function zeroOutMember(tatsuGuild: string, userId: string): Promise<{ pointsRemoved: number; scoreRemoved: number }> {
-  let pointsRemoved = 0;
-  let scoreRemoved = 0;
+/** Pull one all-time rank row (1-based). */
+async function fetchAllTimeRank(
+  tatsuGuild: string,
+  rank: number,
+): Promise<{ userId: string; rank: number; score: number } | null> {
+  if (!Number.isFinite(rank) || rank < 1) return null;
+  const offset = Math.floor((rank - 1) / 100) * 100;
+  const board = await tatsuApi.getGuildRankings(tatsuGuild, "all", offset);
+  const rows = board.rankings ?? [];
+  const hit = rows.find(r => r.rank === rank) ?? rows[rank - 1 - offset];
+  if (!hit) return null;
+  return { userId: hit.user_id, rank: hit.rank, score: hit.score };
+}
+
+/** Scan all-time board pages for a user id (rate-limit aware, capped). */
+async function findUserOnAllTimeBoard(
+  tatsuGuild: string,
+  userId: string,
+  maxPages = 8,
+): Promise<{ userId: string; rank: number; score: number } | null> {
+  for (let page = 0; page < maxPages; page++) {
+    const board = await tatsuApi.getGuildRankings(tatsuGuild, "all", page * 100);
+    const rows = board.rankings ?? [];
+    const hit = rows.find(r => r.user_id === userId);
+    if (hit) return { userId: hit.user_id, rank: hit.rank, score: hit.score };
+    if (rows.length < 100) break;
+  }
+  return null;
+}
+
+/**
+ * Zero points/score. Prefer board-known amounts — member GET often returns 0 for
+ * leavers who still appear on the all-time leaderboard.
+ */
+async function zeroOutMember(
+  tatsuGuild: string,
+  userId: string,
+  hints?: { score?: number; points?: number },
+): Promise<{ pointsRemoved: number; scoreRemoved: number; note: string }> {
+  let pointsTarget = Math.max(0, Math.floor(hints?.points ?? 0));
+  let scoreTarget = Math.max(0, Math.floor(hints?.score ?? 0));
+  const notes: string[] = [];
+
   try {
     const pts = await tatsuApi.getMemberPoints(tatsuGuild, userId);
-    if (pts.points > 0) {
-      await tatsuApi.modifyPointsChunked(tatsuGuild, userId, pts.points, 1);
-      pointsRemoved = pts.points;
-    }
-  } catch { /* may 404 if already empty */ }
+    if (pts.points > pointsTarget) pointsTarget = pts.points;
+  } catch {
+    notes.push("points lookup skipped");
+  }
   try {
     const rank = await tatsuApi.getMemberRanking(tatsuGuild, userId, "all");
-    if (rank.score > 0) {
-      await tatsuApi.modifyScoreChunked(tatsuGuild, userId, rank.score, 1);
-      scoreRemoved = rank.score;
-    }
-  } catch { /* ignore */ }
-  return { pointsRemoved, scoreRemoved };
+    if (rank.score > scoreTarget) scoreTarget = rank.score;
+  } catch {
+    notes.push("score lookup skipped");
+  }
+
+  let pointsRemoved = 0;
+  let scoreRemoved = 0;
+  if (pointsTarget > 0) {
+    await tatsuApi.modifyPointsChunked(tatsuGuild, userId, pointsTarget, 1);
+    pointsRemoved = pointsTarget;
+  }
+  if (scoreTarget > 0) {
+    await tatsuApi.modifyScoreChunked(tatsuGuild, userId, scoreTarget, 1);
+    scoreRemoved = scoreTarget;
+  }
+  if (!pointsRemoved && !scoreRemoved) {
+    notes.push("nothing to remove (0 points & 0 score from API + board hint)");
+  }
+  return { pointsRemoved, scoreRemoved, note: notes.join("; ") };
+}
+
+function editActionSelect(userId: string) {
+  return new StringSelectMenuBuilder()
+    .setCustomId(`tatsu:edit_action:${userId}`)
+    .setPlaceholder("Choose what to edit…")
+    .addOptions(
+      { label: "Adjust points (add/remove)", value: "adjust_points", emoji: "💠" },
+      { label: "Adjust score (add/remove)", value: "adjust_score", emoji: "⭐" },
+      { label: "Zero SCORE only (clear board rank)", value: "zero_score", emoji: "🧹", description: "Uses board score if member API is 0" },
+      { label: "Zero POINTS only", value: "zero_points", emoji: "💠" },
+      { label: "Zero BOTH (points + score)", value: "zero_both", emoji: "🪓", description: "Best way to remove from leaderboard" },
+    );
 }
 
 async function showEditUserPanel(
-  interaction: ButtonInteraction | UserSelectMenuInteraction | ModalSubmitInteraction,
+  interaction: ButtonInteraction | UserSelectMenuInteraction | ModalSubmitInteraction | StringSelectMenuInteraction,
   guildId: string,
   tatsuGuild: string,
   userId: string,
+  opts?: { boardRank?: number; boardScore?: number },
 ): Promise<void> {
   const lines: string[] = [`User: <@${userId}> (\`${userId}\`)`];
   let inServer = false;
@@ -288,19 +359,48 @@ async function showEditUserPanel(
     lines.push(`In this server: **${inServer ? "yes" : "no — left / never joined"}**`);
   }
 
+  let boardRank = opts?.boardRank;
+  let boardScore = opts?.boardScore;
+
+  // If we don't already have board context, search the all-time board (why leavers still show up).
+  if (isTatsuConfigured() && (boardRank == null || boardScore == null)) {
+    try {
+      const onBoard = await findUserOnAllTimeBoard(tatsuGuild, userId);
+      if (onBoard) {
+        boardRank = onBoard.rank;
+        boardScore = onBoard.score;
+      }
+    } catch {
+      lines.push("Board scan: _failed (rate limit?)_");
+    }
+  }
+
+  if (boardRank != null && boardScore != null) {
+    lines.push(`**All-time board:** rank **#${boardRank}** · score **${fmt(boardScore)}** ← this is what keeps them listed`);
+    editBoardCtx.set(editCtxKey(guildId, userId), {
+      userId,
+      boardRank,
+      boardScore,
+      expires: Date.now() + 15 * 60_000,
+    });
+  } else {
+    lines.push("**All-time board:** _not found in top scanned pages_ (may already be clear, or deeper than scan)");
+    editBoardCtx.delete(editCtxKey(guildId, userId));
+  }
+
   if (isTatsuConfigured()) {
     try {
       const pts = await tatsuApi.getMemberPoints(tatsuGuild, userId);
-      lines.push(`Points: **${fmt(pts.points)}** · points-rank **#${pts.rank}**`);
+      lines.push(`Member points API: **${fmt(pts.points)}** · points-rank **#${pts.rank}**`);
     } catch (err) {
-      lines.push(`Points: _${err instanceof Error ? err.message : "unavailable"}_`);
+      lines.push(`Member points API: _${err instanceof Error ? err.message : "unavailable"}_`);
     }
     for (const p of ["all", "month", "week"] as TatsuPeriod[]) {
       try {
         const r = await tatsuApi.getMemberRanking(tatsuGuild, userId, p);
-        lines.push(`Score (${periodLabel(p)}): **${fmt(r.score)}** · rank **#${r.rank}**`);
+        lines.push(`Member score API (${periodLabel(p)}): **${fmt(r.score)}** · rank **#${r.rank}**`);
       } catch {
-        lines.push(`Score (${periodLabel(p)}): _—_`);
+        lines.push(`Member score API (${periodLabel(p)}): _—_`);
       }
     }
     try {
@@ -314,24 +414,24 @@ async function showEditUserPanel(
     lines.push("_Tatsu API key not configured._");
   }
 
-  lines.push("", "Reputation cannot be edited via API. Use Adjust / Zero out for points & score.");
+  lines.push(
+    "",
+    "_If member APIs say 0 but the board still lists them, use the dropdown → **Zero SCORE** or **Zero BOTH** (uses board score)._",
+  );
 
   await interaction.editReply({
     embeds: [
       new EmbedBuilder()
         .setColor(TATSU_COLOR)
-        .setTitle("✏️ Edit Tatsu user")
+        .setTitle(boardRank != null ? `✏️ Edit · all-time #${boardRank}` : "✏️ Edit Tatsu user")
         .setDescription(lines.join("\n").slice(0, 4000)),
     ],
     components: [
-      new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder().setCustomId(`tatsu:points_for:${userId}`).setLabel("Adjust points").setEmoji("💠").setStyle(ButtonStyle.Success),
-        new ButtonBuilder().setCustomId(`tatsu:score_for:${userId}`).setLabel("Adjust score").setEmoji("⭐").setStyle(ButtonStyle.Success),
-        new ButtonBuilder().setCustomId(`tatsu:zero:${userId}`).setLabel("Zero out (clear board)").setEmoji("🧹").setStyle(ButtonStyle.Danger),
-      ),
+      new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(editActionSelect(userId)),
       new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder().setCustomId(`tatsu:edit_panel:${userId}`).setLabel("Refresh").setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId("tatsu:edit").setLabel("Pick another").setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId("tatsu:goto_rank").setLabel("Go to rank #").setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId("tatsu:leaderboard").setLabel("Leaderboard").setStyle(ButtonStyle.Secondary),
         new ButtonBuilder().setCustomId("tatsu:overview").setLabel("Home").setStyle(ButtonStyle.Primary),
       ),
     ],
@@ -690,12 +790,13 @@ export async function handleTatsuAdminComponent(
           .setTitle("✏️ Edit Tatsu user")
           .setDescription(
             [
-              "Pick a member **or** enter a raw Discord user ID (for people who left).",
+              "Pick a member, **Enter user ID**, or use **Go to rank #** on the leaderboard.",
               "",
-              "**Can edit via API:** server **points** · server **score** (add/remove).",
-              "**Cannot via API:** reputation · wipe without knowing amounts · msg-rate / persistence.",
+              "For ghosts still on the all-time board: type their rank number → dropdown → **Zero SCORE** or **Zero BOTH**.",
+              "Member APIs often show **0** for leavers even while the board still lists their score — we use the **board score** when zeroing.",
               "",
-              "After pick you’ll see live balances + quick actions.",
+              "**Can edit via API:** server points · server score.",
+              "**Cannot:** reputation · true wipe without remove amounts.",
             ].join("\n"),
           ),
       ],
@@ -703,6 +804,7 @@ export async function handleTatsuAdminComponent(
         new ActionRowBuilder<UserSelectMenuBuilder>().addComponents(pick),
         new ActionRowBuilder<ButtonBuilder>().addComponents(
           new ButtonBuilder().setCustomId("tatsu:edit_by_id").setLabel("Enter user ID").setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder().setCustomId("tatsu:goto_rank").setLabel("Go to rank #").setEmoji("🎯").setStyle(ButtonStyle.Primary),
           new ButtonBuilder().setCustomId("tatsu:overview").setLabel("Home").setStyle(ButtonStyle.Primary),
         ),
       ],
@@ -733,7 +835,158 @@ export async function handleTatsuAdminComponent(
   if (id.startsWith("tatsu:edit_panel:") && interaction.isButton()) {
     await interaction.deferUpdate();
     const userId = id.slice("tatsu:edit_panel:".length);
-    await showEditUserPanel(interaction, guildId, tatsuGuild, userId);
+    const ctx = editBoardCtx.get(editCtxKey(guildId, userId));
+    const board = ctx && ctx.expires > Date.now()
+      ? { boardRank: ctx.boardRank, boardScore: ctx.boardScore }
+      : undefined;
+    await showEditUserPanel(interaction, guildId, tatsuGuild, userId, board);
+    return;
+  }
+
+  if (id === "tatsu:goto_rank" && interaction.isButton()) {
+    const modal = new ModalBuilder()
+      .setCustomId("tatsu:goto_rank_modal")
+      .setTitle("All-time leaderboard rank")
+      .addComponents(
+        new ActionRowBuilder<TextInputBuilder>().addComponents(
+          new TextInputBuilder()
+            .setCustomId("rank")
+            .setLabel("Rank number (all-time only)")
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true)
+            .setPlaceholder("e.g. 1  ·  47  ·  120"),
+        ),
+      );
+    await interaction.showModal(modal);
+    return;
+  }
+
+  if (id.startsWith("tatsu:edit_action:") && interaction.isStringSelectMenu()) {
+    const userId = id.slice("tatsu:edit_action:".length);
+    const choice = interaction.values[0]!;
+    const ctx = editBoardCtx.get(editCtxKey(guildId, userId));
+    const boardScore = ctx && ctx.expires > Date.now() ? ctx.boardScore : undefined;
+
+    if (choice === "adjust_points") {
+      const modal = new ModalBuilder()
+        .setCustomId(`tatsu:points_modal:${userId}`)
+        .setTitle("Adjust Tatsu points")
+        .addComponents(
+          new ActionRowBuilder<TextInputBuilder>().addComponents(
+            new TextInputBuilder().setCustomId("action").setLabel("Action: add or remove").setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder("remove"),
+          ),
+          new ActionRowBuilder<TextInputBuilder>().addComponents(
+            new TextInputBuilder().setCustomId("amount").setLabel("Amount (1+)").setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder("1000"),
+          ),
+          new ActionRowBuilder<TextInputBuilder>().addComponents(
+            new TextInputBuilder().setCustomId("reason").setLabel("Reason (optional)").setStyle(TextInputStyle.Short).setRequired(false),
+          ),
+        );
+      await interaction.showModal(modal);
+      return;
+    }
+    if (choice === "adjust_score") {
+      const modal = new ModalBuilder()
+        .setCustomId(`tatsu:score_modal:${userId}`)
+        .setTitle("Adjust Tatsu score")
+        .addComponents(
+          new ActionRowBuilder<TextInputBuilder>().addComponents(
+            new TextInputBuilder().setCustomId("action").setLabel("Action: add or remove").setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder("remove"),
+          ),
+          new ActionRowBuilder<TextInputBuilder>().addComponents(
+            new TextInputBuilder().setCustomId("amount").setLabel(
+              boardScore != null ? `Amount (board shows ${fmt(boardScore)})` : "Amount (1+)",
+            ).setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder(boardScore != null ? String(boardScore) : "5000"),
+          ),
+          new ActionRowBuilder<TextInputBuilder>().addComponents(
+            new TextInputBuilder().setCustomId("reason").setLabel("Reason (optional)").setStyle(TextInputStyle.Short).setRequired(false),
+          ),
+        );
+      await interaction.showModal(modal);
+      return;
+    }
+
+    await interaction.deferUpdate();
+    if (!isTatsuConfigured() || !settings.enabled) {
+      await interaction.editReply({ content: "Tatsu API key missing or link disabled.", embeds: [], components: hubRows() });
+      return;
+    }
+    try {
+      let result: { pointsRemoved: number; scoreRemoved: number; note: string };
+
+      if (choice === "zero_score") {
+        let scoreTarget = boardScore ?? 0;
+        try {
+          const r = await tatsuApi.getMemberRanking(tatsuGuild, userId, "all");
+          if (r.score > scoreTarget) scoreTarget = r.score;
+        } catch { /* use board */ }
+        if (scoreTarget > 0) {
+          await tatsuApi.modifyScoreChunked(tatsuGuild, userId, scoreTarget, 1);
+          result = {
+            pointsRemoved: 0,
+            scoreRemoved: scoreTarget,
+            note: boardScore != null ? "removed using all-time board score" : "removed using member API score",
+          };
+        } else {
+          result = { pointsRemoved: 0, scoreRemoved: 0, note: "no score to remove (board + API both 0)" };
+        }
+      } else if (choice === "zero_points") {
+        let pointsTarget = 0;
+        try {
+          const p = await tatsuApi.getMemberPoints(tatsuGuild, userId);
+          pointsTarget = p.points;
+        } catch { /* */ }
+        if (pointsTarget > 0) {
+          await tatsuApi.modifyPointsChunked(tatsuGuild, userId, pointsTarget, 1);
+          result = { pointsRemoved: pointsTarget, scoreRemoved: 0, note: "" };
+        } else {
+          result = { pointsRemoved: 0, scoreRemoved: 0, note: "no points to remove" };
+        }
+      } else if (choice === "zero_both") {
+        result = await zeroOutMember(tatsuGuild, userId, { score: boardScore });
+      } else {
+        result = { pointsRemoved: 0, scoreRemoved: 0, note: "unknown action" };
+      }
+
+      await writeTatsuAudit({
+        guildId,
+        actorId: interaction.user.id,
+        targetUserId: userId,
+        action: choice,
+        detail: { ...result, boardScore },
+      });
+      editBoardCtx.delete(editCtxKey(guildId, userId));
+      await interaction.editReply({
+        embeds: [
+          new EmbedBuilder()
+            .setColor(TATSU_COLOR)
+            .setTitle("🧹 Edit applied")
+            .setDescription(
+              [
+                `<@${userId}> (\`${userId}\`)`,
+                `−**${fmt(result.pointsRemoved)}** points · −**${fmt(result.scoreRemoved)}** score`,
+                result.note ? `_${result.note}_` : null,
+                "",
+                "Re-open **Go to rank #** or **Leaderboard** to verify (Tatsu may lag a few seconds).",
+              ].filter(Boolean).join("\n"),
+            ),
+        ],
+        components: [
+          new ActionRowBuilder<ButtonBuilder>().addComponents(
+            new ButtonBuilder().setCustomId("tatsu:goto_rank").setLabel("Go to rank #").setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setCustomId("tatsu:leaderboard").setLabel("Leaderboard").setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId(`tatsu:edit_panel:${userId}`).setLabel("Re-check user").setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId("tatsu:overview").setLabel("Home").setStyle(ButtonStyle.Primary),
+          ),
+        ],
+      });
+    } catch (err) {
+      await interaction.editReply({
+        content: `⚠️ ${err instanceof Error ? err.message : "Edit failed"}`,
+        embeds: [],
+        components: hubRows(),
+      }).catch(() => {});
+    }
     return;
   }
 
@@ -745,7 +998,12 @@ export async function handleTatsuAdminComponent(
       return;
     }
     try {
-      const result = await zeroOutMember(tatsuGuild, userId);
+      const ctx = editBoardCtx.get(editCtxKey(guildId, userId));
+      const result = await zeroOutMember(
+        tatsuGuild,
+        userId,
+        ctx && ctx.expires > Date.now() ? { score: ctx.boardScore } : undefined,
+      );
       await writeTatsuAudit({
         guildId,
         actorId: interaction.user.id,
@@ -753,6 +1011,7 @@ export async function handleTatsuAdminComponent(
         action: "zero_out",
         detail: result,
       });
+      editBoardCtx.delete(editCtxKey(guildId, userId));
       await interaction.editReply({
         embeds: [
           new EmbedBuilder()
@@ -760,11 +1019,13 @@ export async function handleTatsuAdminComponent(
             .setTitle("🧹 Cleared from board")
             .setDescription(
               `Removed **${fmt(result.pointsRemoved)}** points and **${fmt(result.scoreRemoved)}** score from <@${userId}>.\n` +
-              `_Tatsu has no wipe endpoint — this is add/remove until balances hit ~0._`,
+              (result.note ? `_${result.note}_\n` : "") +
+              `_Tatsu has no wipe endpoint — we remove score/points until the board drops them._`,
             ),
         ],
         components: [
           new ActionRowBuilder<ButtonBuilder>().addComponents(
+            new ButtonBuilder().setCustomId("tatsu:goto_rank").setLabel("Go to rank #").setStyle(ButtonStyle.Primary),
             new ButtonBuilder().setCustomId("tatsu:leaderboard").setLabel("Leaderboard").setStyle(ButtonStyle.Secondary),
             new ButtonBuilder().setCustomId("tatsu:edit").setLabel("Edit another").setStyle(ButtonStyle.Success),
             new ButtonBuilder().setCustomId("tatsu:overview").setLabel("Home").setStyle(ButtonStyle.Primary),
@@ -904,8 +1165,11 @@ export async function handleTatsuAdminComponent(
     const results: string[] = [];
     for (const g of batch) {
       try {
-        const z = await zeroOutMember(tatsuGuild, g.userId);
-        results.push(`• <@${g.userId}> −${fmt(z.pointsRemoved)} pts · −${fmt(z.scoreRemoved)} score`);
+        const z = await zeroOutMember(tatsuGuild, g.userId, { score: g.score });
+        results.push(
+          `• <@${g.userId}> −${fmt(z.pointsRemoved)} pts · −${fmt(z.scoreRemoved)} score` +
+          (z.note ? ` (_${z.note}_)` : ""),
+        );
         await writeTatsuAudit({
           guildId,
           actorId: interaction.user.id,
@@ -1211,7 +1475,35 @@ export async function handleTatsuAdminModal(interaction: ModalSubmitInteraction)
       await interaction.editReply("Enter a valid Discord snowflake user ID.");
       return;
     }
+    // showEditUserPanel scans the all-time board so leavers still show rank/score
     await showEditUserPanel(interaction, guildId, tatsuGuild, userId);
+    return;
+  }
+
+  if (id === "tatsu:goto_rank_modal") {
+    await interaction.deferReply(EPHEMERAL);
+    if (!isTatsuConfigured() || !settings.enabled) {
+      await interaction.editReply("Tatsu API key missing or link disabled.");
+      return;
+    }
+    const rank = Math.floor(Number(interaction.fields.getTextInputValue("rank").replace(/[,\s#]/g, "")));
+    if (!Number.isFinite(rank) || rank < 1 || rank > 100_000) {
+      await interaction.editReply("Enter a valid all-time rank number (1+).");
+      return;
+    }
+    try {
+      const row = await fetchAllTimeRank(tatsuGuild, rank);
+      if (!row) {
+        await interaction.editReply(`No one at all-time rank **#${rank}** (empty slot or past the end of the board).`);
+        return;
+      }
+      await showEditUserPanel(interaction, guildId, tatsuGuild, row.userId, {
+        boardRank: row.rank,
+        boardScore: row.score,
+      });
+    } catch (err) {
+      await interaction.editReply(`⚠️ ${err instanceof Error ? err.message : "Rank lookup failed"}`);
+    }
     return;
   }
 

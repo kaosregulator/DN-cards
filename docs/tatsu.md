@@ -71,8 +71,9 @@ Administrator-only, ephemeral. Same spirit as `/unbelievaboat`, without games/st
 | --- | --- |
 | **Overview** | Key status, period, log channel, watchlist size, live top probe |
 | **Leaderboard** | Paginated score board (20/page — Discord embed limit; all/month/week) |
-| **Prune left** | Find board accounts no longer in the Discord server; zero their points/score |
-| **Edit user** | Live lookup + adjust points/score + zero-out (supports raw user ID for leavers) |
+| **Go to rank #** | Type an all-time rank → open that user (in or out of server) + edit dropdown |
+| **Prune left** | Find board accounts no longer in Discord; zero using **board score** (member API often lies at 0) |
+| **Edit user** | Live lookup + board scan + adjust/zero dropdown (supports raw user ID) |
 | **Lookup user** | Points + all/month/week score ranks + global profile |
 | **Adjust points / score** | Add or remove (chunked); member pick or user ID |
 | **Strip spam** | Bulk remove points + score, auto-watchlist |
