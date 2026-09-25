@@ -14,21 +14,25 @@ Casino vault:
 | `/casino withdraw amount:` | Bank → cash |
 | `/casino balance` | Wallet view |
 
-## Cooldowns
+## Cooldowns + payouts (Casino station)
 
-UnbelievaBoat’s Discord `set-cooldown` / `set-game-cooldown` settings are **not** on their public REST API. We mirror FAQ defaults in `/unbelievaboat` → **Cooldowns** (editable):
+UnbelievaBoat’s Discord `set-cooldown` / `set-game-cooldown` settings are **not** on their public REST API. Configure **ours** in `/unbelievaboat` → **Casino station**:
 
-| Kind | Default |
-| --- | --- |
-| Cash Check-In (`/casino daily`) | 20h |
-| Role collect (`/casino collect`) | 24h |
-| Work / Crime / Beg | 4h |
-| Rob | 24h |
-| Games | 4 plays / 5 minutes |
+| Command | Default CD | Default payout |
+| --- | --- | --- |
+| Cash Check-In (`/daily_ub`) | 20h | 100–250 |
+| Role collect | 24h | perk `income_amount` |
+| Work | 4h | 20–250 |
+| Crime | 4h | win 250–700 · 55% fail · fine ≥10 (1–2% wallet) |
+| Beg | 4h | 55% pity · 15–104 |
+| Rob | 24h | 40% success · steal 25–500 · fail fine 50–199 |
+| Games (BJ/slots/…) | 4 plays / 5 min | bet multipliers (unchanged) |
+
+Pick a command in the dropdown → edit cooldown (seconds) and payout fields. **Reset all defaults** restores factory values.
 
 ## Discord dashboard — `/unbelievaboat`
 
-Leaderboard · adjust/set cash · toggles · add perk (with **collect income**) · cooldowns · **log channel** · **rob immunity roles** · pets tools.
+Leaderboard · adjust/set cash · toggles · add perk (with **collect income**) · **Casino station** (cooldowns + payouts) · **log channel** · **rob immunity roles** · pets tools.
 
 ## Player hub — `/casino`
 
@@ -64,7 +68,7 @@ Floor webhooks append `_▶️ Run \`/…_ub\` · all tables: \`/casino\`` so by
 ## Schema
 
 `ub_settings` · `ub_game_state` · `ub_role_links` · `ub_store_catalog` · `ub_audit_log`
-(plus columns like `log_channel_id`, `rob_immune_role_ids`, `cooldowns`, `income_amount`).
+(plus columns like `log_channel_id`, `rob_immune_role_ids`, `cooldowns`, `payouts`, `daily_min`/`daily_max`).
 
 On Railway, `start-production.mjs` + boot migrations `CREATE TABLE IF NOT EXISTS` these
 on every redeploy when drizzle push is skipped — no manual push needed. See `docs/railway.md`.

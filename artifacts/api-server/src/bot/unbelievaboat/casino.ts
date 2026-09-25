@@ -581,9 +581,9 @@ export async function handleAnimatedDaily(interaction: ChatInputCommandInteracti
     const prev = state.lastDailyAt?.getTime() ?? 0;
     const cds = await getGuildCooldowns(interaction.guildId!);
     const streak = prev && now - prev < cds.dailySec * 1000 * 2 ? (state.dailyStreak || 0) + 1 : 1;
-    const lo = Math.min(settings.dailyMin, settings.dailyMax);
-    const hi = Math.max(settings.dailyMin, settings.dailyMax);
-    const amount = lo + Math.floor(Math.random() * (hi - lo + 1));
+    const { getGuildPayouts, rollRange } = await import("./payouts.js");
+    const pay = await getGuildPayouts(interaction.guildId!);
+    const amount = rollRange(pay.dailyMin, pay.dailyMax);
     const bal = await earnCash(interaction.guildId!, interaction.user.id, amount, "Cash Check-In");
     await markIncomeCooldown(interaction.guildId!, interaction.user.id, "daily");
     await touchGameState(interaction.guildId!, interaction.user.id, { dailyStreak: streak });

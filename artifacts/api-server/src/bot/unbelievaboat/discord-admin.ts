@@ -75,7 +75,7 @@ function hubRows() {
       new ButtonBuilder().setCustomId("ubadmin:adjust").setLabel("Adjust cash").setEmoji("✏️").setStyle(ButtonStyle.Success),
       new ButtonBuilder().setCustomId("ubadmin:set_cash").setLabel("Set cash").setEmoji("🔢").setStyle(ButtonStyle.Success),
       new ButtonBuilder().setCustomId("ubadmin:add_perk").setLabel("Add perk").setEmoji("✨").setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId("ubadmin:cooldowns").setLabel("Cooldowns").setEmoji("⏱️").setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId("ubadmin:casino_station").setLabel("Casino station").setEmoji("🎰").setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId("ubadmin:pet_tools").setLabel("Pet tools").setEmoji("🛠️").setStyle(ButtonStyle.Secondary),
     ),
     new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -87,6 +87,80 @@ function hubRows() {
 
 function fmt(n: number) {
   return new Intl.NumberFormat().format(n);
+}
+
+function numField(id: string, label: string, value: number) {
+  return new ActionRowBuilder<TextInputBuilder>().addComponents(
+    new TextInputBuilder()
+      .setCustomId(id)
+      .setLabel(label.slice(0, 45))
+      .setStyle(TextInputStyle.Short)
+      .setRequired(true)
+      .setValue(String(value)),
+  );
+}
+
+function parseNonNeg(raw: string, label: string): number {
+  const n = Number(String(raw).trim().replace(/,/g, ""));
+  if (!Number.isFinite(n) || n < 0) throw new Error(`${label} must be a non-negative number.`);
+  return Math.floor(n);
+}
+
+async function buildCasinoStation(guildId: string, notice?: string): Promise<{
+  embeds: EmbedBuilder[];
+  components: ActionRowBuilder<ButtonBuilder | StringSelectMenuBuilder>[];
+}> {
+  const { readCooldowns, DEFAULT_COOLDOWNS, cdText } = await import("./cooldowns.js");
+  const { readPayouts, DEFAULT_PAYOUTS } = await import("./payouts.js");
+  const s = await getOrCreateUbSettings(guildId);
+  const cds = readCooldowns(s);
+  const pay = readPayouts(s);
+  const embed = new EmbedBuilder()
+    .setColor(0xe91e8c)
+    .setAuthor({ name: "UnbelievaBoat casino station", iconURL: UB_ICON })
+    .setTitle("Cooldowns + payouts")
+    .setDescription(
+      [
+        notice ? `${notice}\n` : "",
+        "_Webhook floor commands (`*_ub` / `/casino`). UB’s own Discord cooldowns are **not** on their API — these are ours._",
+        "",
+        `**Daily** · CD ${cdText(cds.dailySec * 1000)} · payout **${fmt(pay.dailyMin)}–${fmt(pay.dailyMax)}**`,
+        `**Collect** · CD ${cdText(cds.collectSec * 1000)} · payout = perk incomes`,
+        `**Work** · CD ${cdText(cds.workSec * 1000)} · **${fmt(pay.workMin)}–${fmt(pay.workMax)}**`,
+        `**Crime** · CD ${cdText(cds.crimeSec * 1000)} · win **${fmt(pay.crimeWinMin)}–${fmt(pay.crimeWinMax)}** · fail ${pay.crimeFailChancePct}% · fine ≥${fmt(pay.crimeFineMin)} (${pay.crimeFineWalletPctMin}–${pay.crimeFineWalletPctMax}% wallet)`,
+        `**Beg** · CD ${cdText(cds.begSec * 1000)} · pity ${pay.begChancePct}% · **${fmt(pay.begMin)}–${fmt(pay.begMax)}**`,
+        `**Rob** · CD ${cdText(cds.robSec * 1000)} · success ${pay.robSuccessChancePct}% · steal **${fmt(pay.robStealMin)}–${fmt(pay.robStealCap)}** (${pay.robStealCashPct}% cash) · fail fine **${fmt(pay.robFailFineMin)}–${fmt(pay.robFailFineMax)}**`,
+        `**Games** · **${cds.gameUses}** plays / ${cdText(cds.gameWindowSec * 1000)} · gap ${cds.gameGapSec}s`,
+        "",
+        `Defaults: daily ${DEFAULT_PAYOUTS.dailyMin}–${DEFAULT_PAYOUTS.dailyMax} · work/crime/beg ${cdText(DEFAULT_COOLDOWNS.workSec * 1000)} · rob/collect ${cdText(DEFAULT_COOLDOWNS.robSec * 1000)}`,
+      ].filter(Boolean).join("\n"),
+    );
+
+  const pick = new StringSelectMenuBuilder()
+    .setCustomId("ubadmin:station_pick")
+    .setPlaceholder("Edit a command…")
+    .addOptions(
+      { label: "Daily (check-in)", value: "daily", description: "Cooldown + payout range", emoji: "📅" },
+      { label: "Collect (role income)", value: "collect", description: "Cooldown only", emoji: "🏦" },
+      { label: "Work", value: "work", description: "Cooldown + payout range", emoji: "🛠️" },
+      { label: "Crime", value: "crime", description: "Cooldown + win/fail payouts", emoji: "🕵️" },
+      { label: "Beg", value: "beg", description: "Cooldown + pity chance/payout", emoji: "🙏" },
+      { label: "Rob", value: "rob", description: "Cooldown + steal/fine", emoji: "🔫" },
+      { label: "Games (BJ/slots/…)", value: "games", description: "Plays per window + gap", emoji: "🎲" },
+    );
+
+  const actions = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId("ubadmin:station_reset").setLabel("Reset all defaults").setStyle(ButtonStyle.Danger),
+  );
+
+  return {
+    embeds: [embed],
+    components: [
+      new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(pick),
+      actions,
+      ...hubRows(),
+    ],
+  };
 }
 
 async function buildOverviewEmbed(guildId: string): Promise<EmbedBuilder> {
@@ -113,7 +187,7 @@ async function buildOverviewEmbed(guildId: string): Promise<EmbedBuilder> {
         `UnbelievaBoat API link: **${settings.enabled ? "on" : "off"}**`,
         `Pets spend cash: **${settings.petsSpendUb ? "on" : "off"}**`,
         `Mini-games: **${settings.gamesEnabled !== false ? "on" : "off"}** · Perk store: **${settings.storeEnabled !== false ? "on" : "off"}**`,
-        `Cash Check-In range: **${settings.dailyMin ?? 100}–${settings.dailyMax ?? 250}**`,
+        `Cash Check-In range: **${settings.dailyMin ?? 100}–${settings.dailyMax ?? 250}** _(edit in Casino station)_`,
         `Leaderboard sort: **${settings.leaderboardSort}**`,
         `Log channel: **${settings.logChannelId ? `<#${settings.logChannelId}>` : "not set"}**`,
         `Rob immunity roles: **${(settings.robImmuneRoleIds ?? []).length}**`,
@@ -468,84 +542,137 @@ export async function handleUbAdminComponent(
     return;
   }
 
-  if (id === "ubadmin:cooldowns" && interaction.isButton()) {
+  if (id === "ubadmin:casino_station" || id === "ubadmin:cooldowns") {
     await interaction.deferUpdate();
-    const { readCooldowns, DEFAULT_COOLDOWNS, cdText } = await import("./cooldowns.js");
-    const s = await getOrCreateUbSettings(guildId);
-    const cds = readCooldowns(s);
-    const embed = new EmbedBuilder()
-      .setColor(0xe91e8c)
-      .setAuthor({ name: "UnbelievaBoat cooldowns", iconURL: UB_ICON })
-      .setTitle("Income & game limits")
-      .setDescription(
-        [
-          "_UnbelievaBoat’s own `set-cooldown` settings are **not** on their public API — these are **our** Discord defaults (mirrored from their FAQ)._",
-          "",
-          `**Cash Check-In** · ${cdText(cds.dailySec * 1000)}`,
-          `**Role collect** · ${cdText(cds.collectSec * 1000)}`,
-          `**Work** · ${cdText(cds.workSec * 1000)}`,
-          `**Crime** · ${cdText(cds.crimeSec * 1000)}`,
-          `**Beg** · ${cdText(cds.begSec * 1000)}`,
-          `**Rob** · ${cdText(cds.robSec * 1000)}`,
-          `**Games** · **${cds.gameUses}** plays / ${cdText(cds.gameWindowSec * 1000)} (gap ${cds.gameGapSec}s)`,
-          "",
-          `Factory defaults: work/crime/beg 4h · rob/collect 1d · games ${DEFAULT_COOLDOWNS.gameUses}/${DEFAULT_COOLDOWNS.gameWindowSec}s`,
-        ].join("\n"),
-      );
-    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder().setCustomId("ubadmin:cd_edit").setLabel("Edit cooldowns").setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId("ubadmin:cd_reset").setLabel("Reset defaults").setStyle(ButtonStyle.Danger),
-    );
-    await interaction.editReply({ embeds: [embed], components: [row, ...hubRows()] });
+    const { embeds, components } = await buildCasinoStation(guildId);
+    await interaction.editReply({ embeds, components });
     return;
   }
 
-  if (id === "ubadmin:cd_reset" && interaction.isButton()) {
+  if (id === "ubadmin:station_reset" && interaction.isButton()) {
     await interaction.deferUpdate();
-    const { DEFAULT_COOLDOWNS, readCooldowns, cdText } = await import("./cooldowns.js");
-    await updateUbSettings(guildId, { cooldowns: { ...DEFAULT_COOLDOWNS } });
-    await writeUbAudit(guildId, interaction.user.id, "discord_cd_reset", {});
+    const { DEFAULT_COOLDOWNS } = await import("./cooldowns.js");
+    const { DEFAULT_PAYOUTS } = await import("./payouts.js");
+    await updateUbSettings(guildId, {
+      cooldowns: { ...DEFAULT_COOLDOWNS },
+      payouts: { ...DEFAULT_PAYOUTS },
+      dailyMin: DEFAULT_PAYOUTS.dailyMin,
+      dailyMax: DEFAULT_PAYOUTS.dailyMax,
+    });
+    await writeUbAudit(guildId, interaction.user.id, "discord_station_reset", {});
+    const { embeds, components } = await buildCasinoStation(guildId, "✅ Reset all cooldowns + payouts to factory defaults.");
+    await interaction.editReply({ embeds, components });
+    return;
+  }
+
+  if (id === "ubadmin:station_pick" && interaction.isStringSelectMenu()) {
+    const kind = interaction.values[0]!;
+    const { readCooldowns } = await import("./cooldowns.js");
+    const { readPayouts } = await import("./payouts.js");
     const s = await getOrCreateUbSettings(guildId);
     const cds = readCooldowns(s);
-    const embed = new EmbedBuilder()
-      .setColor(0xe91e8c)
-      .setAuthor({ name: "UnbelievaBoat cooldowns", iconURL: UB_ICON })
-      .setTitle("Reset to defaults")
-      .setDescription(`Games **${cds.gameUses}** / ${cdText(cds.gameWindowSec * 1000)} · work ${cdText(cds.workSec * 1000)}`);
-    await interaction.editReply({ embeds: [embed], components: hubRows() });
+    const pay = readPayouts(s);
+
+    if (kind === "daily") {
+      const modal = new ModalBuilder().setCustomId("ubadmin:station_modal:daily").setTitle("Daily — CD + payout");
+      modal.addComponents(
+        numField("cd_sec", "Cooldown (seconds)", cds.dailySec),
+        numField("min", "Payout min", pay.dailyMin),
+        numField("max", "Payout max", pay.dailyMax),
+      );
+      await interaction.showModal(modal);
+      return;
+    }
+    if (kind === "collect") {
+      const modal = new ModalBuilder().setCustomId("ubadmin:station_modal:collect").setTitle("Collect — cooldown");
+      modal.addComponents(
+        numField("cd_sec", "Cooldown (seconds)", cds.collectSec),
+      );
+      await interaction.showModal(modal);
+      return;
+    }
+    if (kind === "work") {
+      const modal = new ModalBuilder().setCustomId("ubadmin:station_modal:work").setTitle("Work — CD + payout");
+      modal.addComponents(
+        numField("cd_sec", "Cooldown (seconds)", cds.workSec),
+        numField("min", "Payout min", pay.workMin),
+        numField("max", "Payout max", pay.workMax),
+      );
+      await interaction.showModal(modal);
+      return;
+    }
+    if (kind === "crime") {
+      const modal = new ModalBuilder().setCustomId("ubadmin:station_modal:crime").setTitle("Crime — CD + payout");
+      modal.addComponents(
+        numField("cd_sec", "Cooldown (seconds)", cds.crimeSec),
+        numField("win_min", "Win payout min", pay.crimeWinMin),
+        numField("win_max", "Win payout max", pay.crimeWinMax),
+        numField("fail_pct", "Fail chance % (0–100)", pay.crimeFailChancePct),
+        numField("fine_min", "Fine floor (cash)", pay.crimeFineMin),
+      );
+      await interaction.showModal(modal);
+      return;
+    }
+    if (kind === "beg") {
+      const modal = new ModalBuilder().setCustomId("ubadmin:station_modal:beg").setTitle("Beg — CD + payout");
+      modal.addComponents(
+        numField("cd_sec", "Cooldown (seconds)", cds.begSec),
+        numField("chance", "Pity chance % (0–100)", pay.begChancePct),
+        numField("min", "Pity payout min", pay.begMin),
+        numField("max", "Pity payout max", pay.begMax),
+      );
+      await interaction.showModal(modal);
+      return;
+    }
+    if (kind === "rob") {
+      const modal = new ModalBuilder().setCustomId("ubadmin:station_modal:rob").setTitle("Rob — CD + steal/fine");
+      modal.addComponents(
+        numField("cd_sec", "Cooldown (seconds)", cds.robSec),
+        numField("success_pct", "Success chance % (0–100)", pay.robSuccessChancePct),
+        numField("steal_min", "Steal min", pay.robStealMin),
+        numField("steal_cap", "Steal cap", pay.robStealCap),
+        numField("fail_fine_max", `Fail fine max (min ${pay.robFailFineMin})`, pay.robFailFineMax),
+      );
+      await interaction.showModal(modal);
+      return;
+    }
+    if (kind === "games") {
+      const modal = new ModalBuilder().setCustomId("ubadmin:station_modal:games").setTitle("Games — rate limit");
+      modal.addComponents(
+        numField("uses", "Plays per window", cds.gameUses),
+        numField("window_sec", "Window (seconds)", cds.gameWindowSec),
+        numField("gap_sec", "Gap between games (seconds)", cds.gameGapSec),
+      );
+      await interaction.showModal(modal);
+      return;
+    }
+    await interaction.reply({ content: "Unknown station command.", ...EPHEMERAL });
+    return;
+  }
+
+  // Legacy aliases — keep old button IDs working if cached messages exist
+  if (id === "ubadmin:cd_reset" && interaction.isButton()) {
+    await interaction.deferUpdate();
+    const { DEFAULT_COOLDOWNS } = await import("./cooldowns.js");
+    const { DEFAULT_PAYOUTS } = await import("./payouts.js");
+    await updateUbSettings(guildId, {
+      cooldowns: { ...DEFAULT_COOLDOWNS },
+      payouts: { ...DEFAULT_PAYOUTS },
+      dailyMin: DEFAULT_PAYOUTS.dailyMin,
+      dailyMax: DEFAULT_PAYOUTS.dailyMax,
+    });
+    await writeUbAudit(guildId, interaction.user.id, "discord_cd_reset", {});
+    const { embeds, components } = await buildCasinoStation(guildId, "✅ Reset to factory defaults.");
+    await interaction.editReply({ embeds, components });
     return;
   }
 
   if (id === "ubadmin:cd_edit" && interaction.isButton()) {
-    const { readCooldowns } = await import("./cooldowns.js");
-    const s = await getOrCreateUbSettings(guildId);
-    const cds = readCooldowns(s);
-    const modal = new ModalBuilder()
-      .setCustomId("ubadmin:cd_modal")
-      .setTitle("Edit cooldowns (seconds)");
-    modal.addComponents(
-      new ActionRowBuilder<TextInputBuilder>().addComponents(
-        new TextInputBuilder().setCustomId("work").setLabel("Work cooldown (seconds)")
-          .setStyle(TextInputStyle.Short).setRequired(true).setValue(String(cds.workSec)),
-      ),
-      new ActionRowBuilder<TextInputBuilder>().addComponents(
-        new TextInputBuilder().setCustomId("crime").setLabel("Crime cooldown (seconds)")
-          .setStyle(TextInputStyle.Short).setRequired(true).setValue(String(cds.crimeSec)),
-      ),
-      new ActionRowBuilder<TextInputBuilder>().addComponents(
-        new TextInputBuilder().setCustomId("rob").setLabel("Rob cooldown (seconds)")
-          .setStyle(TextInputStyle.Short).setRequired(true).setValue(String(cds.robSec)),
-      ),
-      new ActionRowBuilder<TextInputBuilder>().addComponents(
-        new TextInputBuilder().setCustomId("game_uses").setLabel("Game uses per window")
-          .setStyle(TextInputStyle.Short).setRequired(true).setValue(String(cds.gameUses)),
-      ),
-      new ActionRowBuilder<TextInputBuilder>().addComponents(
-        new TextInputBuilder().setCustomId("game_window").setLabel("Game window (seconds)")
-          .setStyle(TextInputStyle.Short).setRequired(true).setValue(String(cds.gameWindowSec)),
-      ),
-    );
-    await interaction.showModal(modal);
+    // Redirect: open station picker description as ephemeral tip
+    await interaction.reply({
+      content: "Use **Casino station** → pick a command from the dropdown to edit cooldown + payout.",
+      ...EPHEMERAL,
+    });
     return;
   }
 
@@ -789,6 +916,70 @@ export async function handleUbAdminModal(interaction: ModalSubmitInteraction): P
   }
   const parts = interaction.customId.split(":");
 
+  if (parts[1] === "station_modal" && parts[2]) {
+    const kind = parts[2];
+    try {
+      await interaction.deferReply(EPHEMERAL);
+      const { readCooldowns } = await import("./cooldowns.js");
+      const { readPayouts } = await import("./payouts.js");
+      const s = await getOrCreateUbSettings(guildId);
+      const cds = { ...readCooldowns(s) };
+      const pay = { ...readPayouts(s) };
+      const field = (id: string) => interaction.fields.getTextInputValue(id);
+
+      if (kind === "daily") {
+        cds.dailySec = parseNonNeg(field("cd_sec"), "Cooldown");
+        pay.dailyMin = parseNonNeg(field("min"), "Min");
+        pay.dailyMax = Math.max(pay.dailyMin, parseNonNeg(field("max"), "Max"));
+      } else if (kind === "collect") {
+        cds.collectSec = parseNonNeg(field("cd_sec"), "Cooldown");
+      } else if (kind === "work") {
+        cds.workSec = parseNonNeg(field("cd_sec"), "Cooldown");
+        pay.workMin = parseNonNeg(field("min"), "Min");
+        pay.workMax = Math.max(pay.workMin, parseNonNeg(field("max"), "Max"));
+      } else if (kind === "crime") {
+        cds.crimeSec = parseNonNeg(field("cd_sec"), "Cooldown");
+        pay.crimeWinMin = parseNonNeg(field("win_min"), "Win min");
+        pay.crimeWinMax = Math.max(pay.crimeWinMin, parseNonNeg(field("win_max"), "Win max"));
+        pay.crimeFailChancePct = Math.min(100, parseNonNeg(field("fail_pct"), "Fail %"));
+        pay.crimeFineMin = parseNonNeg(field("fine_min"), "Fine floor");
+      } else if (kind === "beg") {
+        cds.begSec = parseNonNeg(field("cd_sec"), "Cooldown");
+        pay.begChancePct = Math.min(100, parseNonNeg(field("chance"), "Pity %"));
+        pay.begMin = parseNonNeg(field("min"), "Min");
+        pay.begMax = Math.max(pay.begMin, parseNonNeg(field("max"), "Max"));
+      } else if (kind === "rob") {
+        cds.robSec = parseNonNeg(field("cd_sec"), "Cooldown");
+        pay.robSuccessChancePct = Math.min(100, parseNonNeg(field("success_pct"), "Success %"));
+        pay.robStealMin = parseNonNeg(field("steal_min"), "Steal min");
+        pay.robStealCap = Math.max(pay.robStealMin, parseNonNeg(field("steal_cap"), "Steal cap"));
+        pay.robFailFineMax = Math.max(pay.robFailFineMin, parseNonNeg(field("fail_fine_max"), "Fail fine max"));
+      } else if (kind === "games") {
+        cds.gameUses = Math.max(1, parseNonNeg(field("uses"), "Plays"));
+        cds.gameWindowSec = Math.max(30, parseNonNeg(field("window_sec"), "Window"));
+        cds.gameGapSec = parseNonNeg(field("gap_sec"), "Gap");
+      } else {
+        await interaction.editReply("Unknown station command.");
+        return;
+      }
+
+      await updateUbSettings(guildId, {
+        cooldowns: cds,
+        payouts: pay,
+        dailyMin: pay.dailyMin,
+        dailyMax: pay.dailyMax,
+      });
+      await writeUbAudit(guildId, interaction.user.id, `discord_station_${kind}`, { cds, pay });
+      await interaction.editReply(`✅ Updated **${kind}**. Open **Casino station** again to review all values.`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed.";
+      if (interaction.deferred || interaction.replied) await interaction.editReply(`❌ ${msg}`);
+      else await interaction.reply({ content: `❌ ${msg}`, ...EPHEMERAL });
+    }
+    return;
+  }
+
+  // Legacy single-modal cooldown edit (cached messages)
   if (parts[1] === "cd_modal") {
     const work = Number(interaction.fields.getTextInputValue("work"));
     const crime = Number(interaction.fields.getTextInputValue("crime"));
@@ -818,7 +1009,7 @@ export async function handleUbAdminModal(interaction: ModalSubmitInteraction): P
     await updateUbSettings(guildId, { cooldowns: next });
     await writeUbAudit(guildId, interaction.user.id, "discord_cd_edit", next);
     await interaction.editReply(
-      `Updated cooldowns.\nWork **${next.workSec}s** · crime **${next.crimeSec}s** · rob **${next.robSec}s**\nGames **${next.gameUses}** / **${next.gameWindowSec}s**`,
+      `Updated cooldowns.\nWork **${next.workSec}s** · crime **${next.crimeSec}s** · rob **${next.robSec}s**\nGames **${next.gameUses}** / **${next.gameWindowSec}s**\n_(Prefer **Casino station** for full per-command edit.)_`,
     );
     return;
   }
