@@ -205,7 +205,22 @@ export async function handleCasinoHubComponent(
     return;
   }
   if (id === "casinohub:slots" && interaction.isButton()) {
-    await interaction.showModal(betModal("casinohub:modal:slots", "Mega Slots", "10–50,000"));
+    await interaction.showModal(
+      new ModalBuilder()
+        .setCustomId("casinohub:modal:slots")
+        .setTitle("Vegas Slots")
+        .addComponents(
+          new ActionRowBuilder<TextInputBuilder>().addComponents(
+            new TextInputBuilder()
+              .setCustomId("bet")
+              .setLabel("Coin value (10–50,000)")
+              .setStyle(TextInputStyle.Short)
+              .setRequired(true)
+              .setMaxLength(12)
+              .setPlaceholder("e.g. 100"),
+          ),
+        ),
+    );
     return;
   }
   if (id === "casinohub:blackjack" && interaction.isButton()) {
