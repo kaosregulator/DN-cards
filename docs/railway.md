@@ -70,6 +70,36 @@ After deploy, confirm logs show:
 - or later: `Quiet recording prepared` / `Quiet native voice message succeeded`
 - **not** `spawn ffmpeg ENOENT` or `relation "quiet_state" does not exist`
 
+### UnbelievaBoat + Tatsu schema (automatic on Railway)
+
+Existing Railway DBs already have `guild_settings`, so drizzle push is **skipped**.
+Addon tables are still created on every start (unless `AUTO_DB_PUSH=0`):
+
+1. `start-production.mjs` → `Ensuring UnbelievaBoat (ub_*) + Tatsu (tatsu_*) tables…`
+2. Boot migrations in the app repeat `CREATE TABLE IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS`
+
+You do **not** need to run `drizzle-kit push` or set `AUTO_DB_PUSH=1` just to pick up
+`ub_*` / `tatsu_*` after merging this branch — a normal Railway redeploy is enough.
+
+Confirm logs show:
+
+- `UnbelievaBoat + Tatsu tables ready`
+- `Boot migrations applied`
+
+### Slash commands (automatic on Railway)
+
+The bot **re-registers guild slash commands on every login** (`ClientReady` →
+`registerCommands`). That includes `/casino`, `/tatsu`, Quiet Mode, and the
+18 `*_ub` player shortcuts (`/daily_ub`, `/slots_ub`, …).
+
+No manual Discord Developer Portal step or register script is required after
+redeploy. Confirm logs show:
+
+- `Slash registration payload` with `ubSlashCount: 18` (and `chatCount` ≈ 78)
+- `Guild slash commands registered` for your `HOME_GUILD_ID`
+
+Discord’s slash picker may take a few seconds to refresh; type `/daily_ub` to verify.
+
 ## First deploy checklist
 
 1. Link Postgres → confirm `DATABASE_URL` is present on the **bot service**.
@@ -78,8 +108,10 @@ After deploy, confirm logs show:
 4. Deploy. On a **fresh** database the start path runs `drizzle-kit push-force` once, then boots.
 5. Confirm logs show:
    - `Applying database schema` / `Base schema is present` (first boot only)
+   - `Ensuring UnbelievaBoat (ub_*) + Tatsu (tatsu_*) tables…` → `… tables ready`
    - `Bot startup banner` with `processType: "deployment"` and `willLogin: true`
    - `Dex N Cards bot ready` (or your `BRAND_NAME`) with a guild count
+   - `Slash registration payload` / `Guild slash commands registered` (incl. `*_ub`)
    - `Boot migrations applied` (not failed)
    - `Session store: Postgres`
 6. **Turn off** any other process that uses the **same** bot token (old Replit deployment, local `FORCE_DISCORD_LOGIN=1`, etc.). One token = one gateway.

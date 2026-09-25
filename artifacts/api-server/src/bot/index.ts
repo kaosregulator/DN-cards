@@ -1250,11 +1250,14 @@ async function registerCommands(appId: string, token: string, client: Client) {
     .sort();
   const hubsPresent = ["trade", "vaultvalue", "cardadmin", "secret", "casino", "tatsu", "help"]
     .filter(n => chatNames.includes(n));
+  const ubSlash = chatNames.filter(n => n.endsWith("_ub"));
   const foldedStillRegistered = [...HUB_REPLACED_COMMANDS].filter(n => chatNames.includes(n));
 
   logger.info({
     chatCount: chatNames.length,
     hubsPresent,
+    ubSlashCount: ubSlash.length,
+    ubSlash,
     foldedStillRegistered,
   }, "Slash registration payload");
 
@@ -1296,7 +1299,7 @@ async function registerCommands(appId: string, token: string, client: Client) {
   }
 
   // 2) Register guild-specific only — instant effect, no 1-hour propagation.
-  // Full PUT replaces the guild command set (hubs in, folded flats out).
+  // Full PUT replaces the guild command set (hubs + *_ub shortcuts in, folded flats out).
   for (const [, guild] of client.guilds.cache) {
     await rest
       .put(Routes.applicationGuildCommands(appId, guild.id), { body: commands })
@@ -1304,6 +1307,7 @@ async function registerCommands(appId: string, token: string, client: Client) {
         guildId: guild.id,
         chatCount: chatNames.length,
         hubs: hubsPresent,
+        ubSlashCount: ubSlash.length,
       }, "Guild slash commands registered"))
       .catch(err => logger.error({ err, guildId: guild.id }, "Guild command registration failed"));
   }
