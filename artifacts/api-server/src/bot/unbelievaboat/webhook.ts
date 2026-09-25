@@ -144,3 +144,46 @@ export async function replyThenPostAsUnbelievaBoat(
     components: publicPayload.components ?? [],
   });
 }
+
+/**
+ * Open an interactive floor table as UnbelievaBoat (webhook + buttons).
+ * Private ephemeral ack; buttons live on the webhook message so later
+ * deferUpdate/editReply keeps the UnbelievaBoat author.
+ * Returns the webhook message id, or null when falling back to a public bot follow-up.
+ */
+export async function openTableAsUnbelievaBoat(
+  interaction: Interaction & {
+    deferred: boolean;
+    replied: boolean;
+    deferReply: (o?: object) => Promise<unknown>;
+    editReply: (o: object) => Promise<unknown>;
+    followUp: (o: object) => Promise<unknown>;
+    channel: Interaction["channel"];
+  },
+  publicPayload: PostAsUnbelievaBoatOpts,
+  privateAck = "✅ Opened as **UnbelievaBoat** — play on the floor message.",
+): Promise<string | null> {
+  if (!interaction.deferred && !interaction.replied) {
+    await interaction.deferReply({ ephemeral: true });
+  }
+
+  const id = await postAsUnbelievaBoat(interaction, publicPayload);
+  if (id) {
+    await interaction.editReply({ content: privateAck, embeds: [], components: [], files: [] });
+    return id;
+  }
+
+  // Webhook unavailable — public follow-up so the floor can still play.
+  await interaction.followUp({
+    embeds: publicPayload.embeds ?? [],
+    files: publicPayload.files ?? [],
+    components: publicPayload.components ?? [],
+  });
+  await interaction.editReply({
+    content: "_Webhook unavailable — table posted as bot fallback._",
+    embeds: [],
+    components: [],
+    files: [],
+  }).catch(() => {});
+  return null;
+}

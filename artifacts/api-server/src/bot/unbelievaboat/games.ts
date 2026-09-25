@@ -33,7 +33,7 @@ import {
   freshDeck, draw, cardLabel, handTotal, isNaturalBlackjack, formatHand,
   isRed, rankValue, type Card,
 } from "./cards.js";
-import { replyThenPostAsUnbelievaBoat, postAsUnbelievaBoat } from "./webhook.js";
+import { replyThenPostAsUnbelievaBoat, openTableAsUnbelievaBoat } from "./webhook.js";
 import {
   renderBegGif, renderBlackjackTableGif, renderCoinSpinGif, renderHigherLowerGif,
   renderRedBlackGif, renderRobGif, renderWorkGif,
@@ -241,6 +241,9 @@ async function finishBlackjack(
     dealer: session.dealer,
     hideDealer: false,
     revealHole: true,
+    // Player hand already dealt — stay frozen; hole flips, then extras deal
+    animatePlayerFrom: session.player.length,
+    animateDealerFrom: 2,
     banner: outcome.toUpperCase(),
   });
   const { files, imageName } = await attachGif(gif, "blackjack.gif");
@@ -261,11 +264,10 @@ async function finishBlackjack(
   );
   if (imageName) embed.setImage(`attachment://${imageName}`);
 
-  // Keep the table public — update the live hand message; optionally mirror via webhook.
+  // Update the floor table message (webhook or bot) — do not re-post as the user.
   if (interaction.deferred || interaction.replied) {
     await interaction.editReply({ embeds: [embed], files, components: [] }).catch(() => {});
   }
-  await postAsUnbelievaBoat(interaction as ChatInputCommandInteraction, { embeds: [embed], files });
 }
 
 // ── Handlers ──────────────────────────────────────────────────────────────────
@@ -328,8 +330,8 @@ export async function handleCashGamesHub(interaction: ChatInputCommandInteractio
 
 export async function handleBlackjack(interaction: ChatInputCommandInteraction): Promise<void> {
   if (!interaction.guildId) { await interaction.reply({ content: "Server only.", ...EPHEMERAL }); return; }
-  // Public table — everyone on the floor can watch the hand.
-  await interaction.deferReply();
+  // Floor table as UnbelievaBoat webhook — everyone watches under the UB name.
+  await interaction.deferReply({ ephemeral: true });
   try {
     await assertGamesOn(interaction.guildId);
     await assertGameCooldown(interaction.guildId, interaction.user.id);
@@ -354,7 +356,37 @@ export async function handleBlackjack(interaction: ChatInputCommandInteraction):
         fromCash: spent.fromCash, fromBank: spent.fromBank,
         deck, player, dealer, doubled: false, expires: Date.now() + 120_000,
       };
-      await finishBlackjack(interaction, session, true);
+      // Naturals: open floor table then finish onto it
+      const gif = await renderBlackjackTableGif({
+        player, dealer, hideDealer: false, revealHole: true, banner: "BLACKJACK",
+      });
+      const { files, imageName } = await attachGif(gif, "bj-natural.gif");
+      // Temporarily stash so finish can run after we open — finish deletes session
+      // For naturals just resolve payout inline via finish path:
+      bjSessions.set(key, session);
+      const p = handTotal(player).total;
+      const d = handTotal(dealer).total;
+      let outcome: "win" | "lose" | "push" = "lose";
+      if (isNaturalBlackjack(player) && isNaturalBlackjack(dealer)) outcome = "push";
+      else if (isNaturalBlackjack(player)) outcome = "win";
+      // Natural blackjack typically pays 3:2 — keep 2× for simplicity matching existing
+      const payout = outcome === "win" ? bet * 2 : outcome === "push" ? bet : 0;
+      let bal = spent.balance;
+      if (payout > 0) bal = await earnCash(interaction.guildId, interaction.user.id, payout, `Blackjack ${outcome}`);
+      bjSessions.delete(key);
+      const embed = brandEmbed("Blackjack — 21", [
+        `${interaction.user}`,
+        `You ${formatHand(player)} (**${p}**)`,
+        `Dealer ${formatHand(dealer)} (**${d}**)`,
+        outcome === "win"
+          ? `🎉 Blackjack! **+${fmtCash(payout)}** ${bal.symbol}`
+          : outcome === "push"
+            ? `🤝 Double blackjack — push`
+            : `💀 Dealer blackjack — lost **${fmtCash(bet)}**`,
+        formatSpendNote(spent.fromCash, spent.fromBank, bal.symbol),
+      ].join("\n"));
+      if (imageName) embed.setImage(`attachment://${imageName}`);
+      await openTableAsUnbelievaBoat(interaction, { embeds: [embed], files }, "✅ Hand posted as **UnbelievaBoat**.");
       return;
     }
 
@@ -366,7 +398,11 @@ export async function handleBlackjack(interaction: ChatInputCommandInteraction):
     bjSessions.set(key, session);
 
     const p = handTotal(player);
-    const gif = await renderBlackjackTableGif({ player, dealer, hideDealer: true });
+    const gif = await renderBlackjackTableGif({
+      player, dealer, hideDealer: true,
+      animatePlayerFrom: 0,
+      animateDealerFrom: 0,
+    });
     const { files, imageName } = await attachGif(gif, "bj-deal.gif");
     const embed = brandEmbed("Blackjack — your move", [
       `${interaction.user} · ${formatSpendNote(spent.fromCash, spent.fromBank, spent.balance.symbol)}`,
@@ -377,11 +413,11 @@ export async function handleBlackjack(interaction: ChatInputCommandInteraction):
     ].join("\n"));
     if (imageName) embed.setImage(`attachment://${imageName}`);
 
-    await interaction.editReply({
+    await openTableAsUnbelievaBoat(interaction, {
       embeds: [embed],
       files,
       components: bjButtons(interaction.user.id, true),
-    });
+    }, "✅ Blackjack table opened as **UnbelievaBoat** — play on the floor.");
   } catch (err) {
     await interaction.editReply(err instanceof CashError ? err.message : `Failed: ${err instanceof Error ? err.message : err}`);
   }
@@ -647,7 +683,15 @@ export async function handleUnbGameComponent(interaction: ButtonInteraction): Pr
         await finishBlackjack(interaction, session, true);
         return;
       }
-      const gif = await renderBlackjackTableGif({ player: session.player, dealer: session.dealer, hideDealer: true });
+      const newIdx = session.player.length - 1;
+      const gif = await renderBlackjackTableGif({
+        player: session.player,
+        dealer: session.dealer,
+        hideDealer: true,
+        // Existing cards stay frozen face-up; only the new card deals face-down → flips
+        animatePlayerFrom: newIdx,
+        animateDealerFrom: session.dealer.length,
+      });
       const { files, imageName } = await attachGif(gif, "bj-hit.gif");
       const embed = brandEmbed("Blackjack — your move", [
         `You: ${formatHand(session.player)} (**${p.total}**${p.soft ? " soft" : ""})`,

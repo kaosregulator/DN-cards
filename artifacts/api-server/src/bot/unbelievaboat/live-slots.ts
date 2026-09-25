@@ -23,7 +23,7 @@ import {
 } from "./cash.js";
 import { assertGameCooldown, markGameCooldown } from "./cooldowns.js";
 import { getOrCreateUbSettings } from "../../lib/unbelievaboat/db.js";
-import { postAsUnbelievaBoat } from "./webhook.js";
+import { openTableAsUnbelievaBoat } from "./webhook.js";
 import {
   renderLiveSlotsMachine,
   rollSlotsReels,
@@ -187,7 +187,7 @@ export async function handleSlots(interaction: ChatInputCommandInteraction): Pro
     await interaction.reply({ content: "Server only.", ...EPHEMERAL });
     return;
   }
-  await interaction.deferReply();
+  await interaction.deferReply({ ephemeral: true });
   try {
     await assertGamesOn(interaction.guildId);
     await assertGameCooldown(interaction.guildId, interaction.user.id);
@@ -230,23 +230,26 @@ export async function handleSlots(interaction: ChatInputCommandInteraction): Pro
       `${interaction.user} walks up to the machine.`,
       sessionStatus(session),
       "",
-      "**Insert coins** (+1…+5) — watch them drop in.",
-      "Set **BET ×1–×5**, then hit **SPIN**.",
-      "Keep feeding the hopper until cash+bank run dry.",
+      `Jackpot face: **${bal.symbol}${bal.symbol}${bal.symbol}**`,
+      "**Insert coins** (+1…+5) → set **BET ×1–×5** → **SPIN**.",
+      "Keep feeding until cash+bank run dry.",
     ].join("\n"));
     if (imageName) embed.setImage(`attachment://${imageName}`);
 
-    await interaction.editReply({
+    await openTableAsUnbelievaBoat(interaction, {
       embeds: [embed],
       files,
       components: machineButtons(session),
-    });
+    }, "✅ Slot machine opened as **UnbelievaBoat** — play on the floor.");
   } catch (err) {
     await interaction.editReply(err instanceof CashError ? err.message : `Failed: ${err instanceof Error ? err.message : err}`);
   }
 }
 
 async function runInsert(interaction: ButtonInteraction, session: SlotsSession, count: number) {
+  // Instant busy feedback — encode GIF after so the floor doesn't stutter
+  await interaction.editReply({ components: machineButtons(session, { busy: true }) }).catch(() => {});
+
   const cost = session.coinValue * count;
   const spent = await spendFunds(session.guildId, session.userId, cost, `Slots insert ×${count}`);
   session.cash = spent.balance.cash ?? 0;
@@ -257,23 +260,10 @@ async function runInsert(interaction: ButtonInteraction, session: SlotsSession, 
   session.expires = Date.now() + 30 * 60_000;
 
   const insertGif = await renderMachine(session, "insert", { insertCount: count });
-  const insertAttach = await attachGif(insertGif, "slots-insert.gif");
-  const inserting = brandEmbed("🎰 Inserting coins…", [
+  const { files, imageName } = await attachGif(insertGif, "slots-insert.gif");
+  const embed = brandEmbed("🎰 Vegas Slot Machine", [
     `${interaction.user} drops **${count}** coin${count === 1 ? "" : "s"} in the slot.`,
     formatSpendNote(spent.fromCash, spent.fromBank, session.symbol),
-    sessionStatus(session),
-  ].join("\n"));
-  if (insertAttach.imageName) inserting.setImage(`attachment://${insertAttach.imageName}`);
-  await interaction.editReply({
-    embeds: [inserting],
-    files: insertAttach.files,
-    components: machineButtons(session, { busy: true }),
-  });
-
-  const idleGif = await renderMachine(session, "idle");
-  const { files, imageName } = await attachGif(idleGif, "slots-ready.gif");
-  const embed = brandEmbed("🎰 Vegas Slot Machine", [
-    `${interaction.user} · **${count}** coin${count === 1 ? "" : "s"} credited.`,
     sessionStatus(session),
     "",
     session.credits >= session.betMult
@@ -295,19 +285,21 @@ async function runSpin(interaction: ButtonInteraction, session: SlotsSession) {
     );
   }
 
+  // Instant busy ack before the long encode
+  await interaction.editReply({ components: machineButtons(session, { busy: true }) }).catch(() => {});
+
   const stake = stakeOf(session);
   session.credits -= session.betMult;
   session.spins += 1;
-  // Stake already deducted at insert time; net tracks wager vs payout only for this spin's face value
   session.expires = Date.now() + 30 * 60_000;
 
   const reels = rollSlotsReels(session.symbol);
   const scored = scoreSlotsReels(reels, session.symbol);
   const win = scored.mult > 0;
   const payout = win ? stake * scored.mult : 0;
-  let bal = await refreshWallet(session);
+  await refreshWallet(session);
   if (payout > 0) {
-    bal = await earnCash(session.guildId, session.userId, payout, "Live slots win");
+    const bal = await earnCash(session.guildId, session.userId, payout, "Live slots win");
     session.cash = bal.cash ?? 0;
     session.bank = bal.bank ?? 0;
     session.symbol = bal.symbol;
@@ -316,29 +308,13 @@ async function runSpin(interaction: ButtonInteraction, session: SlotsSession) {
 
   const payoutLabel = win ? `${fmtCash(payout)} ${session.symbol} (${scored.mult}×)` : undefined;
 
+  // One GIF: slow spin → land → hopper/lose (no double-edit stutter)
   const spinGif = await renderMachine(session, "spin", {
     reels,
     tier: scored.tier,
     payoutLabel,
   });
-  const spinAttach = await attachGif(spinGif, "slots-spin.gif");
-  const spinningEmbed = brandEmbed("🎰 Spinning…", [
-    `${interaction.user} pulls the lever · **${session.betMult}** credit${session.betMult === 1 ? "" : "s"} · stake **${fmtCash(stake)}** ${session.symbol}`,
-    sessionStatus(session),
-  ].join("\n"));
-  if (spinAttach.imageName) spinningEmbed.setImage(`attachment://${spinAttach.imageName}`);
-  await interaction.editReply({
-    embeds: [spinningEmbed],
-    files: spinAttach.files,
-    components: machineButtons(session, { busy: true }),
-  });
-
-  const resultGif = await renderMachine(session, win ? "win" : "lose", {
-    reels,
-    tier: scored.tier,
-    payoutLabel,
-  });
-  const { files, imageName } = await attachGif(resultGif, win ? "slots-win.gif" : "slots-lose.gif");
+  const { files, imageName } = await attachGif(spinGif, win ? "slots-win.gif" : "slots-spin.gif");
 
   const canAffordCoin = (session.cash + session.bank) >= session.coinValue;
   const canSpin = session.credits >= session.betMult;
@@ -365,10 +341,6 @@ async function runSpin(interaction: ButtonInteraction, session: SlotsSession) {
     files,
     components: machineButtons(session),
   });
-
-  if (scored.tier === "jackpot") {
-    await postAsUnbelievaBoat(interaction, { embeds: [embed], files });
-  }
 }
 
 export async function handleSlotsComponent(interaction: ButtonInteraction): Promise<boolean> {
@@ -532,7 +504,7 @@ export async function handleSlotsModal(interaction: ModalSubmitInteraction): Pro
     await interaction.reply({ content: "Coin value must be 10–50,000.", ...EPHEMERAL });
     return true;
   }
-  await interaction.deferReply();
+  await interaction.deferReply({ ephemeral: true });
   try {
     await assertGamesOn(interaction.guildId);
     const bal = await getCashBalance(interaction.guildId, interaction.user.id);
@@ -564,14 +536,15 @@ export async function handleSlotsModal(interaction: ModalSubmitInteraction): Pro
       `${interaction.user} · coin value set to **${fmtCash(coinValue)}** ${bal.symbol}`,
       sessionStatus(session),
       "",
+      `Jackpot face: **${bal.symbol}${bal.symbol}${bal.symbol}**`,
       "Insert coins, set BET, then **SPIN**.",
     ].join("\n"));
     if (imageName) embed.setImage(`attachment://${imageName}`);
-    await interaction.editReply({
+    await openTableAsUnbelievaBoat(interaction, {
       embeds: [embed],
       files,
       components: machineButtons(session),
-    });
+    }, "✅ Coin value updated — play on the floor machine.");
   } catch (err) {
     await interaction.editReply(err instanceof CashError ? err.message : `Failed: ${err instanceof Error ? err.message : err}`);
   }

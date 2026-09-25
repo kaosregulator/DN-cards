@@ -18,7 +18,7 @@ import {
 } from "./cash.js";
 import { assertGameCooldown, markGameCooldown } from "./cooldowns.js";
 import { getOrCreateUbSettings } from "../../lib/unbelievaboat/db.js";
-import { postAsUnbelievaBoat } from "./webhook.js";
+import { openTableAsUnbelievaBoat } from "./webhook.js";
 import { renderRouletteGif } from "./render-games.js";
 import { RESPONSIBLE_PLAY } from "./live-slots.js";
 
@@ -100,7 +100,7 @@ export async function handleRoulette(interaction: ChatInputCommandInteraction): 
     await interaction.reply({ content: "Server only.", ...EPHEMERAL });
     return;
   }
-  await interaction.deferReply();
+  await interaction.deferReply({ ephemeral: true });
   try {
     await assertGamesOn(interaction.guildId);
     await assertGameCooldown(interaction.guildId, interaction.user.id);
@@ -126,10 +126,10 @@ export async function handleRoulette(interaction: ChatInputCommandInteraction): 
       session.color ? `Color locked: **${session.color}**` : "Pick a color, then **SPIN THE WHEEL**.",
       `Cash **${fmtCash(bal.cash)}** · bank **${fmtCash(bal.bank)}**`,
     ].join("\n"));
-    await interaction.editReply({
+    await openTableAsUnbelievaBoat(interaction, {
       embeds: [embed],
       components: colorButtons(interaction.user.id, session.color),
-    });
+    }, "✅ Roulette opened as **UnbelievaBoat** — play on the floor.");
   } catch (err) {
     await interaction.editReply(err instanceof CashError ? err.message : `Failed: ${err instanceof Error ? err.message : err}`);
   }
@@ -158,7 +158,6 @@ async function doSpin(interaction: ButtonInteraction, session: RouletteSession) 
   ].join("\n"));
   if (imageName) embed.setImage(`attachment://${imageName}`);
   await interaction.editReply({ embeds: [embed], files, components: againButtons(session.userId) });
-  await postAsUnbelievaBoat(interaction, { embeds: [embed], files });
   // Keep session for play-again (same bet, re-pick color)
   session.color = null;
   session.expires = Date.now() + 15 * 60_000;

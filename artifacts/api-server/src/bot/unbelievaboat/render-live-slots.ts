@@ -13,7 +13,13 @@ import { drawSparks, shakeOffset } from "../animations/particles.js";
 const W = 560;
 const H = 440;
 
-export const SLOT_POOL = ["🍒", "🍋", "🔔", "⭐", "💎", "🃏", "7️⃣"] as const;
+export const SLOT_POOL_BASE = ["🍒", "🍋", "🔔", "⭐", "💎", "🃏"] as const;
+
+/** Reel pool with server economy symbol as the jackpot face (replaces 7️⃣). */
+export function slotPool(economySymbol: string): string[] {
+  const sym = economySymbol || "💵";
+  return [...SLOT_POOL_BASE, sym];
+}
 
 export type SlotsMachineMode = "idle" | "insert" | "spin" | "win" | "lose";
 
@@ -139,12 +145,6 @@ function drawSymbolImg(
     ctx.lineTo(-8, 16); ctx.lineTo(-14, -4); ctx.closePath(); ctx.fill();
     ctx.fillStyle = "#a5f3fc";
     ctx.beginPath(); ctx.moveTo(0, -16); ctx.lineTo(6, -4); ctx.lineTo(-6, -4); ctx.closePath(); ctx.fill();
-  } else if (face === "7️⃣") {
-    ctx.fillStyle = "#111";
-    ctx.font = "bold 36px sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText("7", 0, 2);
   } else if (face === "🃏") {
     ctx.fillStyle = "#1e293b";
     roundRectPath(ctx, -14, -18, 28, 36, 4); ctx.fill();
@@ -154,8 +154,14 @@ function drawSymbolImg(
     ctx.textBaseline = "middle";
     ctx.fillText("J", 0, 0);
   } else {
-    ctx.fillStyle = "#111";
-    ctx.font = `bold ${Math.floor(size * 0.55)}px sans-serif`;
+    // Economy symbol / jackpot face — gold chip with the server currency glyph
+    ctx.fillStyle = "#f5c84c";
+    ctx.beginPath(); ctx.arc(0, 0, Math.max(14, size * 0.38), 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "#a16207";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = "#7c4a12";
+    ctx.font = `bold ${Math.max(12, Math.floor(size * 0.42))}px sans-serif`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(face.length <= 3 ? face : "★", 0, 1);
@@ -163,7 +169,7 @@ function drawSymbolImg(
   ctx.restore();
 }
 
-function machineChrome(ctx: Ctx, t: number, leverDown: number) {
+function machineChrome(ctx: Ctx, t: number, leverDown: number, economySymbol = "💵") {
   const bg = ctx.createLinearGradient(0, 0, 0, H);
   bg.addColorStop(0, "#120818");
   bg.addColorStop(1, "#06040a");
@@ -184,16 +190,16 @@ function machineChrome(ctx: Ctx, t: number, leverDown: number) {
   ctx.fillStyle = "#140810";
   ctx.fill();
 
-  // Marquee
+  // Marquee — economy symbol is the jackpot face callout
   roundRectPath(ctx, bx + 28, by + 22, bw - 56, 50, 10);
   ctx.fillStyle = "#1a0a22";
   ctx.fill();
   const pulse = 0.55 + Math.sin(t * Math.PI * 3) * 0.2;
   ctx.fillStyle = hexToRgba(0xff2244, pulse);
-  ctx.font = "italic bold 26px Georgia, serif";
+  ctx.font = "italic bold 22px Georgia, serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText("Vegas Slots", bx + bw / 2, by + 47);
+  ctx.fillText(`Vegas · ${economySymbol}`, bx + bw / 2, by + 47);
 
   // Coin slot (left of body)
   const slotX = bx - 22;
@@ -422,13 +428,15 @@ function consoleLeds(
 
 export async function renderLiveSlotsMachine(opts: SlotsMachineOpts): Promise<AnimationResult | null> {
   const faces = opts.reels ?? ["🍒", "🍋", "🔔"];
-  const pool = [...SLOT_POOL];
   const mode = opts.mode;
   const symbol = opts.symbol || "💵";
+  const pool = slotPool(symbol);
   const credits = opts.credits ?? 0;
   const betMult = opts.betMult ?? 1;
   const coinLabel = opts.coinValueLabel ?? "";
   const insertCount = opts.insertCount ?? 1;
+  // One GIF: normal-speed spin → land → long hold so you can read the line.
+  const spinShowsResult = mode === "spin" && !!opts.tier;
 
   const mod = await getCanvas();
   if (!mod) return null;
@@ -437,19 +445,20 @@ export async function renderLiveSlotsMachine(opts: SlotsMachineOpts): Promise<An
   const imgMap = await preloadSymbols(mod, needSyms);
 
   const durationMs =
-    mode === "insert" ? 2200
-      : mode === "idle" ? 2000
-        : mode === "spin" ? 4600
-          : mode === "win" ? 3800
-            : 2000;
+    mode === "insert" ? 2400
+      : mode === "idle" ? 1400
+        // ~9s with result: reels lock early, rest of GIF holds what you hit
+        : mode === "spin" ? (spinShowsResult ? 9200 : 5200)
+          : mode === "win" ? 4000
+            : 1800;
   const maxFrames =
-    mode === "spin" ? 40
-      : mode === "win" ? 34
-        : mode === "insert" ? 22
-          : 16;
+    mode === "spin" ? (spinShowsResult ? 56 : 36)
+      : mode === "win" ? 28
+        : mode === "insert" ? 20
+          : 10;
 
   const neighbors = faces.map((f) => {
-    const idx = pool.indexOf(f as typeof pool[number]);
+    const idx = pool.indexOf(f);
     if (idx < 0) {
       return [pool[0]!, f, pool[1]!] as string[];
     }
@@ -464,18 +473,18 @@ export async function renderLiveSlotsMachine(opts: SlotsMachineOpts): Promise<An
     width: W, height: H, durationMs, speed: "normal", maxFrames, quality: 14, renderScale: 0.82,
     render: async ({ ctx, t }) => {
       const leverDown =
-        mode === "spin" ? clamp01(t / 0.16)
+        mode === "spin" ? clamp01(t / 0.1)
           : mode === "idle" || mode === "insert" ? 0.04 + Math.sin(t * Math.PI * 2) * 0.02
             : 0.85;
 
       const shake =
-        mode === "spin" && t > 0.12 && t < 0.8
-          ? shakeOffset(`sp-${Math.floor(t * 36)}`, 2 * (1 - t))
+        mode === "spin" && t > 0.06 && t < 0.42
+          ? shakeOffset(`sp-${Math.floor(t * 30)}`, 1.6 * (1 - t))
           : { dx: 0, dy: 0 };
 
       ctx.save();
       ctx.translate(shake.dx, shake.dy);
-      const { bx, by, bw, bh, slotX, slotY, hopperY } = machineChrome(ctx, t, leverDown);
+      const { bx, by, bw, bh, slotX, slotY, hopperY } = machineChrome(ctx, t, leverDown, symbol);
 
       const reelY = by + 90;
       const reelH = 148;
@@ -483,8 +492,13 @@ export async function renderLiveSlotsMachine(opts: SlotsMachineOpts): Promise<An
       const gap = 10;
       const total = 3 * reelW + 2 * gap;
       const startX = bx + (bw - total) / 2;
-      const stopAt = [0.4, 0.58, 0.76];
-      const winGlow = mode === "win" && t > 0.2;
+      // Regular spin speed — lock by ~halfway so the rest holds the landed line.
+      const stopAt = spinShowsResult ? [0.22, 0.32, 0.42] : [0.4, 0.58, 0.76];
+      const lastStop = stopAt[2] ?? 0.42;
+      const landed = mode === "spin" ? t >= lastStop : mode === "win" || mode === "lose";
+      const winGlow =
+        (mode === "win" || (spinShowsResult && opts.tier !== "lose" && landed))
+        && t > lastStop + 0.04;
 
       for (let i = 0; i < 3; i++) {
         const spinning = mode === "spin" && t < (stopAt[i] ?? 0.8);
@@ -503,7 +517,6 @@ export async function renderLiveSlotsMachine(opts: SlotsMachineOpts): Promise<An
         );
       }
 
-      // Payline
       ctx.strokeStyle = "rgba(255, 68, 102, 0.55)";
       ctx.lineWidth = 2;
       ctx.beginPath();
@@ -513,14 +526,13 @@ export async function renderLiveSlotsMachine(opts: SlotsMachineOpts): Promise<An
 
       consoleLeds(ctx, bx, by, bw, bh, credits, betMult, coinLabel, symbol);
 
-      // Bottom neon plate
       roundRectPath(ctx, bx + 40, by + bh - 24, bw - 80, 18, 5);
       ctx.fillStyle = "#1a0820";
       ctx.fill();
       ctx.fillStyle = "#ff5577";
       ctx.font = "italic bold 12px Georgia, serif";
       ctx.textAlign = "center";
-      ctx.fillText("LIVE · INSERT COINS · PULL", bx + bw / 2, by + bh - 12);
+      ctx.fillText(`LIVE · ${symbol} JACKPOT · INSERT`, bx + bw / 2, by + bh - 12);
 
       if (mode === "insert") {
         drawInsertCoins(ctx, slotX, slotY, insertCount, t, symbol);
@@ -537,35 +549,46 @@ export async function renderLiveSlotsMachine(opts: SlotsMachineOpts): Promise<An
         ctx.fillText(credits > 0 ? "Ready — hit SPIN" : "Insert coins to play", W / 2 + 30, H - 14);
       }
 
-      if (mode === "spin" && t < 0.92) {
+      if (mode === "spin" && t < lastStop) {
         ctx.fillStyle = "#94a3b8";
         ctx.font = "13px sans-serif";
         ctx.textAlign = "center";
         ctx.fillText("spinning…", W / 2 + 30, H - 14);
+      } else if (mode === "spin" && landed && t < lastStop + 0.1) {
+        ctx.fillStyle = "#fde68a";
+        ctx.font = "bold 14px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(faces.join("  "), W / 2 + 30, H - 14);
       }
 
       ctx.restore();
 
-      // Win celebration — hopper fountain from the tray (no shatter / no row)
-      if (mode === "win") {
+      const resultStart = spinShowsResult ? lastStop + 0.06 : 0.82;
+      const showWin =
+        mode === "win"
+        || (spinShowsResult && opts.tier && opts.tier !== "lose" && t > resultStart);
+      const showLose =
+        mode === "lose"
+        || (spinShowsResult && opts.tier === "lose" && t > resultStart);
+
+      if (showWin) {
+        const localT = mode === "win" ? t : clamp01((t - resultStart) / Math.max(0.01, 1 - resultStart));
         const intensity = opts.tier === "jackpot" ? 1 : opts.tier === "line" ? 0.65 : 0.4;
-        drawHopperCascade(ctx, t, symbol, intensity, hopperY);
-        // Soft tray glow only — no screen shatter / crack overlay
-        if (t > 0.15) {
+        drawHopperCascade(ctx, localT, symbol, intensity, hopperY);
+        if (localT > 0.08) {
           const glow = ctx.createRadialGradient(W / 2 - 20, hopperY + 20, 4, W / 2 - 20, hopperY + 20, 120);
-          glow.addColorStop(0, hexToRgba(0xffd54a, 0.35 * (1 - t * 0.3)));
+          glow.addColorStop(0, hexToRgba(0xffd54a, 0.35 * (1 - localT * 0.3)));
           glow.addColorStop(1, "rgba(0,0,0,0)");
           ctx.fillStyle = glow;
           ctx.fillRect(0, hopperY - 40, W, H - hopperY + 40);
         }
-        if (opts.tier === "jackpot" && t > 0.3) {
+        if (opts.tier === "jackpot" && localT > 0.15) {
           drawSparks(ctx, W / 2 - 20, hopperY + 8, {
-            count: 6, color: 0xffd54a, seed: `jp-${Math.floor(t * 5)}`, maxLen: 22,
+            count: 6, color: 0xffd54a, seed: `jp-${Math.floor(localT * 5)}`, maxLen: 22,
           });
         }
-        const fade = easeOutBack(clamp01((t - 0.18) / 0.22));
+        const fade = easeOutBack(clamp01((localT - 0.05) / 0.2));
         ctx.globalAlpha = Math.min(1, fade);
-        // Soft neon banner (NOT a cracked/shattered screen)
         roundRectPath(ctx, W / 2 - 150, 10, 260, 34, 10);
         ctx.fillStyle = "rgba(20, 8, 28, 0.88)";
         ctx.fill();
@@ -585,13 +608,19 @@ export async function renderLiveSlotsMachine(opts: SlotsMachineOpts): Promise<An
           ctx.font = "bold 16px sans-serif";
           ctx.fillText(opts.payoutLabel, W / 2 - 20, H - 16);
         }
+        ctx.fillStyle = "#f8fafc";
+        ctx.font = "bold 15px sans-serif";
+        ctx.fillText(faces.join("   "), W / 2 - 20, H - 36);
         ctx.globalAlpha = 1;
       }
 
-      if (mode === "lose" && t > 0.35) {
-        ctx.fillStyle = "rgba(148,163,184,0.9)";
-        ctx.font = "bold 14px sans-serif";
+      if (showLose) {
+        ctx.fillStyle = "rgba(248,250,252,0.95)";
+        ctx.font = "bold 15px sans-serif";
         ctx.textAlign = "center";
+        ctx.fillText(faces.join("   "), W / 2 + 20, H - 32);
+        ctx.fillStyle = "rgba(148,163,184,0.9)";
+        ctx.font = "bold 13px sans-serif";
         ctx.fillText("No line — insert more or spin again", W / 2 + 20, H - 14);
       }
     },
@@ -607,8 +636,8 @@ export function scoreSlotsReels(
 } {
   const [a, b, c] = reels;
   if (a && a === b && b === c) {
-    if (economySymbol && a === economySymbol) return { mult: 40, tier: "jackpot" };
-    if (a === "7️⃣") return { mult: 50, tier: "jackpot" };
+    // Three economy symbols = top jackpot (replaces classic 777)
+    if (economySymbol && a === economySymbol) return { mult: 50, tier: "jackpot" };
     if (a === "💎") return { mult: 25, tier: "jackpot" };
     if (a === "⭐") return { mult: 12, tier: "line" };
     if (a === "🔔") return { mult: 8, tier: "line" };
@@ -620,17 +649,17 @@ export function scoreSlotsReels(
   return { mult: 0, tier: "lose" };
 }
 
-/** Weighted reel roll. Rare chance to land the server economy symbol (jackpot face). */
+/** Weighted reel roll — economy symbol is the rare jackpot face. */
 export function rollSlotsReels(economySymbol?: string): string[] {
+  const jackpot = economySymbol || "💵";
   const weightPick = () => {
     const roll = Math.random();
-    if (economySymbol && roll < 0.04) return economySymbol;
-    if (roll < 0.08) return "7️⃣";
-    if (roll < 0.15) return "💎";
-    if (roll < 0.27) return "⭐";
-    if (roll < 0.41) return "🔔";
-    if (roll < 0.55) return "🃏";
-    if (roll < 0.74) return "🍋";
+    if (roll < 0.05) return jackpot;
+    if (roll < 0.12) return "💎";
+    if (roll < 0.24) return "⭐";
+    if (roll < 0.38) return "🔔";
+    if (roll < 0.52) return "🃏";
+    if (roll < 0.72) return "🍋";
     return "🍒";
   };
   return [weightPick(), weightPick(), weightPick()];
