@@ -1,11 +1,26 @@
-// /casino — UnbelievaBoat casino hub (folds many top-level slash cmds under Discord's 100 limit).
+// /casino — true panel hub (ONE slash). Buttons + modals, no subcommand sprawl.
 
-import type { ChatInputCommandInteraction, GuildMember } from "discord.js";
+import type {
+  ChatInputCommandInteraction,
+  ButtonInteraction,
+  UserSelectMenuInteraction,
+  StringSelectMenuInteraction,
+  ModalSubmitInteraction,
+  GuildMember,
+} from "discord.js";
 import {
   SlashCommandBuilder,
   EmbedBuilder,
   AttachmentBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  UserSelectMenuBuilder,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
   MessageFlags,
+  StringSelectMenuBuilder,
 } from "discord.js";
 import {
   getOrCreateUbSettings,
@@ -47,55 +62,15 @@ import {
 } from "./games.js";
 import { handleCashStore } from "./store.js";
 import { handleUno } from "./uno.js";
+import { withOptionValues } from "../commands/option-proxy.js";
 
 const EPHEMERAL = { flags: MessageFlags.Ephemeral } as const;
 
 export function buildCasinoCommandJson() {
   return new SlashCommandBuilder()
     .setName("casino")
-    .setDescription("UnbelievaBoat casino — deposit, games, collect, leaderboard & more")
+    .setDescription("UnbelievaBoat casino — wallet, games, collect, leaderboard")
     .setDMPermission(false)
-    .addSubcommand(sc => sc.setName("balance").setDescription("Show your UnbelievaBoat cash & bank")
-      .addUserOption(o => o.setName("user").setDescription("Check another member")))
-    .addSubcommand(sc => sc.setName("deposit").setDescription("Move cash into the bank (casino vault)")
-      .addIntegerOption(o => o.setName("amount").setDescription("Amount to deposit").setRequired(true).setMinValue(1)))
-    .addSubcommand(sc => sc.setName("withdraw").setDescription("Move bank back to cash")
-      .addIntegerOption(o => o.setName("amount").setDescription("Amount to withdraw").setRequired(true).setMinValue(1)))
-    .addSubcommand(sc => sc.setName("daily").setDescription("Animated Cash Check-In — claim daily cash"))
-    .addSubcommand(sc => sc.setName("collect").setDescription("Collect income from your owned perk roles"))
-    .addSubcommand(sc => sc.setName("work").setDescription("Safe work shift — earn cash"))
-    .addSubcommand(sc => sc.setName("crime").setDescription("Risky crime — bigger payout or a fine"))
-    .addSubcommand(sc => sc.setName("beg").setDescription("PG dramatic cash beg"))
-    .addSubcommand(sc => sc.setName("rob").setDescription("Stick-up for cash (honors immunity roles)")
-      .addUserOption(o => o.setName("target").setDescription("Target").setRequired(true)))
-    .addSubcommand(sc => sc.setName("blackjack").setDescription("Interactive 21 — Hit / Stand / Double")
-      .addIntegerOption(o => o.setName("bet").setDescription("Wager").setRequired(true).setMinValue(10).setMaxValue(100_000)))
-    .addSubcommand(sc => sc.setName("higherlower").setDescription("Guess the next card")
-      .addIntegerOption(o => o.setName("bet").setDescription("Wager").setRequired(true).setMinValue(10).setMaxValue(50_000)))
-    .addSubcommand(sc => sc.setName("redblack").setDescription("Red or Black — flip for 2×")
-      .addIntegerOption(o => o.setName("bet").setDescription("Wager").setRequired(true).setMinValue(10).setMaxValue(50_000))
-      .addStringOption(o => o.setName("color").setDescription("Pick a color").setRequired(true)
-        .addChoices({ name: "Red", value: "red" }, { name: "Black", value: "black" })))
-    .addSubcommand(sc => sc.setName("roulette").setDescription("Bet on red, black, or green")
-      .addIntegerOption(o => o.setName("bet").setDescription("Wager").setRequired(true).setMinValue(10).setMaxValue(100_000))
-      .addStringOption(o => o.setName("color").setDescription("Color").setRequired(true)
-        .addChoices(
-          { name: "Red (2×)", value: "red" },
-          { name: "Black (2×)", value: "black" },
-          { name: "Green 0 (14×)", value: "green" },
-        )))
-    .addSubcommand(sc => sc.setName("slots").setDescription("Three-reel slot machine")
-      .addIntegerOption(o => o.setName("bet").setDescription("Wager").setRequired(true).setMinValue(10).setMaxValue(50_000)))
-    .addSubcommand(sc => sc.setName("russian").setDescription("Russian roulette — AI or live challenge")
-      .addUserOption(o => o.setName("target").setDescription("Target").setRequired(true))
-      .addIntegerOption(o => o.setName("bet").setDescription("Stake").setRequired(true).setMinValue(10).setMaxValue(50_000))
-      .addStringOption(o => o.setName("mode").setDescription("Mode")
-        .addChoices({ name: "AI vs their avatar", value: "ai" }, { name: "Challenge them live", value: "challenge" })))
-    .addSubcommand(sc => sc.setName("uno").setDescription("Mini UNO vs the house — first to empty hand wins 2×")
-      .addIntegerOption(o => o.setName("bet").setDescription("Wager").setRequired(true).setMinValue(10).setMaxValue(50_000)))
-    .addSubcommand(sc => sc.setName("store").setDescription("Perk role storefront"))
-    .addSubcommand(sc => sc.setName("top").setDescription("Dex N Cards × UnbelievaBoat cash leaderboard"))
-    .addSubcommand(sc => sc.setName("games").setDescription("Casino menu — what you can play"))
     .toJSON();
 }
 
@@ -116,9 +91,85 @@ async function attachGif(
   return { files: [new AttachmentBuilder(result.buffer, { name })], imageName: name };
 }
 
-/** Proxy helpers so subcommand options map onto the old flat-command handlers. */
-function withOpts(interaction: ChatInputCommandInteraction): ChatInputCommandInteraction {
-  return interaction;
+function hubEmbed(balLine: string): EmbedBuilder {
+  return brandEmbed(
+    "🎰 Casino Floor",
+    [
+      balLine,
+      "",
+      "One slash · pick a table below. Games post live so the floor can watch.",
+      "",
+      "**Wallet** — balance · deposit · withdraw · daily · collect",
+      "**Tables** — slots · blackjack · roulette · UNO · more",
+      "**Hustle** — work · crime · beg · rob · russian",
+      "**Board** — leaderboard · store · games menu",
+    ].join("\n"),
+  );
+}
+
+function hubRows() {
+  return [
+    new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId("casinohub:balance").setLabel("Balance").setEmoji("💵").setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId("casinohub:deposit").setLabel("Deposit").setEmoji("🏦").setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId("casinohub:withdraw").setLabel("Withdraw").setEmoji("💸").setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId("casinohub:daily").setLabel("Daily").setEmoji("📅").setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId("casinohub:collect").setLabel("Collect").setEmoji("🪙").setStyle(ButtonStyle.Success),
+    ),
+    new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId("casinohub:slots").setLabel("Slots").setEmoji("🎰").setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId("casinohub:blackjack").setLabel("Blackjack").setEmoji("🃏").setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId("casinohub:roulette").setLabel("Roulette").setEmoji("🎡").setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId("casinohub:uno").setLabel("UNO").setEmoji("🎴").setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId("casinohub:more_games").setLabel("More games").setEmoji("🎲").setStyle(ButtonStyle.Secondary),
+    ),
+    new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId("casinohub:work").setLabel("Work").setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId("casinohub:crime").setLabel("Crime").setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId("casinohub:beg").setLabel("Beg").setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId("casinohub:rob").setLabel("Rob").setStyle(ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId("casinohub:russian").setLabel("Russian").setStyle(ButtonStyle.Danger),
+    ),
+    new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId("casinohub:top").setLabel("Leaderboard").setEmoji("🏆").setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId("casinohub:store").setLabel("Store").setEmoji("🛒").setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId("casinohub:games").setLabel("Games menu").setEmoji("📋").setStyle(ButtonStyle.Secondary),
+    ),
+  ];
+}
+
+function betModal(customId: string, title: string, maxHint: string) {
+  return new ModalBuilder()
+    .setCustomId(customId)
+    .setTitle(title.slice(0, 45))
+    .addComponents(
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder()
+          .setCustomId("bet")
+          .setLabel(`Wager (${maxHint})`)
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+          .setMaxLength(12)
+          .setPlaceholder("e.g. 500"),
+      ),
+    );
+}
+
+function amountModal(customId: string, title: string) {
+  return new ModalBuilder()
+    .setCustomId(customId)
+    .setTitle(title.slice(0, 45))
+    .addComponents(
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder()
+          .setCustomId("amount")
+          .setLabel("Amount")
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+          .setMaxLength(12)
+          .setPlaceholder("e.g. 1000"),
+      ),
+    );
 }
 
 export async function handleCasinoCommand(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -126,68 +177,316 @@ export async function handleCasinoCommand(interaction: ChatInputCommandInteracti
     await interaction.reply({ content: "Server only.", ...EPHEMERAL });
     return;
   }
-  const sub = interaction.options.getSubcommand(true);
+  await interaction.deferReply(EPHEMERAL);
+  let balLine = "_Balance unavailable — check UnbelievaBoat link._";
+  try {
+    const bal = await getCashBalance(interaction.guildId, interaction.user.id);
+    balLine = `Your wallet: **${fmtCash(bal.cash)}** cash · **${fmtCash(bal.bank)}** bank ${bal.symbol}`;
+  } catch { /* ignore */ }
+  await interaction.editReply({ embeds: [hubEmbed(balLine)], components: hubRows() });
+}
 
-  switch (sub) {
-    case "balance":
-      await handleBalance(interaction);
+export async function handleCasinoHubComponent(
+  interaction: ButtonInteraction | UserSelectMenuInteraction | StringSelectMenuInteraction,
+): Promise<void> {
+  if (!interaction.guildId) {
+    await interaction.reply({ content: "Server only.", ...EPHEMERAL });
+    return;
+  }
+  const id = interaction.customId;
+
+  // ── Modals / selects first (cannot defer) ──────────────────────────────────
+  if (id === "casinohub:deposit" && interaction.isButton()) {
+    await interaction.showModal(amountModal("casinohub:modal:deposit", "Deposit to bank"));
+    return;
+  }
+  if (id === "casinohub:withdraw" && interaction.isButton()) {
+    await interaction.showModal(amountModal("casinohub:modal:withdraw", "Withdraw to cash"));
+    return;
+  }
+  if (id === "casinohub:slots" && interaction.isButton()) {
+    await interaction.showModal(
+      new ModalBuilder()
+        .setCustomId("casinohub:modal:slots")
+        .setTitle("Vegas Slots")
+        .addComponents(
+          new ActionRowBuilder<TextInputBuilder>().addComponents(
+            new TextInputBuilder()
+              .setCustomId("bet")
+              .setLabel("Coin value (10–50,000)")
+              .setStyle(TextInputStyle.Short)
+              .setRequired(true)
+              .setMaxLength(12)
+              .setPlaceholder("e.g. 100"),
+          ),
+        ),
+    );
+    return;
+  }
+  if (id === "casinohub:blackjack" && interaction.isButton()) {
+    await interaction.showModal(betModal("casinohub:modal:blackjack", "Blackjack 21", "10–100,000"));
+    return;
+  }
+  if (id === "casinohub:uno" && interaction.isButton()) {
+    await interaction.showModal(betModal("casinohub:modal:uno", "Mini UNO", "10–50,000"));
+    return;
+  }
+  if (id === "casinohub:higherlower" && interaction.isButton()) {
+    await interaction.showModal(betModal("casinohub:modal:higherlower", "Higher or Lower", "10–50,000"));
+    return;
+  }
+  if (id === "casinohub:roulette" && interaction.isButton()) {
+    await interaction.showModal(betModal("casinohub:modal:roulette", "Roulette", "10–100,000"));
+    return;
+  }
+  if (id === "casinohub:redblack" && interaction.isButton()) {
+    const modal = new ModalBuilder()
+      .setCustomId("casinohub:modal:redblack")
+      .setTitle("Red or Black")
+      .addComponents(
+        new ActionRowBuilder<TextInputBuilder>().addComponents(
+          new TextInputBuilder().setCustomId("bet").setLabel("Wager (10–50,000)")
+            .setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(12),
+        ),
+        new ActionRowBuilder<TextInputBuilder>().addComponents(
+          new TextInputBuilder().setCustomId("color").setLabel("Color: red | black")
+            .setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder("red"),
+        ),
+      );
+    await interaction.showModal(modal);
+    return;
+  }
+  if (id === "casinohub:rob" && interaction.isButton()) {
+    const row = new ActionRowBuilder<UserSelectMenuBuilder>().addComponents(
+      new UserSelectMenuBuilder().setCustomId("casinohub:rob_user").setPlaceholder("Who to rob?").setMinValues(1).setMaxValues(1),
+    );
+    await interaction.reply({ content: "Pick a target:", components: [row], ...EPHEMERAL });
+    return;
+  }
+  if (id === "casinohub:rob_user" && interaction.isUserSelectMenu()) {
+    const target = interaction.users.first();
+    if (!target || target.bot || target.id === interaction.user.id) {
+      await interaction.reply({ content: "Pick a real member.", ...EPHEMERAL });
       return;
-    case "deposit":
-      await handleDeposit(interaction);
+    }
+    const proxied = withOptionValues(interaction, {
+      users: { target },
+    });
+    await handleRob(proxied);
+    return;
+  }
+  if (id === "casinohub:russian" && interaction.isButton()) {
+    const row = new ActionRowBuilder<UserSelectMenuBuilder>().addComponents(
+      new UserSelectMenuBuilder().setCustomId("casinohub:russian_user").setPlaceholder("Challenge who?").setMinValues(1).setMaxValues(1),
+    );
+    await interaction.reply({ content: "Pick who to challenge:", components: [row], ...EPHEMERAL });
+    return;
+  }
+  if (id === "casinohub:russian_user" && interaction.isUserSelectMenu()) {
+    const target = interaction.users.first();
+    if (!target || target.bot || target.id === interaction.user.id) {
+      await interaction.reply({ content: "Pick a real member.", ...EPHEMERAL });
       return;
-    case "withdraw":
-      await handleWithdraw(interaction);
+    }
+    const modal = new ModalBuilder()
+      .setCustomId(`casinohub:modal:russian:${target.id}`)
+      .setTitle("Russian Roulette")
+      .addComponents(
+        new ActionRowBuilder<TextInputBuilder>().addComponents(
+          new TextInputBuilder().setCustomId("bet").setLabel("Stake (10–50,000)")
+            .setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(12),
+        ),
+        new ActionRowBuilder<TextInputBuilder>().addComponents(
+          new TextInputBuilder().setCustomId("mode").setLabel("Mode: ai | challenge")
+            .setStyle(TextInputStyle.Short).setRequired(false).setPlaceholder("challenge"),
+        ),
+      );
+    await interaction.showModal(modal);
+    return;
+  }
+  if (id === "casinohub:more_games" && interaction.isButton()) {
+    const menu = new StringSelectMenuBuilder()
+      .setCustomId("casinohub:more_pick")
+      .setPlaceholder("Pick a table game…")
+      .addOptions(
+        { label: "Higher or Lower", value: "higherlower", emoji: "⬆️" },
+        { label: "Red or Black", value: "redblack", emoji: "🔴" },
+      );
+    await interaction.reply({
+      content: "More table games:",
+      components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu)],
+      ...EPHEMERAL,
+    });
+    return;
+  }
+  if (id === "casinohub:more_pick" && interaction.isStringSelectMenu()) {
+    const pick = interaction.values[0];
+    if (pick === "higherlower") {
+      await interaction.showModal(betModal("casinohub:modal:higherlower", "Higher or Lower", "10–50,000"));
       return;
-    case "daily":
-      await handleAnimatedDaily(interaction);
+    }
+    if (pick === "redblack") {
+      const modal = new ModalBuilder()
+        .setCustomId("casinohub:modal:redblack")
+        .setTitle("Red or Black")
+        .addComponents(
+          new ActionRowBuilder<TextInputBuilder>().addComponents(
+            new TextInputBuilder().setCustomId("bet").setLabel("Wager (10–50,000)")
+              .setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(12),
+          ),
+          new ActionRowBuilder<TextInputBuilder>().addComponents(
+            new TextInputBuilder().setCustomId("color").setLabel("Color: red | black")
+              .setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder("red"),
+          ),
+        );
+      await interaction.showModal(modal);
       return;
-    case "collect":
-      await handleCollect(interaction);
+    }
+  }
+
+  // ── Direct actions ─────────────────────────────────────────────────────────
+  if (id === "casinohub:balance" && interaction.isButton()) {
+    const proxied = withOptionValues(interaction, {
+      users: { user: interaction.user },
+    });
+    await handleBalance(proxied);
+    return;
+  }
+  if (id === "casinohub:daily" && interaction.isButton()) {
+    await handleAnimatedDaily(interaction as unknown as ChatInputCommandInteraction);
+    return;
+  }
+  if (id === "casinohub:collect" && interaction.isButton()) {
+    await handleCollect(interaction as unknown as ChatInputCommandInteraction);
+    return;
+  }
+  if (id === "casinohub:work" && interaction.isButton()) {
+    await handleCashWork(interaction as unknown as ChatInputCommandInteraction);
+    return;
+  }
+  if (id === "casinohub:crime" && interaction.isButton()) {
+    await handleCashCrime(interaction as unknown as ChatInputCommandInteraction);
+    return;
+  }
+  if (id === "casinohub:beg" && interaction.isButton()) {
+    await handleSlut(interaction as unknown as ChatInputCommandInteraction);
+    return;
+  }
+  if (id === "casinohub:top" && interaction.isButton()) {
+    await handleCasinoTop(interaction as unknown as ChatInputCommandInteraction);
+    return;
+  }
+  if (id === "casinohub:store" && interaction.isButton()) {
+    await handleCashStore(interaction as unknown as ChatInputCommandInteraction);
+    return;
+  }
+  if (id === "casinohub:games" && interaction.isButton()) {
+    await handleCashGamesHub(interaction as unknown as ChatInputCommandInteraction);
+    return;
+  }
+}
+
+function parseBet(raw: string, min: number, max: number): number | null {
+  const n = Number.parseInt(raw.replace(/[,\s]/g, ""), 10);
+  if (!Number.isFinite(n) || n < min || n > max) return null;
+  return n;
+}
+
+export async function handleCasinoHubModal(interaction: ModalSubmitInteraction): Promise<void> {
+  if (!interaction.guildId) {
+    await interaction.reply({ content: "Server only.", ...EPHEMERAL });
+    return;
+  }
+  const id = interaction.customId;
+  const field = (name: string) => {
+    try { return interaction.fields.getTextInputValue(name)?.trim() || ""; }
+    catch { return ""; }
+  };
+
+  if (id === "casinohub:modal:deposit") {
+    const amount = parseBet(field("amount"), 1, 1_000_000_000);
+    if (!amount) {
+      await interaction.reply({ content: "Enter a valid deposit amount.", ...EPHEMERAL });
       return;
-    case "work":
-      await handleCashWork(withOpts(interaction));
+    }
+    const proxied = withOptionValues(interaction, {
+      integers: { amount },
+    });
+    await handleDeposit(proxied);
+    return;
+  }
+  if (id === "casinohub:modal:withdraw") {
+    const amount = parseBet(field("amount"), 1, 1_000_000_000);
+    if (!amount) {
+      await interaction.reply({ content: "Enter a valid withdraw amount.", ...EPHEMERAL });
       return;
-    case "crime":
-      await handleCashCrime(withOpts(interaction));
+    }
+    const proxied = withOptionValues(interaction, {
+      integers: { amount },
+    });
+    await handleWithdraw(proxied);
+    return;
+  }
+  if (id === "casinohub:modal:slots") {
+    const bet = parseBet(field("bet"), 10, 50_000);
+    if (!bet) { await interaction.reply({ content: "Bet must be 10–50,000.", ...EPHEMERAL }); return; }
+    await handleSlots(withOptionValues(interaction, { integers: { bet } }));
+    return;
+  }
+  if (id === "casinohub:modal:blackjack") {
+    const bet = parseBet(field("bet"), 10, 100_000);
+    if (!bet) { await interaction.reply({ content: "Bet must be 10–100,000.", ...EPHEMERAL }); return; }
+    await handleBlackjack(withOptionValues(interaction, { integers: { bet } }));
+    return;
+  }
+  if (id === "casinohub:modal:uno") {
+    const bet = parseBet(field("bet"), 10, 50_000);
+    if (!bet) { await interaction.reply({ content: "Bet must be 10–50,000.", ...EPHEMERAL }); return; }
+    await handleUno(withOptionValues(interaction, { integers: { bet } }));
+    return;
+  }
+  if (id === "casinohub:modal:higherlower") {
+    const bet = parseBet(field("bet"), 10, 50_000);
+    if (!bet) { await interaction.reply({ content: "Bet must be 10–50,000.", ...EPHEMERAL }); return; }
+    await handleHigherLower(withOptionValues(interaction, { integers: { bet } }));
+    return;
+  }
+  if (id === "casinohub:modal:roulette") {
+    const bet = parseBet(field("bet"), 10, 100_000);
+    if (!bet) { await interaction.reply({ content: "Bet must be 10–100,000.", ...EPHEMERAL }); return; }
+    // Color is chosen on the live table with buttons.
+    await handleRoulette(withOptionValues(interaction, {
+      integers: { bet },
+      strings: { color: null },
+    }));
+    return;
+  }
+  if (id === "casinohub:modal:redblack") {
+    const bet = parseBet(field("bet"), 10, 50_000);
+    const color = field("color").toLowerCase();
+    if (!bet) { await interaction.reply({ content: "Bet must be 10–50,000.", ...EPHEMERAL }); return; }
+    if (!["red", "black"].includes(color)) {
+      await interaction.reply({ content: "Color must be red or black.", ...EPHEMERAL });
       return;
-    case "beg":
-      await handleSlut(withOpts(interaction));
-      return;
-    case "rob":
-      await handleRob(withOpts(interaction));
-      return;
-    case "blackjack":
-      await handleBlackjack(withOpts(interaction));
-      return;
-    case "higherlower":
-      await handleHigherLower(withOpts(interaction));
-      return;
-    case "redblack":
-      await handleRedBlack(withOpts(interaction));
-      return;
-    case "roulette":
-      await handleRoulette(withOpts(interaction));
-      return;
-    case "slots":
-      await handleSlots(withOpts(interaction));
-      return;
-    case "russian":
-      await handleRussian(withOpts(interaction));
-      return;
-    case "uno":
-      await handleUno(withOpts(interaction));
-      return;
-    case "store":
-      await handleCashStore(withOpts(interaction));
-      return;
-    case "top":
-      await handleCasinoTop(interaction);
-      return;
-    case "games":
-      await handleCashGamesHub(withOpts(interaction));
-      return;
-    default:
-      await interaction.reply({ content: "Unknown casino action.", ...EPHEMERAL });
+    }
+    await handleRedBlack(withOptionValues(interaction, {
+      integers: { bet },
+      strings: { color },
+    }));
+    return;
+  }
+  if (id.startsWith("casinohub:modal:russian:")) {
+    const targetId = id.slice("casinohub:modal:russian:".length);
+    const target = await interaction.client.users.fetch(targetId).catch(() => null);
+    if (!target) { await interaction.reply({ content: "User not found.", ...EPHEMERAL }); return; }
+    const bet = parseBet(field("bet"), 10, 50_000);
+    if (!bet) { await interaction.reply({ content: "Bet must be 10–50,000.", ...EPHEMERAL }); return; }
+    const mode = (field("mode").toLowerCase() || "challenge") === "ai" ? "ai" : "challenge";
+    await handleRussian(withOptionValues(interaction, {
+      users: { target },
+      integers: { bet },
+      strings: { mode },
+    }));
   }
 }
 
@@ -202,7 +501,7 @@ async function handleBalance(interaction: ChatInputCommandInteraction): Promise<
       `🏦 Bank **${fmtCash(bal.bank)}** ${bal.symbol}`,
       `Σ Total **${fmtCash(bal.cash + bal.bank)}**`,
       "",
-      `_Deposit with \`/casino deposit\` · withdraw with \`/casino withdraw\`._`,
+      `_Deposit / withdraw from the \`/casino\` panel._`,
     ].join("\n"));
     embed.setThumbnail(target.displayAvatarURL({ size: 128 }));
     await interaction.editReply({ embeds: [embed] });
@@ -269,7 +568,6 @@ async function handleWithdraw(interaction: ChatInputCommandInteraction): Promise
   }
 }
 
-/** Animated daily — reverse coin collect into wallet (Sonic/Mario energy). */
 async function handleAnimatedDaily(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply({ ephemeral: true });
   try {
@@ -314,7 +612,6 @@ async function handleAnimatedDaily(interaction: ChatInputCommandInteraction): Pr
   }
 }
 
-/** Collect role income from owned perk roles (UnbelievaBoat-style). */
 async function handleCollect(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply({ ephemeral: true });
   try {
@@ -334,7 +631,7 @@ async function handleCollect(interaction: ChatInputCommandInteraction): Promise<
     );
     if (!owned.length) {
       await interaction.editReply(
-        "You don’t own any income perk roles yet. Buy one in `/casino store` (admins set **income** on role links).",
+        "You don’t own any income perk roles yet. Buy one in `/casino` → Store (admins set **income** on role links).",
       );
       return;
     }

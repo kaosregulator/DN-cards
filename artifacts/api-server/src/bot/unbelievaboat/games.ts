@@ -33,12 +33,17 @@ import {
   freshDeck, draw, cardLabel, handTotal, isNaturalBlackjack, formatHand,
   isRed, rankValue, type Card,
 } from "./cards.js";
-import { replyThenPostAsUnbelievaBoat } from "./webhook.js";
+import { replyThenPostAsUnbelievaBoat, postAsUnbelievaBoat } from "./webhook.js";
 import {
   renderBegGif, renderBlackjackTableGif, renderCoinSpinGif, renderHigherLowerGif,
-  renderRedBlackGif, renderRobGif, renderRouletteGif, renderRussianGif,
-  renderSlotsGif, renderWorkGif,
+  renderRedBlackGif, renderRobGif, renderWorkGif,
 } from "./render-games.js";
+
+export { handleSlots } from "./live-slots.js";
+export { handleRoulette } from "./live-roulette.js";
+export { handleRussian } from "./russian-duel.js";
+export { RESPONSIBLE_PLAY } from "./live-slots.js";
+import { RESPONSIBLE_PLAY as RESPONSIBLE_FOOTER } from "./live-slots.js";
 
 const EPHEMERAL = { flags: MessageFlags.Ephemeral } as const;
 
@@ -61,10 +66,6 @@ const higherSessions = new Map<string, {
   fromCash: number; fromBank: number;
 }>();
 
-const russianChallenges = new Map<string, {
-  guildId: string; challengerId: string; targetId: string; bet: number; expires: number;
-}>();
-
 function bjKey(guildId: string, userId: string) { return `${guildId}:${userId}`; }
 
 function brandEmbed(title: string, description: string): EmbedBuilder {
@@ -73,7 +74,7 @@ function brandEmbed(title: string, description: string): EmbedBuilder {
     .setAuthor(UNBELIEVABOAT_AUTHOR)
     .setTitle(title)
     .setDescription(description)
-    .setFooter({ text: "Powered by the UnbelievaBoat API you authorized · cash then bank" });
+    .setFooter({ text: RESPONSIBLE_FOOTER });
 }
 
 async function attachGif(result: Awaited<ReturnType<typeof renderCoinSpinGif>>, name: string) {
@@ -239,6 +240,7 @@ async function finishBlackjack(
     player: session.player,
     dealer: session.dealer,
     hideDealer: false,
+    revealHole: true,
     banner: outcome.toUpperCase(),
   });
   const { files, imageName } = await attachGif(gif, "blackjack.gif");
@@ -259,14 +261,11 @@ async function finishBlackjack(
   );
   if (imageName) embed.setImage(`attachment://${imageName}`);
 
+  // Keep the table public — update the live hand message; optionally mirror via webhook.
   if (interaction.deferred || interaction.replied) {
-    await interaction.editReply({ content: "✅ Hand complete — posting result as **UnbelievaBoat**.", embeds: [], components: [], files: [] });
+    await interaction.editReply({ embeds: [embed], files, components: [] }).catch(() => {});
   }
-  await replyThenPostAsUnbelievaBoat(
-    interaction as ChatInputCommandInteraction,
-    { embeds: [embed], files },
-    "✅ Blackjack result posted as **UnbelievaBoat**.",
-  );
+  await postAsUnbelievaBoat(interaction as ChatInputCommandInteraction, { embeds: [embed], files });
 }
 
 // ── Handlers ──────────────────────────────────────────────────────────────────
@@ -312,14 +311,12 @@ export async function handleCashGamesHub(interaction: ChatInputCommandInteractio
     const cds = await getGuildCooldowns(interaction.guildId);
     const embed = brandEmbed("Casino Hub", [
       `Wallet: **${fmtCash(bal.cash)}** cash · **${fmtCash(bal.bank)}** bank ${bal.symbol}`,
-      `_Bets spend cash first, then bank. Deposit with \`/casino deposit\`._`,
+      `_Bets spend cash first, then bank. Open \`/casino\` for the floor panel._`,
       "",
-      "**Wallet:** `/casino balance` · `deposit` · `withdraw`",
-      "**Cards:** `/casino blackjack` · `higherlower` · `redblack` · `uno`",
-      "**Table:** `/casino roulette` · `slots`",
-      "**Income:** `/casino daily` · `collect` · `work` · `crime` · `beg`",
-      "**Chaos:** `/casino rob` · `russian`",
-      "**Board:** `/casino top` · **Store:** `/casino store`",
+      "**Floor panel:** `/casino` — wallet · slots · blackjack · roulette · UNO · hustle",
+      "**Tables:** Slots (mega) · Blackjack 21 (public) · Roulette · Higher/Lower · Red/Black · UNO",
+      "**Income:** Daily · Collect · Work · Crime · Beg",
+      "**Chaos:** Rob · Russian",
       "",
       `Game limit: **${cds.gameUses}** / **${cdText(cds.gameWindowSec * 1000)}** (edit in \`/unbelievaboat\`)`,
     ].join("\n"));
@@ -331,7 +328,8 @@ export async function handleCashGamesHub(interaction: ChatInputCommandInteractio
 
 export async function handleBlackjack(interaction: ChatInputCommandInteraction): Promise<void> {
   if (!interaction.guildId) { await interaction.reply({ content: "Server only.", ...EPHEMERAL }); return; }
-  await interaction.deferReply({ ephemeral: true });
+  // Public table — everyone on the floor can watch the hand.
+  await interaction.deferReply();
   try {
     await assertGamesOn(interaction.guildId);
     await assertGameCooldown(interaction.guildId, interaction.user.id);
@@ -371,7 +369,7 @@ export async function handleBlackjack(interaction: ChatInputCommandInteraction):
     const gif = await renderBlackjackTableGif({ player, dealer, hideDealer: true });
     const { files, imageName } = await attachGif(gif, "bj-deal.gif");
     const embed = brandEmbed("Blackjack — your move", [
-      `${formatSpendNote(spent.fromCash, spent.fromBank, spent.balance.symbol)}`,
+      `${interaction.user} · ${formatSpendNote(spent.fromCash, spent.fromBank, spent.balance.symbol)}`,
       `You: ${formatHand(player)} (**${p.total}**${p.soft ? " soft" : ""})`,
       `Dealer: ${formatHand(dealer, true)}`,
       "",
@@ -389,41 +387,6 @@ export async function handleBlackjack(interaction: ChatInputCommandInteraction):
   }
 }
 
-export async function handleRoulette(interaction: ChatInputCommandInteraction): Promise<void> {
-  if (!interaction.guildId) { await interaction.reply({ content: "Server only.", ...EPHEMERAL }); return; }
-  await interaction.deferReply({ ephemeral: true });
-  try {
-    await assertGamesOn(interaction.guildId);
-    await assertGameCooldown(interaction.guildId, interaction.user.id);
-    const bet = interaction.options.getInteger("bet", true);
-    const color = interaction.options.getString("color", true) as "red" | "black" | "green";
-    const spent = await spendFunds(interaction.guildId, interaction.user.id, bet, `Roulette ${color}`);
-    await markGameCooldown(interaction.guildId, interaction.user.id);
-
-    const landing = Math.floor(Math.random() * 37);
-    const landed: "red" | "black" | "green" =
-      landing === 0 ? "green" : landing % 2 === 0 ? "black" : "red";
-    const mult = color === "green" ? 14 : 2;
-    const win = color === landed;
-    const payout = win ? bet * mult : 0;
-    let bal = spent.balance;
-    if (payout > 0) bal = await earnCash(interaction.guildId, interaction.user.id, payout, "Roulette win");
-
-    const gif = await renderRouletteGif({ landing, color: landed });
-    const { files, imageName } = await attachGif(gif, "roulette.gif");
-    const embed = brandEmbed("Roulette Table", [
-      `${interaction.user} bet **${fmtCash(bet)}** on **${color}**`,
-      formatSpendNote(spent.fromCash, spent.fromBank, bal.symbol),
-      `Ball → **${landing}** (${landed})`,
-      win ? `🎉 Won **${fmtCash(payout)}**` : `💀 Lost stake`,
-      `Cash **${fmtCash(bal.cash)}** · bank **${fmtCash(bal.bank)}**`,
-    ].join("\n"));
-    if (imageName) embed.setImage(`attachment://${imageName}`);
-    await replyThenPostAsUnbelievaBoat(interaction, { embeds: [embed], files });
-  } catch (err) {
-    await interaction.editReply(err instanceof CashError ? err.message : `Failed: ${err instanceof Error ? err.message : err}`);
-  }
-}
 
 export async function handleHigherLower(interaction: ChatInputCommandInteraction): Promise<void> {
   if (!interaction.guildId) { await interaction.reply({ content: "Server only.", ...EPHEMERAL }); return; }
@@ -493,35 +456,6 @@ export async function handleRedBlack(interaction: ChatInputCommandInteraction): 
   }
 }
 
-export async function handleSlots(interaction: ChatInputCommandInteraction): Promise<void> {
-  if (!interaction.guildId) { await interaction.reply({ content: "Server only.", ...EPHEMERAL }); return; }
-  await interaction.deferReply({ ephemeral: true });
-  try {
-    await assertGamesOn(interaction.guildId);
-    await assertGameCooldown(interaction.guildId, interaction.user.id);
-    const bet = interaction.options.getInteger("bet", true);
-    const spent = await spendFunds(interaction.guildId, interaction.user.id, bet, "Slots bet");
-    await markGameCooldown(interaction.guildId, interaction.user.id);
-    const pool = ["🍒", "🍋", "🔔", "⭐", "💎", "7️⃣"];
-    const reels = [0, 1, 2].map(() => pool[Math.floor(Math.random() * pool.length)]!);
-    const win = reels[0] === reels[1] && reels[1] === reels[2];
-    const mult = reels[0] === "7️⃣" ? 10 : reels[0] === "💎" ? 6 : 2;
-    let bal = spent.balance;
-    if (win) bal = await earnCash(interaction.guildId, interaction.user.id, bet * mult, "Slots win");
-    const gif = await renderSlotsGif({ reels, win });
-    const { files, imageName } = await attachGif(gif, "slots.gif");
-    const embed = brandEmbed("Slot Machine", [
-      `${interaction.user} · ${reels.join(" | ")}`,
-      formatSpendNote(spent.fromCash, spent.fromBank, bal.symbol),
-      win ? `🎉 Line pays **${fmtCash(bet * mult)}** (${mult}×)` : `No line — lost **${fmtCash(bet)}**`,
-      `Cash **${fmtCash(bal.cash)}** · bank **${fmtCash(bal.bank)}**`,
-    ].join("\n"));
-    if (imageName) embed.setImage(`attachment://${imageName}`);
-    await replyThenPostAsUnbelievaBoat(interaction, { embeds: [embed], files });
-  } catch (err) {
-    await interaction.editReply(err instanceof CashError ? err.message : `Failed: ${err instanceof Error ? err.message : err}`);
-  }
-}
 
 export async function handleCashWork(interaction: ChatInputCommandInteraction): Promise<void> {
   if (!interaction.guildId) { await interaction.reply({ content: "Server only.", ...EPHEMERAL }); return; }
@@ -578,55 +512,6 @@ export async function handleCashCrime(interaction: ChatInputCommandInteraction):
   }
 }
 
-export async function handleRussian(interaction: ChatInputCommandInteraction): Promise<void> {
-  if (!interaction.guildId) { await interaction.reply({ content: "Server only.", ...EPHEMERAL }); return; }
-  await interaction.deferReply({ ephemeral: true });
-  try {
-    await assertGamesOn(interaction.guildId);
-    await assertGameCooldown(interaction.guildId, interaction.user.id);
-    const target = interaction.options.getUser("target", true);
-    const bet = interaction.options.getInteger("bet", true);
-    const mode = interaction.options.getString("mode") ?? "ai";
-    if (target.bot || target.id === interaction.user.id) {
-      await interaction.editReply("Pick another real member.");
-      return;
-    }
-    if (mode === "challenge") {
-      const key = `${interaction.guildId}:${interaction.user.id}:${target.id}`;
-      russianChallenges.set(key, {
-        guildId: interaction.guildId, challengerId: interaction.user.id,
-        targetId: target.id, bet, expires: Date.now() + 5 * 60_000,
-      });
-      const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder().setCustomId(`unbgame:russian:accept:${interaction.user.id}:${bet}`).setLabel("Accept").setStyle(ButtonStyle.Danger),
-        new ButtonBuilder().setCustomId(`unbgame:russian:decline:${interaction.user.id}`).setLabel("Decline").setStyle(ButtonStyle.Secondary),
-      );
-      const embed = brandEmbed("Russian Roulette — Challenge",
-        `${interaction.user} challenges ${target} for **${fmtCash(bet)}** (cash then bank).`);
-      await replyThenPostAsUnbelievaBoat(interaction, { embeds: [embed], components: [row] });
-      return;
-    }
-    const spent = await spendFunds(interaction.guildId, interaction.user.id, bet, `Russian vs ${target.id}`);
-    await markGameCooldown(interaction.guildId, interaction.user.id);
-    const chamber = Math.floor(Math.random() * 6);
-    const survived = Math.floor(Math.random() * 6) !== chamber;
-    let bal = spent.balance;
-    if (survived) bal = await earnCash(interaction.guildId, interaction.user.id, bet * 2, "Russian win");
-    const gif = await renderRussianGif({ survived, chamber });
-    const { files, imageName } = await attachGif(gif, "russian.gif");
-    const embed = brandEmbed("Russian Roulette", [
-      `${interaction.user} vs ${target} (AI)`,
-      formatSpendNote(spent.fromCash, spent.fromBank, bal.symbol),
-      survived ? `🟢 Click — net win` : `🔴 Bang — lost stake`,
-      `Cash **${fmtCash(bal.cash)}** · bank **${fmtCash(bal.bank)}**`,
-    ].join("\n"));
-    if (target.displayAvatarURL()) embed.setThumbnail(target.displayAvatarURL({ size: 128 }));
-    if (imageName) embed.setImage(`attachment://${imageName}`);
-    await replyThenPostAsUnbelievaBoat(interaction, { embeds: [embed], files });
-  } catch (err) {
-    await interaction.editReply(err instanceof CashError ? err.message : `Failed: ${err instanceof Error ? err.message : err}`);
-  }
-}
 
 export async function handleRob(interaction: ChatInputCommandInteraction): Promise<void> {
   if (!interaction.guildId) { await interaction.reply({ content: "Server only.", ...EPHEMERAL }); return; }
@@ -750,7 +635,7 @@ export async function handleUnbGameComponent(interaction: ButtonInteraction): Pr
     const session = bjSessions.get(key);
     if (!session || session.expires < Date.now()) {
       bjSessions.delete(key);
-      await interaction.reply({ content: "Hand expired — start `/casino blackjack` again.", ...EPHEMERAL });
+      await interaction.reply({ content: "Hand expired — start `/casino` → Blackjack again.", ...EPHEMERAL });
       return;
     }
     await interaction.deferUpdate();
@@ -838,58 +723,18 @@ export async function handleUnbGameComponent(interaction: ButtonInteraction): Pr
     return;
   }
 
-  if (id.startsWith("unbgame:russian:decline:")) {
-    const challengerId = id.slice("unbgame:russian:decline:".length);
-    for (const [k, v] of russianChallenges) {
-      if (v.targetId === interaction.user.id && v.challengerId === challengerId) {
-        russianChallenges.delete(k);
-        await interaction.reply({ content: "Challenge declined.", ...EPHEMERAL });
-        return;
-      }
-    }
-    await interaction.reply({ content: "No open challenge.", ...EPHEMERAL });
-    return;
+  // Live slots / roulette / russian duel
+  if (id.startsWith("unbgame:slots:")) {
+    const { handleSlotsComponent } = await import("./live-slots.js");
+    if (await handleSlotsComponent(interaction)) return;
   }
-
-  if (id.startsWith("unbgame:russian:accept:")) {
-    const parts = id.split(":");
-    const challengerId = parts[3]!;
-    const bet = Number(parts[4] ?? 0);
-    const key = `${interaction.guildId}:${challengerId}:${interaction.user.id}`;
-    const ch = russianChallenges.get(key);
-    if (!ch || ch.expires < Date.now()) {
-      russianChallenges.delete(key);
-      await interaction.reply({ content: "Challenge expired.", ...EPHEMERAL });
-      return;
-    }
-    if (interaction.user.id !== ch.targetId) {
-      await interaction.reply({ content: "Only the challenged member can accept.", ...EPHEMERAL });
-      return;
-    }
-    russianChallenges.delete(key);
-    await interaction.deferReply({ ephemeral: true });
-    try {
-      const challenger = await interaction.client.users.fetch(challengerId);
-      await spendFunds(interaction.guildId, challengerId, bet, "Russian challenge stake");
-      await spendFunds(interaction.guildId, interaction.user.id, bet, "Russian challenge stake");
-      const chamber = Math.floor(Math.random() * 6);
-      const survivorIsChallenger = Math.random() < 0.5;
-      const winner = survivorIsChallenger ? challenger : interaction.user;
-      const pot = bet * 2;
-      const bal = await earnCash(interaction.guildId, winner.id, pot, "Russian challenge pot");
-      await writeUbAudit(interaction.guildId, challengerId, "russian_challenge", { bet, winner: winner.id }, interaction.user.id);
-      const gif = await renderRussianGif({ survived: true, chamber });
-      const { files, imageName } = await attachGif(gif, "russian.gif");
-      const embed = brandEmbed("Russian Roulette — Live", [
-        `${challenger} vs ${interaction.user} · pot **${fmtCash(pot)}**`,
-        `🏆 ${winner} takes the pot.`,
-        `Cash **${fmtCash(bal.cash)}** · bank **${fmtCash(bal.bank)}**`,
-      ].join("\n"));
-      if (imageName) embed.setImage(`attachment://${imageName}`);
-      await replyThenPostAsUnbelievaBoat(interaction as unknown as ChatInputCommandInteraction, { embeds: [embed], files });
-    } catch (err) {
-      await interaction.editReply(err instanceof CashError ? err.message : `Failed: ${err instanceof Error ? err.message : err}`);
-    }
+  if (id.startsWith("unbgame:roulette:")) {
+    const { handleRouletteComponent } = await import("./live-roulette.js");
+    if (await handleRouletteComponent(interaction)) return;
+  }
+  if (id.startsWith("unbgame:russian:")) {
+    const { handleRussianComponent } = await import("./russian-duel.js");
+    if (await handleRussianComponent(interaction)) return;
   }
 }
 

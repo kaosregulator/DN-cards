@@ -124,7 +124,7 @@ async function buildOverviewEmbed(guildId: string): Promise<EmbedBuilder> {
         "",
         `Pets enabled: **${petSettings.enabled ? "yes" : "no"}** · hatch **${petSettings.hatchCost}** · growth **${petSettings.growthHours}h** · neglect **${petSettings.maxNeglects}**`,
         "",
-        "Player hub: **`/casino`** (deposit · daily · collect · games · uno · top · store)",
+        "Player hub: **`/casino`** panel (wallet · mega slots · public blackjack · UNO · collect · top · store)",
         "_Optional website mirror still at `/admin/unbelievaboat`._",
       ].filter(Boolean).join("\n"),
     )

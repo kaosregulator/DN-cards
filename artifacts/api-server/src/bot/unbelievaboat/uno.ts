@@ -18,7 +18,7 @@ import {
 } from "./cash.js";
 import { assertGameCooldown, markGameCooldown } from "./cooldowns.js";
 import { getOrCreateUbSettings } from "../../lib/unbelievaboat/db.js";
-import { replyThenPostAsUnbelievaBoat } from "./webhook.js";
+import { postAsUnbelievaBoat } from "./webhook.js";
 import { encodeAnimation, type Ctx } from "../animations/engine.js";
 import { logGameEvent } from "../logging/channel-log.js";
 
@@ -120,31 +120,97 @@ async function renderUnoGif(opts: {
   playerCount: number;
   botCount: number;
   banner: string;
+  playerHand?: UnoCard[];
 }): Promise<{ buffer: Buffer; name: string } | null> {
+  const W = 520;
+  const H = 300;
   const result = await encodeAnimation({
-    width: 480, height: 260, durationMs: 1200, speed: "normal", maxFrames: 14, quality: 12,
+    width: W, height: H, durationMs: 1600, speed: "normal", maxFrames: 18, quality: 14,
     render: async ({ ctx, t }: { ctx: Ctx; t: number }) => {
-      ctx.fillStyle = "#0d3b2e";
-      ctx.fillRect(0, 0, 480, 260);
-      ctx.fillStyle = "#0a2f24";
-      ctx.fillRect(14, 14, 452, 232);
+      // Felt table
+      const g = ctx.createLinearGradient(0, 0, 0, H);
+      g.addColorStop(0, "#0f4a38");
+      g.addColorStop(1, "#06221b");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, W, H);
+      ctx.strokeStyle = "#6b4423";
+      ctx.lineWidth = 12;
+      ctx.strokeRect(6, 6, W - 12, H - 12);
 
-      // Top card
-      const col = opts.top.color === "W" ? opts.color : (opts.top.color as UnoColor);
-      ctx.fillStyle = `#${COLOR_HEX[col].toString(16).padStart(6, "0")}`;
-      const bob = Math.sin(t * Math.PI * 2) * 4;
-      ctx.fillRect(190, 70 + bob, 100, 140);
-      ctx.fillStyle = "#fff";
-      ctx.font = "bold 22px sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillText(label(opts.top).replace(/[🔴🟡🟢🔵⬛]\s?/, ""), 240, 145 + bob);
-
-      ctx.fillStyle = "#fde68a";
-      ctx.font = "bold 18px sans-serif";
-      ctx.fillText(opts.banner, 240, 40);
+      // House hand (backs only)
       ctx.fillStyle = "#a7f3d0";
-      ctx.font = "14px sans-serif";
-      ctx.fillText(`You ${opts.playerCount}  ·  House ${opts.botCount}`, 240, 230);
+      ctx.font = "bold 13px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(`HOUSE · ${opts.botCount} cards`, W / 2, 28);
+      const botShow = Math.min(opts.botCount, 8);
+      const botStart = (W - botShow * 28) / 2;
+      for (let i = 0; i < botShow; i++) {
+        const x = botStart + i * 28;
+        ctx.fillStyle = "#1e3a8a";
+        ctx.fillRect(x, 40, 24, 34);
+        ctx.strokeStyle = "#93c5fd";
+        ctx.strokeRect(x, 40, 24, 34);
+      }
+
+      // Discard pile — solid face, gentle settle (no wild bounce)
+      const col = opts.top.color === "W" ? opts.color : (opts.top.color as UnoColor);
+      const settle = Math.min(1, t / 0.35);
+      const scale = 0.85 + 0.15 * settle;
+      const cw = 78 * scale;
+      const ch = 112 * scale;
+      const cx = W / 2 - cw / 2;
+      const cy = 100 - (1 - settle) * 20;
+      ctx.fillStyle = `#${COLOR_HEX[col].toString(16).padStart(6, "0")}`;
+      ctx.fillRect(cx, cy, cw, ch);
+      ctx.strokeStyle = "#fff";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(cx + 3, cy + 3, cw - 6, ch - 6);
+      ctx.fillStyle = "#fff";
+      ctx.font = "bold 20px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      const face = label(opts.top).replace(/[🔴🟡🟢🔵⬛]\s?/g, "");
+      ctx.fillText(face, W / 2, cy + ch / 2);
+
+      // Active color chip
+      ctx.fillStyle = `#${COLOR_HEX[opts.color].toString(16).padStart(6, "0")}`;
+      ctx.beginPath();
+      ctx.arc(W - 40, 120, 14, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "#fff";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Player hand fan
+      ctx.fillStyle = "#ecfdf5";
+      ctx.font = "bold 13px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "alphabetic";
+      ctx.fillText(`YOU · ${opts.playerCount} cards`, W / 2, H - 58);
+      const hand = (opts.playerHand ?? []).slice(0, 10);
+      const show = hand.length || Math.min(opts.playerCount, 7);
+      const handStart = (W - show * 36) / 2;
+      for (let i = 0; i < show; i++) {
+        const card = hand[i];
+        const x = handStart + i * 36;
+        const y = H - 48;
+        if (card) {
+          const c = card.color === "W" ? opts.color : (card.color as UnoColor);
+          ctx.fillStyle = `#${COLOR_HEX[c].toString(16).padStart(6, "0")}`;
+          ctx.fillRect(x, y, 32, 36);
+          ctx.fillStyle = "#fff";
+          ctx.font = "bold 11px sans-serif";
+          ctx.fillText(label(card).replace(/[🔴🟡🟢🔵⬛]\s?/g, "").slice(0, 3), x + 16, y + 22);
+        } else {
+          ctx.fillStyle = "#1e3a8a";
+          ctx.fillRect(x, y, 32, 36);
+        }
+      }
+
+      // Banner
+      ctx.fillStyle = "#fde68a";
+      ctx.font = "bold 16px sans-serif";
+      ctx.fillText(opts.banner, W / 2, 88);
     },
   });
   if (!result) return null;
@@ -240,6 +306,7 @@ async function finish(
     playerCount: session.player.length,
     botCount: session.bot.length,
     banner: winner === "player" ? "YOU WIN!" : winner === "bot" ? "HOUSE WINS" : "FOLDED",
+    playerHand: session.player,
   });
   const files = gif ? [new AttachmentBuilder(gif.buffer, { name: gif.name })] : [];
   const embed = brandEmbed("Mini UNO — Result", [
@@ -255,12 +322,11 @@ async function finish(
   if (gif) embed.setImage(`attachment://${gif.name}`);
 
   if (interaction.deferred || interaction.replied) {
-    await interaction.editReply({ content: "✅ Posting as **UnbelievaBoat**…", embeds: [], components: [], files: [] });
+    await interaction.editReply({ embeds: [embed], components: [], files }).catch(() => {});
   }
-  await replyThenPostAsUnbelievaBoat(
+  await postAsUnbelievaBoat(
     interaction as ChatInputCommandInteraction,
     { embeds: [embed], files },
-    "✅ Mini UNO result posted as **UnbelievaBoat**.",
   );
   void logGameEvent(
     interaction.client,
@@ -305,7 +371,8 @@ export async function handleUno(interaction: ChatInputCommandInteraction): Promi
     await interaction.reply({ content: "Server only.", ...EPHEMERAL });
     return;
   }
-  await interaction.deferReply({ ephemeral: true });
+  // Public table — spectators can watch the hand.
+  await interaction.deferReply();
   try {
     await assertGamesOn(interaction.guildId);
     await assertGameCooldown(interaction.guildId, interaction.user.id);
@@ -348,15 +415,16 @@ export async function handleUno(interaction: ChatInputCommandInteraction): Promi
       playerCount: player.length,
       botCount: bot.length,
       banner: "YOUR TURN",
+      playerHand: player,
     });
     const files = gif ? [new AttachmentBuilder(gif.buffer, { name: gif.name })] : [];
     const embed = brandEmbed("Mini UNO vs House", [
-      formatSpendNote(spent.fromCash, spent.fromBank, spent.balance.symbol),
-      `Top: **${label(starter)}** · color ${COLOR_EMOJI[session.color]}`,
-      `Your hand: ${player.map(label).join(" · ")}`,
+      `${interaction.user} · ${formatSpendNote(spent.fromCash, spent.fromBank, spent.balance.symbol)}`,
+      `Discard: **${label(starter)}** · color ${COLOR_EMOJI[session.color]}`,
+      `Your hand (${player.length}): ${player.map(label).join(" · ")}`,
       `House: **${bot.length}** cards`,
       "",
-      "Play a matching color/rank, or **Draw**. First to empty hand wins **2×**.",
+      "Match color or rank · **Draw** if stuck · first empty hand wins **2×**.",
     ].join("\n"));
     if (gif) embed.setImage(`attachment://${gif.name}`);
     await interaction.editReply({ embeds: [embed], files, components: playButtons(session) });
@@ -380,7 +448,7 @@ export async function handleUnoComponent(interaction: ButtonInteraction): Promis
   const session = sessions.get(k);
   if (!session || session.expires < Date.now()) {
     sessions.delete(k);
-    await interaction.reply({ content: "Hand expired — start `/casino uno` again.", ...EPHEMERAL });
+    await interaction.reply({ content: "Hand expired — start `/casino` → UNO again.", ...EPHEMERAL });
     return true;
   }
 
@@ -417,12 +485,13 @@ export async function handleUnoComponent(interaction: ButtonInteraction): Promis
     }
     const top = session.discard[session.discard.length - 1]!;
     const gif = await renderUnoGif({
-      top, color: session.color, playerCount: session.player.length, botCount: session.bot.length, banner: "YOUR TURN",
+      top, color: session.color, playerCount: session.player.length, botCount: session.bot.length,
+      banner: "YOUR TURN", playerHand: session.player,
     });
     const files = gif ? [new AttachmentBuilder(gif.buffer, { name: gif.name })] : [];
     const embed = brandEmbed("Mini UNO vs House", [
-      `Top: **${label(top)}** · color ${COLOR_EMOJI[session.color]}`,
-      `Your hand: ${session.player.map(label).join(" · ")}`,
+      `Discard: **${label(top)}** · color ${COLOR_EMOJI[session.color]}`,
+      `Your hand (${session.player.length}): ${session.player.map(label).join(" · ")}`,
       `House: **${session.bot.length}** cards`,
     ].join("\n"));
     if (gif) embed.setImage(`attachment://${gif.name}`);
@@ -444,13 +513,14 @@ export async function handleUnoComponent(interaction: ButtonInteraction): Promis
     }
     const top = session.discard[session.discard.length - 1]!;
     const gif = await renderUnoGif({
-      top, color: session.color, playerCount: session.player.length, botCount: session.bot.length, banner: "YOUR TURN",
+      top, color: session.color, playerCount: session.player.length, botCount: session.bot.length,
+      banner: "YOUR TURN", playerHand: session.player,
     });
     const files = gif ? [new AttachmentBuilder(gif.buffer, { name: gif.name })] : [];
     const embed = brandEmbed("Mini UNO vs House", [
       drawn[0] ? `Drew **${label(drawn[0])}**` : "Deck empty",
-      `Top: **${label(top)}** · color ${COLOR_EMOJI[session.color]}`,
-      `Your hand: ${session.player.map(label).join(" · ")}`,
+      `Discard: **${label(top)}** · color ${COLOR_EMOJI[session.color]}`,
+      `Your hand (${session.player.length}): ${session.player.map(label).join(" · ")}`,
       `House: **${session.bot.length}** cards`,
     ].join("\n"));
     if (gif) embed.setImage(`attachment://${gif.name}`);
@@ -490,13 +560,14 @@ export async function handleUnoComponent(interaction: ButtonInteraction): Promis
     }
     const newTop = session.discard[session.discard.length - 1]!;
     const gif = await renderUnoGif({
-      top: newTop, color: session.color, playerCount: session.player.length, botCount: session.bot.length, banner: "YOUR TURN",
+      top: newTop, color: session.color, playerCount: session.player.length, botCount: session.bot.length,
+      banner: "YOUR TURN", playerHand: session.player,
     });
     const files = gif ? [new AttachmentBuilder(gif.buffer, { name: gif.name })] : [];
     const embed = brandEmbed("Mini UNO vs House", [
       `Played **${label(card)}**`,
-      `Top: **${label(newTop)}** · color ${COLOR_EMOJI[session.color]}`,
-      `Your hand: ${session.player.map(label).join(" · ")}`,
+      `Discard: **${label(newTop)}** · color ${COLOR_EMOJI[session.color]}`,
+      `Your hand (${session.player.length}): ${session.player.map(label).join(" · ")}`,
       `House: **${session.bot.length}** cards`,
     ].join("\n"));
     if (gif) embed.setImage(`attachment://${gif.name}`);

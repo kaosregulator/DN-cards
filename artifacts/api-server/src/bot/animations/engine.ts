@@ -41,6 +41,9 @@ export type Ctx = SKRSContext2D & {
     x: number, y: number, radiusX: number, radiusY: number,
     rotation: number, startAngle: number, endAngle: number,
   ): void;
+  createLinearGradient(x0: number, y0: number, x1: number, y1: number): {
+    addColorStop(offset: number, color: string): void;
+  };
   shadowOffsetX: number;
   shadowOffsetY: number;
 };
