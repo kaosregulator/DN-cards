@@ -53,14 +53,16 @@ export type SlotsMachineOpts = {
   symbol: string;
   payoutLabel?: string;
   tier?: "jackpot" | "line" | "pair" | "lose";
-  /** How many coins being inserted (insert mode). */
+  /** How many coins being inserted (insert / add-credits anim). */
   insertCount?: number;
   /** Credits currently on the machine (shown on LED). */
   credits?: number;
-  /** Coin denomination label. */
-  coinValueLabel?: string;
-  /** Active bet multiplier (1–5). */
+  /** Stake per spin in credit units (shown on BET LED). */
+  betAmount?: number;
+  /** @deprecated Prefer betAmount — kept for older call sites. */
   betMult?: number;
+  /** @deprecated Removed from UI — buy-in IS credits. */
+  coinValueLabel?: string;
 };
 
 type Img = { width: number; height: number };
@@ -482,16 +484,22 @@ function drawHopperCascade(
 
 function consoleLeds(
   ctx: Ctx, bx: number, by: number, bw: number, bh: number,
-  credits: number, betMult: number, coinLabel: string,
+  credits: number, betAmount: number,
 ) {
   const cy = by + bh - 70;
   roundRectPath(ctx, bx + 22, cy, bw - 44, 42, 8);
   ctx.fillStyle = "#2a1810";
   ctx.fill();
-  drawLed(ctx, bx + 30, cy + 6, 100, 30, "CREDITS", String(credits));
-  drawLed(ctx, bx + 140, cy + 6, 90, 30, "BET", `${betMult}×`);
-  // VALUE = denomination of one credit (never dump raw <:name:id>)
-  drawLed(ctx, bx + 240, cy + 6, 120, 30, "VALUE", coinLabel || "—");
+  // Two big LEDs only — CREDITS on machine, BET per spin (no confusing VALUE)
+  drawLed(ctx, bx + 36, cy + 6, 160, 30, "CREDITS", formatLedNum(credits));
+  drawLed(ctx, bx + 210, cy + 6, 140, 30, "BET", formatLedNum(betAmount));
+}
+
+function formatLedNum(n: number): string {
+  if (!Number.isFinite(n)) return "0";
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 10_000) return `${Math.round(n / 1_000)}k`;
+  return String(Math.floor(n));
 }
 
 /** Draw three reel faces as images in a row (never raw <:name:id> text). */
@@ -512,8 +520,7 @@ export async function renderLiveSlotsMachine(opts: SlotsMachineOpts): Promise<An
   const symbol = opts.symbol || "💵";
   const pool = slotPool(symbol);
   const credits = opts.credits ?? 0;
-  const betMult = opts.betMult ?? 1;
-  const coinLabel = opts.coinValueLabel ?? "";
+  const betAmount = opts.betAmount ?? opts.betMult ?? 10;
   const insertCount = opts.insertCount ?? 1;
   // One GIF: normal-speed spin → land → long hold so you can read the line.
   const spinShowsResult = mode === "spin" && !!opts.tier;
@@ -604,7 +611,7 @@ export async function renderLiveSlotsMachine(opts: SlotsMachineOpts): Promise<An
       ctx.lineTo(startX + total + 4, reelY + reelH / 2);
       ctx.stroke();
 
-      consoleLeds(ctx, bx, by, bw, bh, credits, betMult, coinLabel);
+      consoleLeds(ctx, bx, by, bw, bh, credits, betAmount);
 
       // Footer plate — draw symbol image, never raw <:name:id>
       roundRectPath(ctx, bx + 40, by + bh - 24, bw - 80, 18, 5);
@@ -632,7 +639,7 @@ export async function renderLiveSlotsMachine(opts: SlotsMachineOpts): Promise<An
         ctx.fillStyle = hexToRgba(0xffe4a0, 0.65 + Math.sin(t * Math.PI * 4) * 0.25);
         ctx.font = "bold 14px sans-serif";
         ctx.textAlign = "center";
-        ctx.fillText(credits > 0 ? "Ready — hit SPIN" : "Insert coins to play", W / 2 + 30, H - 14);
+        ctx.fillText(credits > 0 ? "Ready — hit SPIN" : "Add credits to play", W / 2 + 30, H - 14);
       }
 
       if (mode === "spin" && t < lastStop) {
@@ -707,7 +714,7 @@ export async function renderLiveSlotsMachine(opts: SlotsMachineOpts): Promise<An
         ctx.fillStyle = "rgba(148,163,184,0.9)";
         ctx.font = "bold 13px sans-serif";
         ctx.textAlign = "center";
-        ctx.fillText("No line — insert more or spin again", W / 2 + 20, H - 14);
+        ctx.fillText("No line — spin again or add credits", W / 2 + 20, H - 14);
       }
     },
   });

@@ -208,16 +208,16 @@ export async function handleCasinoHubComponent(
     await interaction.showModal(
       new ModalBuilder()
         .setCustomId("casinohub:modal:slots")
-        .setTitle("Vegas Slots")
+        .setTitle("Vegas Slots — buy credits")
         .addComponents(
           new ActionRowBuilder<TextInputBuilder>().addComponents(
             new TextInputBuilder()
               .setCustomId("bet")
-              .setLabel("VALUE of ONE coin (not total buy-in)")
+              .setLabel("Credits to load (10–100,000)")
               .setStyle(TextInputStyle.Short)
               .setRequired(true)
               .setMaxLength(12)
-              .setPlaceholder("e.g. 100 — loads 1 coin on sit"),
+              .setPlaceholder("e.g. 1000 — this IS your machine balance"),
           ),
         ),
     );
@@ -428,8 +428,8 @@ export async function handleCasinoHubModal(interaction: ModalSubmitInteraction):
     return;
   }
   if (id === "casinohub:modal:slots") {
-    const bet = parseBet(field("bet"), 10, 50_000);
-    if (!bet) { await interaction.reply({ content: "Bet must be 10–50,000.", ...EPHEMERAL }); return; }
+    const bet = parseBet(field("bet"), 10, 100_000);
+    if (!bet) { await interaction.reply({ content: "Credits must be 10–100,000.", ...EPHEMERAL }); return; }
     await handleSlots(withOptionValues(interaction, { integers: { bet } }));
     return;
   }
