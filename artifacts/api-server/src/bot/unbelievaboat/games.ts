@@ -762,8 +762,7 @@ export async function handleUnbGameComponent(interaction: ButtonInteraction): Pr
       `Cash **${fmtCash(bal.cash)}** · bank **${fmtCash(bal.bank)}**`,
     ].join("\n"));
     if (imageName) embed.setImage(`attachment://${imageName}`);
-    await interaction.editReply({ content: "✅ Posting as **UnbelievaBoat**…", embeds: [], components: [], files: [] });
-    await replyThenPostAsUnbelievaBoat(interaction as unknown as ChatInputCommandInteraction, { embeds: [embed], files });
+    await interaction.editReply({ embeds: [embed], files, components: [] });
     return;
   }
 

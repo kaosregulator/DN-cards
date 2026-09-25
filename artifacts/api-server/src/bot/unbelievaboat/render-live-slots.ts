@@ -490,8 +490,8 @@ function consoleLeds(
   ctx.fill();
   drawLed(ctx, bx + 30, cy + 6, 100, 30, "CREDITS", String(credits));
   drawLed(ctx, bx + 140, cy + 6, 90, 30, "BET", `${betMult}×`);
-  // Never append raw <:name:id> into the LED — denomination only
-  drawLed(ctx, bx + 240, cy + 6, 120, 30, "COIN", coinLabel || "—");
+  // VALUE = denomination of one credit (never dump raw <:name:id>)
+  drawLed(ctx, bx + 240, cy + 6, 120, 30, "VALUE", coinLabel || "—");
 }
 
 /** Draw three reel faces as images in a row (never raw <:name:id> text). */

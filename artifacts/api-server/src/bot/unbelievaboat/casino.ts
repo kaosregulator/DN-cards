@@ -213,11 +213,11 @@ export async function handleCasinoHubComponent(
           new ActionRowBuilder<TextInputBuilder>().addComponents(
             new TextInputBuilder()
               .setCustomId("bet")
-              .setLabel("Coin value (10–50,000)")
+              .setLabel("VALUE of ONE coin (not total buy-in)")
               .setStyle(TextInputStyle.Short)
               .setRequired(true)
               .setMaxLength(12)
-              .setPlaceholder("e.g. 100"),
+              .setPlaceholder("e.g. 100 — loads 1 coin on sit"),
           ),
         ),
     );

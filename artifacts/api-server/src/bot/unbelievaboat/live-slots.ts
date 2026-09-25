@@ -130,7 +130,7 @@ function machineButtons(session: SlotsSession, opts: { busy?: boolean } = {}) {
       .setDisabled(!canSpin),
     new ButtonBuilder()
       .setCustomId(`unbgame:slots:coin:${uid}`)
-      .setLabel("Coin value")
+      .setLabel("Change VALUE")
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId(`unbgame:slots:leave:${uid}`)
@@ -144,10 +144,22 @@ function machineButtons(session: SlotsSession, opts: { busy?: boolean } = {}) {
 function sessionStatus(session: SlotsSession): string {
   const stake = stakeOf(session);
   return [
-    `Coin **${fmtCash(session.coinValue)}** ${session.symbol} · Credits **${session.credits}** · BET **×${session.betMult}** (stake **${fmtCash(stake)}**)`,
+    `**VALUE** ${fmtCash(session.coinValue)} ${session.symbol}/coin · **CREDITS** ${session.credits} · **BET ×${session.betMult}** → stake **${fmtCash(stake)}**`,
+    `_BET only sets the multiplier — **SPIN** spends ${session.betMult} credit${session.betMult === 1 ? "" : "s"}._`,
     `Wallet: cash **${fmtCash(session.cash)}** · bank **${fmtCash(session.bank)}** ${session.symbol}`,
     `Spins **${session.spins}** · session net **${session.net >= 0 ? "+" : ""}${fmtCash(session.net)}**`,
   ].join("\n");
+}
+
+/** Spend one coin from cash→bank and put it on the machine. */
+async function loadOneCoin(session: SlotsSession, reason: string) {
+  const spent = await spendFunds(session.guildId, session.userId, session.coinValue, reason);
+  session.cash = spent.balance.cash ?? 0;
+  session.bank = spent.balance.bank ?? 0;
+  session.symbol = spent.balance.symbol;
+  session.credits += 1;
+  session.net -= session.coinValue;
+  return spent;
 }
 
 async function refreshWallet(session: SlotsSession) {
@@ -222,17 +234,21 @@ export async function handleSlots(interaction: ChatInputCommandInteraction): Pro
       cash: bal.cash ?? 0,
       bank: bal.bank ?? 0,
     };
+    // Sit-down loads ONE coin immediately so CREDITS starts at 1 and the wallet drops.
+    // The modal amount is VALUE (denomination), not a bulk buy-in.
+    const first = await loadOneCoin(session, "Slots sit — first coin");
     sessions.set(k, session);
 
-    const gif = await renderMachine(session, "idle");
+    const gif = await renderMachine(session, "insert", { insertCount: 1 });
     const { files, imageName } = await attachGif(gif, "slots-idle.gif");
     const embed = brandEmbed("🎰 Vegas Slot Machine", [
-      `${interaction.user} walks up to the machine.`,
+      `${interaction.user} sits down — **1 coin** loaded.`,
+      formatSpendNote(first.fromCash, first.fromBank, session.symbol),
       sessionStatus(session),
       "",
       `Jackpot face: **${bal.symbol}${bal.symbol}${bal.symbol}**`,
-      "**Insert coins** (+1…+5) → set **BET ×1–×5** → **SPIN**.",
-      "Keep feeding until cash+bank run dry.",
+      "**VALUE** = what one coin costs · **CREDITS** = coins on the machine · **BET ×** = mult only.",
+      "Feed more with **+coins**, set **BET ×**, then hit **SPIN** (SPIN spends credits).",
     ].join("\n"));
     if (imageName) embed.setImage(`attachment://${imageName}`);
 
@@ -388,12 +404,12 @@ export async function handleSlotsComponent(interaction: ButtonInteraction): Prom
   if (action === "coin") {
     const modal = new ModalBuilder()
       .setCustomId(`unbgame:slots:modal:coin:${ownerId}`)
-      .setTitle("Change coin value")
+      .setTitle("Change coin VALUE")
       .addComponents(
         new ActionRowBuilder<TextInputBuilder>().addComponents(
           new TextInputBuilder()
             .setCustomId("bet")
-            .setLabel("Coin denomination (10–50,000)")
+            .setLabel("VALUE of ONE coin (10–50,000)")
             .setStyle(TextInputStyle.Short)
             .setRequired(true)
             .setMaxLength(12)
@@ -428,13 +444,17 @@ export async function handleSlotsComponent(interaction: ButtonInteraction): Prom
       await refreshWallet(session);
       const gif = await renderMachine(session, "idle");
       const { files, imageName } = await attachGif(gif, "slots-bet.gif");
+      const tip =
+        session.credits >= session.betMult
+          ? "Ready — hit **SPIN** to spend those credits and pull the lever."
+          : session.credits === 0
+            ? `_No credits on the machine yet — **BET × does not deduct**. Insert coins first (+1…+5), then SPIN._`
+            : `Insert at least **${session.betMult - session.credits}** more coin${session.betMult - session.credits === 1 ? "" : "s"} before SPIN.`;
       const embed = brandEmbed("🎰 Vegas Slot Machine", [
-        `${interaction.user} sets BET **×${mult}** · stake **${fmtCash(stakeOf(session))}** ${session.symbol}`,
+        `${interaction.user} sets BET **×${mult}** · next spin stake **${fmtCash(stakeOf(session))}** ${session.symbol}`,
         sessionStatus(session),
         "",
-        session.credits >= session.betMult
-          ? "Ready — hit **SPIN**."
-          : `Insert at least **${session.betMult - session.credits}** more coin${session.betMult - session.credits === 1 ? "" : "s"}.`,
+        tip,
       ].join("\n"));
       if (imageName) embed.setImage(`attachment://${imageName}`);
       await interaction.editReply({ embeds: [embed], files, components: machineButtons(session) });
@@ -507,37 +527,54 @@ export async function handleSlotsModal(interaction: ModalSubmitInteraction): Pro
   await interaction.deferReply({ ephemeral: true });
   try {
     await assertGamesOn(interaction.guildId);
-    const bal = await getCashBalance(interaction.guildId, interaction.user.id);
-    if ((bal.cash ?? 0) + (bal.bank ?? 0) < coinValue) {
+    const k = key(interaction.guildId, ownerId);
+    const prev = sessions.get(k);
+
+    // Refund leftover credits at the OLD denomination before changing VALUE.
+    let refundNote = "";
+    if (prev && prev.credits > 0) {
+      const refund = prev.credits * prev.coinValue;
+      try {
+        const refunded = await earnCash(prev.guildId, prev.userId, refund, "Slots re-value cash-out");
+        refundNote = ` Cashed out **${prev.credits}** old credit${prev.credits === 1 ? "" : "s"} → **+${fmtCash(refund)}** ${refunded.symbol}.`;
+      } catch {
+        refundNote = ` Couldn't refund **${prev.credits}** old credit${prev.credits === 1 ? "" : "s"} — ask an admin.`;
+      }
+    }
+
+    const need = coinValue;
+    const fresh = await getCashBalance(interaction.guildId, interaction.user.id);
+    if ((fresh.cash ?? 0) + (fresh.bank ?? 0) < need) {
       await interaction.editReply(
-        `Need at least **${fmtCash(coinValue)}** ${bal.symbol} (cash+bank) for one coin.`,
+        `Need at least **${fmtCash(need)}** ${fresh.symbol} (cash+bank) for one coin at the new value.${refundNote}`,
       );
       return true;
     }
-    const k = key(interaction.guildId, ownerId);
-    const prev = sessions.get(k);
+
     const session: SlotsSession = {
       guildId: interaction.guildId,
       userId: ownerId,
       coinValue,
-      credits: prev?.credits ?? 0,
+      credits: 0,
       betMult: prev?.betMult ?? 1,
       spins: prev?.spins ?? 0,
       net: prev?.net ?? 0,
       expires: Date.now() + 30 * 60_000,
-      symbol: bal.symbol,
-      cash: bal.cash ?? 0,
-      bank: bal.bank ?? 0,
+      symbol: fresh.symbol,
+      cash: fresh.cash ?? 0,
+      bank: fresh.bank ?? 0,
     };
+    const first = await loadOneCoin(session, "Slots re-value — first coin");
     sessions.set(k, session);
-    const gif = await renderMachine(session, "idle");
+    const gif = await renderMachine(session, "insert", { insertCount: 1 });
     const { files, imageName } = await attachGif(gif, "slots-idle.gif");
     const embed = brandEmbed("🎰 Vegas Slot Machine", [
-      `${interaction.user} · coin value set to **${fmtCash(coinValue)}** ${bal.symbol}`,
+      `${interaction.user} · **VALUE** now **${fmtCash(coinValue)}** ${session.symbol}/coin — 1 coin loaded.`,
+      formatSpendNote(first.fromCash, first.fromBank, session.symbol) + refundNote,
       sessionStatus(session),
       "",
-      `Jackpot face: **${bal.symbol}${bal.symbol}${bal.symbol}**`,
-      "Insert coins, set BET, then **SPIN**.",
+      `Jackpot face: **${session.symbol}${session.symbol}${session.symbol}**`,
+      "Feed more coins, set **BET ×**, then **SPIN**.",
     ].join("\n"));
     if (imageName) embed.setImage(`attachment://${imageName}`);
     await openTableAsUnbelievaBoat(interaction, {
