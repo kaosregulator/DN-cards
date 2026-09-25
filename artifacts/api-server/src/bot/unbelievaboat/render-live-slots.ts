@@ -15,9 +15,32 @@ const H = 440;
 
 export const SLOT_POOL_BASE = ["🍒", "🍋", "🔔", "⭐", "💎", "🃏"] as const;
 
+/** `<:name:id>` or `<a:name:id>` — Discord custom emoji markup. */
+const CUSTOM_EMOJI_RE = /^<(a)?:([\w~]+):(\d+)>$/;
+
+export function parseDiscordEmoji(symbol: string): {
+  animated: boolean;
+  name: string;
+  id: string;
+} | null {
+  const m = symbol.trim().match(CUSTOM_EMOJI_RE);
+  if (!m) return null;
+  return { animated: Boolean(m[1]), name: m[2]!, id: m[3]! };
+}
+
+/** Short label for canvas text (never dump raw `<:name:id>`). */
+export function symbolDisplayName(symbol: string): string {
+  const custom = parseDiscordEmoji(symbol);
+  if (custom) return custom.name;
+  if (symbol.length <= 4) return symbol;
+  return "★";
+}
+
 /** Reel pool with server economy symbol as the jackpot face (replaces 7️⃣). */
 export function slotPool(economySymbol: string): string[] {
-  const sym = economySymbol || "💵";
+  const sym = economySymbol?.trim() || "💵";
+  // Avoid duplicating if the server symbol is already a base face
+  if ((SLOT_POOL_BASE as readonly string[]).includes(sym)) return [...SLOT_POOL_BASE];
   return [...SLOT_POOL_BASE, sym];
 }
 
@@ -42,9 +65,9 @@ export type SlotsMachineOpts = {
 
 type Img = { width: number; height: number };
 
-const TWEMOJI_CACHE = new Map<string, Img | null>();
+const SYMBOL_IMG_CACHE = new Map<string, Img | null>();
 
-/** Convert emoji to Twemoji hex filename (drops VS16). */
+/** Convert unicode emoji to Twemoji hex filename (drops VS16). */
 function emojiToCode(emoji: string): string {
   const known: Record<string, string> = {
     "🍒": "1f352",
@@ -68,22 +91,39 @@ function emojiToCode(emoji: string): string {
   return cps.map((c) => c.toString(16)).join("-");
 }
 
-async function loadTwemoji(mod: CanvasMod, emoji: string): Promise<Img | null> {
-  const code = emojiToCode(emoji);
-  if (!code) return null;
-  if (TWEMOJI_CACHE.has(code)) return TWEMOJI_CACHE.get(code) ?? null;
+/**
+ * Load a reel/face image: Discord custom emoji from CDN, otherwise Twemoji.
+ * Custom: `<:bob:123>` → `cdn.discordapp.com/emojis/123.png`
+ */
+async function loadSymbolImage(mod: CanvasMod, symbol: string): Promise<Img | null> {
+  const key = symbol.trim();
+  if (!key) return null;
+  if (SYMBOL_IMG_CACHE.has(key)) return SYMBOL_IMG_CACHE.get(key) ?? null;
+
+  const custom = parseDiscordEmoji(key);
   try {
-    const url = `https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/${code}.png`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(5_000) });
+    let url: string;
+    if (custom) {
+      // PNG works for animated emojis as a static frame (canvas-friendly)
+      url = `https://cdn.discordapp.com/emojis/${custom.id}.png?size=128&quality=lossless`;
+    } else {
+      const code = emojiToCode(key);
+      if (!code) {
+        SYMBOL_IMG_CACHE.set(key, null);
+        return null;
+      }
+      url = `https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/${code}.png`;
+    }
+    const res = await fetch(url, { signal: AbortSignal.timeout(6_000) });
     if (!res.ok) {
-      TWEMOJI_CACHE.set(code, null);
+      SYMBOL_IMG_CACHE.set(key, null);
       return null;
     }
     const img = await mod.loadImage(Buffer.from(await res.arrayBuffer()));
-    TWEMOJI_CACHE.set(code, img);
+    SYMBOL_IMG_CACHE.set(key, img);
     return img;
   } catch {
-    TWEMOJI_CACHE.set(code, null);
+    SYMBOL_IMG_CACHE.set(key, null);
     return null;
   }
 }
@@ -91,7 +131,7 @@ async function loadTwemoji(mod: CanvasMod, emoji: string): Promise<Img | null> {
 async function preloadSymbols(mod: CanvasMod, symbols: string[]): Promise<Map<string, Img | null>> {
   const map = new Map<string, Img | null>();
   await Promise.all(symbols.map(async (s) => {
-    map.set(s, await loadTwemoji(mod, s));
+    map.set(s, await loadSymbolImage(mod, s));
   }));
   return map;
 }
@@ -102,12 +142,12 @@ function drawSymbolImg(
   face: string,
   x: number, y: number, size: number,
 ) {
-  const img = imgMap.get(face);
+  const img = imgMap.get(face) ?? imgMap.get(face.trim());
   if (img) {
     ctx.drawImage(img as never, x - size / 2, y - size / 2, size, size);
     return;
   }
-  // Painted fallbacks so tofu never shows on the reels
+  // Painted fallbacks so tofu / raw <:name:id> never shows on the reels
   ctx.save();
   ctx.translate(x, y);
   if (face === "🍒" || face.includes("cherry")) {
@@ -154,22 +194,32 @@ function drawSymbolImg(
     ctx.textBaseline = "middle";
     ctx.fillText("J", 0, 0);
   } else {
-    // Economy symbol / jackpot face — gold chip with the server currency glyph
+    // Economy symbol fallback — gold chip with short name (never raw <:id:>)
+    const label = symbolDisplayName(face);
     ctx.fillStyle = "#f5c84c";
     ctx.beginPath(); ctx.arc(0, 0, Math.max(14, size * 0.38), 0, Math.PI * 2); ctx.fill();
     ctx.strokeStyle = "#a16207";
     ctx.lineWidth = 2;
     ctx.stroke();
     ctx.fillStyle = "#7c4a12";
-    ctx.font = `bold ${Math.max(12, Math.floor(size * 0.42))}px sans-serif`;
+    const fontSize = label.length > 4
+      ? Math.max(8, Math.floor(size * 0.22))
+      : Math.max(10, Math.floor(size * 0.36));
+    ctx.font = `bold ${fontSize}px sans-serif`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(face.length <= 3 ? face : "★", 0, 1);
+    ctx.fillText(label.slice(0, 8), 0, 1);
   }
   ctx.restore();
 }
 
-function machineChrome(ctx: Ctx, t: number, leverDown: number, economySymbol = "💵") {
+function machineChrome(
+  ctx: Ctx,
+  t: number,
+  leverDown: number,
+  economySymbol = "💵",
+  imgMap?: Map<string, Img | null>,
+) {
   const bg = ctx.createLinearGradient(0, 0, 0, H);
   bg.addColorStop(0, "#120818");
   bg.addColorStop(1, "#06040a");
@@ -190,7 +240,7 @@ function machineChrome(ctx: Ctx, t: number, leverDown: number, economySymbol = "
   ctx.fillStyle = "#140810";
   ctx.fill();
 
-  // Marquee — economy symbol is the jackpot face callout
+  // Marquee — "Vegas · [economy symbol image]"
   roundRectPath(ctx, bx + 28, by + 22, bw - 56, 50, 10);
   ctx.fillStyle = "#1a0a22";
   ctx.fill();
@@ -199,7 +249,14 @@ function machineChrome(ctx: Ctx, t: number, leverDown: number, economySymbol = "
   ctx.font = "italic bold 22px Georgia, serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(`Vegas · ${economySymbol}`, bx + bw / 2, by + 47);
+  const mx = bx + bw / 2;
+  const my = by + 47;
+  if (imgMap) {
+    ctx.fillText("Vegas", mx - 28, my);
+    drawSymbolImg(ctx, imgMap, economySymbol, mx + 42, my, 28);
+  } else {
+    ctx.fillText(`Vegas · ${symbolDisplayName(economySymbol)}`, mx, my);
+  }
 
   // Coin slot (left of body)
   const slotX = bx - 22;
@@ -317,8 +374,14 @@ function drawReelWindow(
   ctx.restore();
 }
 
-/** Single coin disc with economy symbol (or $). */
-function drawCoin(ctx: Ctx, x: number, y: number, r: number, symbol: string, squash = 1) {
+/** Single coin disc — draws economy symbol image when available. */
+function drawCoin(
+  ctx: Ctx,
+  x: number, y: number, r: number,
+  symbol: string,
+  squash = 1,
+  imgMap?: Map<string, Img | null>,
+) {
   ctx.save();
   ctx.translate(x, y);
   ctx.scale(Math.max(0.35, squash), 1);
@@ -331,14 +394,17 @@ function drawCoin(ctx: Ctx, x: number, y: number, r: number, symbol: string, squ
   ctx.strokeStyle = "#a16207";
   ctx.lineWidth = 1.5;
   ctx.stroke();
-  ctx.fillStyle = "#7c4a12";
-  ctx.beginPath(); ctx.arc(0, 0, r * 0.58, 0, Math.PI * 2); ctx.stroke();
-  ctx.fillStyle = "#fff6c8";
-  ctx.font = `bold ${Math.max(8, Math.floor(r * 0.85))}px sans-serif`;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  const face = symbol.length <= 2 ? symbol : "$";
-  ctx.fillText(face, 0, 1);
+  const img = imgMap?.get(symbol) ?? imgMap?.get(symbol.trim());
+  if (img && r >= 6) {
+    const s = r * 1.15;
+    ctx.drawImage(img as never, -s / 2, -s / 2, s, s);
+  } else {
+    ctx.fillStyle = "#fff6c8";
+    ctx.font = `bold ${Math.max(8, Math.floor(r * 0.85))}px sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(symbolDisplayName(symbol).slice(0, 2), 0, 1);
+  }
   ctx.restore();
 }
 
@@ -347,6 +413,7 @@ function drawInsertCoins(
   ctx: Ctx,
   slotX: number, slotY: number,
   count: number, t: number, symbol: string,
+  imgMap?: Map<string, Img | null>,
 ) {
   const n = Math.max(1, Math.min(5, count));
   for (let i = 0; i < n; i++) {
@@ -358,7 +425,7 @@ function drawInsertCoins(
     const squash = local < 0.85 ? 0.7 + Math.sin(local * Math.PI * 6) * 0.25 : 0.2;
     const alpha = local > 0.9 ? 1 - (local - 0.9) / 0.1 : 1;
     ctx.globalAlpha = alpha;
-    drawCoin(ctx, x, y, 11, symbol, squash);
+    drawCoin(ctx, x, y, 11, symbol, squash, imgMap);
     ctx.globalAlpha = 1;
   }
 }
@@ -367,7 +434,10 @@ function drawInsertCoins(
  * Vegas hopper payout: coins pour DOWN from the tray mouth into a catch
  * basin and bounce/pile — not a shatter crack and not a flat flying row.
  */
-function drawHopperCascade(ctx: Ctx, t: number, symbol: string, intensity: number, hopperY: number) {
+function drawHopperCascade(
+  ctx: Ctx, t: number, symbol: string, intensity: number, hopperY: number,
+  imgMap?: Map<string, Img | null>,
+) {
   const count = Math.floor(22 + intensity * 30);
   const mouthL = W / 2 - 90;
   const mouthR = W / 2 + 50;
@@ -383,17 +453,14 @@ function drawHopperCascade(ctx: Ctx, t: number, symbol: string, intensity: numbe
     const seed3 = Math.sin((i + 1) * 39.417) * 43758.5453;
     const w = seed3 - Math.floor(seed3);
 
-    // Staggered pour — continuous stream from the mouth
     const local = clamp01((t - u * 0.55) / 0.7);
     if (local <= 0) continue;
 
     const ox = lerp(mouthL, mouthR, w);
-    // Slight outward drift + gravity drop into the tray
     const drift = (u - 0.5) * 90;
     const x = ox + drift * local + Math.sin(local * Math.PI * 2 + i) * 6;
     const fall = 40 * local + 0.5 * g * local * local;
     let y = mouthY + fall;
-    // Bounce once when hitting the tray floor
     let squash = 0.85 + Math.sin(local * Math.PI * 3) * 0.15;
     if (y > trayY) {
       const over = y - trayY;
@@ -408,14 +475,14 @@ function drawHopperCascade(ctx: Ctx, t: number, symbol: string, intensity: numbe
           : 1;
     if (alpha <= 0) continue;
     ctx.globalAlpha = alpha;
-    drawCoin(ctx, x, y, r, symbol, squash);
+    drawCoin(ctx, x, y, r, symbol, squash, imgMap);
     ctx.globalAlpha = 1;
   }
 }
 
 function consoleLeds(
   ctx: Ctx, bx: number, by: number, bw: number, bh: number,
-  credits: number, betMult: number, coinLabel: string, symbol: string,
+  credits: number, betMult: number, coinLabel: string,
 ) {
   const cy = by + bh - 70;
   roundRectPath(ctx, bx + 22, cy, bw - 44, 42, 8);
@@ -423,7 +490,20 @@ function consoleLeds(
   ctx.fill();
   drawLed(ctx, bx + 30, cy + 6, 100, 30, "CREDITS", String(credits));
   drawLed(ctx, bx + 140, cy + 6, 90, 30, "BET", `${betMult}×`);
-  drawLed(ctx, bx + 240, cy + 6, 120, 30, "COIN", `${coinLabel}${symbol.length <= 2 ? symbol : ""}`);
+  // Never append raw <:name:id> into the LED — denomination only
+  drawLed(ctx, bx + 240, cy + 6, 120, 30, "COIN", coinLabel || "—");
+}
+
+/** Draw three reel faces as images in a row (never raw <:name:id> text). */
+function drawFaceRow(
+  ctx: Ctx,
+  imgMap: Map<string, Img | null>,
+  faces: string[],
+  cx: number, y: number, size: number,
+) {
+  const gap = size + 10;
+  const start = cx - ((faces.length - 1) * gap) / 2;
+  faces.forEach((f, i) => drawSymbolImg(ctx, imgMap, f, start + i * gap, y, size));
 }
 
 export async function renderLiveSlotsMachine(opts: SlotsMachineOpts): Promise<AnimationResult | null> {
@@ -484,7 +564,7 @@ export async function renderLiveSlotsMachine(opts: SlotsMachineOpts): Promise<An
 
       ctx.save();
       ctx.translate(shake.dx, shake.dy);
-      const { bx, by, bw, bh, slotX, slotY, hopperY } = machineChrome(ctx, t, leverDown, symbol);
+      const { bx, by, bw, bh, slotX, slotY, hopperY } = machineChrome(ctx, t, leverDown, symbol, imgMap);
 
       const reelY = by + 90;
       const reelH = 148;
@@ -524,18 +604,24 @@ export async function renderLiveSlotsMachine(opts: SlotsMachineOpts): Promise<An
       ctx.lineTo(startX + total + 4, reelY + reelH / 2);
       ctx.stroke();
 
-      consoleLeds(ctx, bx, by, bw, bh, credits, betMult, coinLabel, symbol);
+      consoleLeds(ctx, bx, by, bw, bh, credits, betMult, coinLabel);
 
+      // Footer plate — draw symbol image, never raw <:name:id>
       roundRectPath(ctx, bx + 40, by + bh - 24, bw - 80, 18, 5);
       ctx.fillStyle = "#1a0820";
       ctx.fill();
       ctx.fillStyle = "#ff5577";
-      ctx.font = "italic bold 12px Georgia, serif";
+      ctx.font = "italic bold 11px Georgia, serif";
       ctx.textAlign = "center";
-      ctx.fillText(`LIVE · ${symbol} JACKPOT · INSERT`, bx + bw / 2, by + bh - 12);
+      ctx.textBaseline = "middle";
+      const footY = by + bh - 12;
+      ctx.fillText("LIVE ·", bx + bw / 2 - 70, footY);
+      drawSymbolImg(ctx, imgMap, symbol, bx + bw / 2 - 28, footY, 14);
+      ctx.fillStyle = "#ff5577";
+      ctx.fillText("JACKPOT · INSERT", bx + bw / 2 + 55, footY);
 
       if (mode === "insert") {
-        drawInsertCoins(ctx, slotX, slotY, insertCount, t, symbol);
+        drawInsertCoins(ctx, slotX, slotY, insertCount, t, symbol, imgMap);
         ctx.fillStyle = "#fde68a";
         ctx.font = "bold 15px sans-serif";
         ctx.textAlign = "center";
@@ -555,10 +641,7 @@ export async function renderLiveSlotsMachine(opts: SlotsMachineOpts): Promise<An
         ctx.textAlign = "center";
         ctx.fillText("spinning…", W / 2 + 30, H - 14);
       } else if (mode === "spin" && landed && t < lastStop + 0.1) {
-        ctx.fillStyle = "#fde68a";
-        ctx.font = "bold 14px sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillText(faces.join("  "), W / 2 + 30, H - 14);
+        drawFaceRow(ctx, imgMap, faces, W / 2 + 20, H - 16, 18);
       }
 
       ctx.restore();
@@ -574,7 +657,7 @@ export async function renderLiveSlotsMachine(opts: SlotsMachineOpts): Promise<An
       if (showWin) {
         const localT = mode === "win" ? t : clamp01((t - resultStart) / Math.max(0.01, 1 - resultStart));
         const intensity = opts.tier === "jackpot" ? 1 : opts.tier === "line" ? 0.65 : 0.4;
-        drawHopperCascade(ctx, localT, symbol, intensity, hopperY);
+        drawHopperCascade(ctx, localT, symbol, intensity, hopperY, imgMap);
         if (localT > 0.08) {
           const glow = ctx.createRadialGradient(W / 2 - 20, hopperY + 20, 4, W / 2 - 20, hopperY + 20, 120);
           glow.addColorStop(0, hexToRgba(0xffd54a, 0.35 * (1 - localT * 0.3)));
@@ -595,32 +678,35 @@ export async function renderLiveSlotsMachine(opts: SlotsMachineOpts): Promise<An
         ctx.strokeStyle = opts.tier === "jackpot" ? "#ffd54a" : "#4ade80";
         ctx.lineWidth = 2;
         ctx.stroke();
+        // Banner: ★ JACKPOT [emoji] ★ — image, not raw token
         ctx.fillStyle = opts.tier === "jackpot" ? "#ffd54a" : "#4ade80";
-        ctx.font = "bold 20px sans-serif";
+        ctx.font = "bold 18px sans-serif";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        const title = opts.tier === "jackpot"
-          ? `★ JACKPOT ${symbol} ★`
-          : opts.tier === "pair" ? "PAIR PAY" : "LINE WIN";
-        ctx.fillText(title, W / 2 - 20, 27);
+        if (opts.tier === "jackpot") {
+          ctx.fillText("★ JACKPOT", W / 2 - 50, 27);
+          drawSymbolImg(ctx, imgMap, symbol, W / 2 + 30, 27, 22);
+          ctx.fillStyle = "#ffd54a";
+          ctx.fillText("★", W / 2 + 55, 27);
+        } else {
+          ctx.fillText(opts.tier === "pair" ? "PAIR PAY" : "LINE WIN", W / 2 - 20, 27);
+        }
         if (opts.payoutLabel) {
+          // Strip raw custom-emoji tokens from payout label for canvas
+          const cleanPay = opts.payoutLabel.replace(/<a?:[\w~]+:\d+>/g, symbolDisplayName(symbol));
           ctx.fillStyle = "#fff6c8";
           ctx.font = "bold 16px sans-serif";
-          ctx.fillText(opts.payoutLabel, W / 2 - 20, H - 16);
+          ctx.fillText(cleanPay, W / 2 - 20, H - 16);
         }
-        ctx.fillStyle = "#f8fafc";
-        ctx.font = "bold 15px sans-serif";
-        ctx.fillText(faces.join("   "), W / 2 - 20, H - 36);
+        drawFaceRow(ctx, imgMap, faces, W / 2 - 20, H - 38, 20);
         ctx.globalAlpha = 1;
       }
 
       if (showLose) {
-        ctx.fillStyle = "rgba(248,250,252,0.95)";
-        ctx.font = "bold 15px sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillText(faces.join("   "), W / 2 + 20, H - 32);
+        drawFaceRow(ctx, imgMap, faces, W / 2 + 20, H - 34, 18);
         ctx.fillStyle = "rgba(148,163,184,0.9)";
         ctx.font = "bold 13px sans-serif";
+        ctx.textAlign = "center";
         ctx.fillText("No line — insert more or spin again", W / 2 + 20, H - 14);
       }
     },
