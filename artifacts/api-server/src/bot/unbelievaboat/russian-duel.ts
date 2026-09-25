@@ -159,8 +159,11 @@ export async function handleRussian(interaction: ChatInputCommandInteraction): P
         "",
         `${target} — **Accept duel** to play the scene.`,
       ].join("\n"));
-      await openTableAsUnbelievaBoat(interaction, { embeds: [embed], components: [row] },
-        "✅ Challenge posted as **UnbelievaBoat** — wait for accept on the floor.");
+      await openTableAsUnbelievaBoat(interaction, {
+        embeds: [embed],
+        components: [row],
+        slashHint: `/russian_ub bet:${bet}`,
+      }, "✅ Challenge posted as **UnbelievaBoat** — wait for accept on the floor.");
       return;
     }
 
@@ -192,7 +195,7 @@ export async function handleRussian(interaction: ChatInputCommandInteraction): P
       ].join("\n"),
     );
     if (imageName) embed.setImage(`attachment://${imageName}`);
-    await replyThenPostAsUnbelievaBoat(interaction, { embeds: [embed], files });
+    await replyThenPostAsUnbelievaBoat(interaction, { embeds: [embed], files, slashHint: `/russian_ub bet:${bet}` });
   } catch (err) {
     await interaction.editReply(err instanceof CashError ? err.message : `Failed: ${err instanceof Error ? err.message : err}`);
   }

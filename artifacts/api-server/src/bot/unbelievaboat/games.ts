@@ -298,7 +298,7 @@ export async function handleCashCheck(interaction: ChatInputCommandInteraction):
       "_Stacks with UnbelievaBoat’s own income/role rewards._",
     ].join("\n"));
     if (imageName) embed.setImage(`attachment://${imageName}`);
-    await replyThenPostAsUnbelievaBoat(interaction, { embeds: [embed], files });
+    await replyThenPostAsUnbelievaBoat(interaction, { embeds: [embed], files, slashHint: "/daily_ub" });
   } catch (err) {
     await interaction.editReply(err instanceof CashError ? err.message : `Failed: ${err instanceof Error ? err.message : err}`);
   }
@@ -386,7 +386,11 @@ export async function handleBlackjack(interaction: ChatInputCommandInteraction):
         formatSpendNote(spent.fromCash, spent.fromBank, bal.symbol),
       ].join("\n"));
       if (imageName) embed.setImage(`attachment://${imageName}`);
-      await openTableAsUnbelievaBoat(interaction, { embeds: [embed], files }, "✅ Hand posted as **UnbelievaBoat**.");
+      await openTableAsUnbelievaBoat(interaction, {
+        embeds: [embed],
+        files,
+        slashHint: `/blackjack_ub bet:${bet}`,
+      }, "✅ Hand posted as **UnbelievaBoat**.");
       return;
     }
 
@@ -417,6 +421,7 @@ export async function handleBlackjack(interaction: ChatInputCommandInteraction):
       embeds: [embed],
       files,
       components: bjButtons(interaction.user.id, true),
+      slashHint: `/blackjack_ub bet:${bet}`,
     }, "✅ Blackjack table opened as **UnbelievaBoat** — play on the floor.");
   } catch (err) {
     await interaction.editReply(err instanceof CashError ? err.message : `Failed: ${err instanceof Error ? err.message : err}`);
@@ -486,7 +491,7 @@ export async function handleRedBlack(interaction: ChatInputCommandInteraction): 
       `Cash **${fmtCash(bal.cash)}** · bank **${fmtCash(bal.bank)}**`,
     ].join("\n"));
     if (imageName) embed.setImage(`attachment://${imageName}`);
-    await replyThenPostAsUnbelievaBoat(interaction, { embeds: [embed], files });
+    await replyThenPostAsUnbelievaBoat(interaction, { embeds: [embed], files, slashHint: `/redblack_ub bet:${bet} color:${pick}` });
   } catch (err) {
     await interaction.editReply(err instanceof CashError ? err.message : `Failed: ${err instanceof Error ? err.message : err}`);
   }
@@ -509,7 +514,7 @@ export async function handleCashWork(interaction: ChatInputCommandInteraction): 
       `Cash **${fmtCash(bal.cash)}** · bank **${fmtCash(bal.bank)}**`,
     ].join("\n"));
     if (imageName) embed.setImage(`attachment://${imageName}`);
-    await replyThenPostAsUnbelievaBoat(interaction, { embeds: [embed], files });
+    await replyThenPostAsUnbelievaBoat(interaction, { embeds: [embed], files, slashHint: "/work_ub" });
   } catch (err) {
     await interaction.editReply(err instanceof CashError ? err.message : `Failed: ${err instanceof Error ? err.message : err}`);
   }
@@ -533,7 +538,7 @@ export async function handleCashCrime(interaction: ChatInputCommandInteraction):
         formatSpendNote(spent.fromCash, spent.fromBank, spent.balance.symbol),
         `Cash **${fmtCash(spent.balance.cash)}** · bank **${fmtCash(spent.balance.bank)}**`,
       ].join("\n"));
-      await replyThenPostAsUnbelievaBoat(interaction, { embeds: [embed] });
+      await replyThenPostAsUnbelievaBoat(interaction, { embeds: [embed], slashHint: "/crime_ub" });
       return;
     }
     const payout = 250 + Math.floor(Math.random() * 451);
@@ -542,7 +547,7 @@ export async function handleCashCrime(interaction: ChatInputCommandInteraction):
       `${interaction.user} pulled it off · **+${fmtCash(payout)}** ${bal.symbol}`,
       `Cash **${fmtCash(bal.cash)}** · bank **${fmtCash(bal.bank)}**`,
     ].join("\n"));
-    await replyThenPostAsUnbelievaBoat(interaction, { embeds: [embed] });
+    await replyThenPostAsUnbelievaBoat(interaction, { embeds: [embed], slashHint: "/crime_ub" });
   } catch (err) {
     await interaction.editReply(err instanceof CashError ? err.message : `Failed: ${err instanceof Error ? err.message : err}`);
   }
@@ -593,7 +598,7 @@ export async function handleRob(interaction: ChatInputCommandInteraction): Promi
         `Your cash **${fmtCash(bal.cash)}**`,
       ].join("\n"));
       if (imageName) embed.setImage(`attachment://${imageName}`);
-      await replyThenPostAsUnbelievaBoat(interaction, { embeds: [embed], files });
+      await replyThenPostAsUnbelievaBoat(interaction, { embeds: [embed], files, slashHint: "/rob_ub" });
       void logGameEvent(interaction.client, interaction.guildId, interaction.user, "Rob success",
         `Stole ${fmtCash(amount)} from ${target.tag}`,
         [{ name: "Target", value: `${target}`, inline: true }]);
@@ -607,7 +612,7 @@ export async function handleRob(interaction: ChatInputCommandInteraction): Promi
         formatSpendNote(spent.fromCash, spent.fromBank, spent.balance.symbol),
       ].join("\n"));
       if (imageName) embed.setImage(`attachment://${imageName}`);
-      await replyThenPostAsUnbelievaBoat(interaction, { embeds: [embed], files });
+      await replyThenPostAsUnbelievaBoat(interaction, { embeds: [embed], files, slashHint: "/rob_ub" });
       void logGameEvent(interaction.client, interaction.guildId, interaction.user, "Rob failed",
         `Fined trying to rob ${target.tag}`);
     }
@@ -636,7 +641,7 @@ export async function handleSlut(interaction: ChatInputCommandInteraction): Prom
       "_Wholesome meme beg only — no NSFW._",
     ].join("\n"));
     if (imageName) embed.setImage(`attachment://${imageName}`);
-    await replyThenPostAsUnbelievaBoat(interaction, { embeds: [embed], files });
+    await replyThenPostAsUnbelievaBoat(interaction, { embeds: [embed], files, slashHint: "/beg_ub" });
   } catch (err) {
     await interaction.editReply(err instanceof CashError ? err.message : `Failed: ${err instanceof Error ? err.message : err}`);
   }

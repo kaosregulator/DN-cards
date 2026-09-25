@@ -32,7 +32,9 @@ Leaderboard · adjust/set cash · toggles · add perk (with **collect income**) 
 
 ## Player hub — `/casino`
 
-All player economy/casino actions live under **one** slash command (Discord’s **100** command ceiling). Flat aliases like `/blackjack` were folded here.
+All player economy/casino actions live under **`/casino`** (full floor dashboard).
+**Also:** 18 short aliases ending in **`_ub`** (`/daily_ub`, `/slots_ub`, …) — Discord
+forces lowercase, so the suffix avoids colliding with DN `/daily` (shards).
 
 | Subcommand | Notes |
 | --- | --- |
@@ -49,6 +51,8 @@ All player economy/casino actions live under **one** slash command (Discord’s 
 | `top` | Dex N Cards × UnbelievaBoat animated leaderboard |
 | `games` | Menu |
 
+Floor webhooks append `_▶️ Run \`/…_ub\` · all tables: \`/casino\`` so bystanders see the slash.
+
 ## Logs
 
 `/unbelievaboat` → **Log channel** — universal economy/casino logs (avatar, timestamp, action). Categories: economy · games · trades · quiet · admin · bot.
@@ -59,11 +63,17 @@ All player economy/casino actions live under **one** slash command (Discord’s 
 
 ## Schema
 
-`ub_settings.log_channel_id` · `rob_immune_role_ids` · `cooldowns` · `ub_role_links.income_amount` · `ub_game_state.last_collect_at` · boot ALTERs included.
+`ub_settings` · `ub_game_state` · `ub_role_links` · `ub_store_catalog` · `ub_audit_log`
+(plus columns like `log_channel_id`, `rob_immune_role_ids`, `cooldowns`, `income_amount`).
+
+On Railway, `start-production.mjs` + boot migrations `CREATE TABLE IF NOT EXISTS` these
+on every redeploy when drizzle push is skipped — no manual push needed. See `docs/railway.md`.
 
 ## Slash command budget
 
-Before `/casino` hub: **101** chat-input commands (over Discord’s 100). After fold: **~89**. Prefer new games as `/casino` subcommands (max 25 per command) instead of new top-level slash names.
+`/casino` hub + 18 `*_ub` shortcuts ≈ **78** chat-input (under Discord’s 100). Prefer new
+games as `/casino` subcommands (max 25 per command) instead of more top-level names.
+Slash registration runs automatically on bot login — redeploy is enough.
 
 ## Secrets
 

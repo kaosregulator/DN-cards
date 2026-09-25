@@ -101,6 +101,7 @@ function hubEmbed(balLine: string): EmbedBuilder {
       "",
       "**Wallet** — balance · deposit · withdraw · daily · collect",
       "**Tables** — slots · blackjack · roulette · UNO · more",
+      "**Quick slash** — `/daily_ub` `/slots_ub` `/blackjack_ub` … (same games, ends with `_ub`)",
       "**Hustle** — work · crime · beg · rob · russian",
       "**Board** — leaderboard · store · games menu",
     ].join("\n"),
@@ -490,7 +491,7 @@ export async function handleCasinoHubModal(interaction: ModalSubmitInteraction):
   }
 }
 
-async function handleBalance(interaction: ChatInputCommandInteraction): Promise<void> {
+export async function handleBalance(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply({ ephemeral: true });
   try {
     const target = interaction.options.getUser("user") ?? interaction.user;
@@ -510,7 +511,7 @@ async function handleBalance(interaction: ChatInputCommandInteraction): Promise<
   }
 }
 
-async function handleDeposit(interaction: ChatInputCommandInteraction): Promise<void> {
+export async function handleDeposit(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply({ ephemeral: true });
   try {
     const amount = interaction.options.getInteger("amount", true);
@@ -539,7 +540,7 @@ async function handleDeposit(interaction: ChatInputCommandInteraction): Promise<
   }
 }
 
-async function handleWithdraw(interaction: ChatInputCommandInteraction): Promise<void> {
+export async function handleWithdraw(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply({ ephemeral: true });
   try {
     const amount = interaction.options.getInteger("amount", true);
@@ -568,7 +569,7 @@ async function handleWithdraw(interaction: ChatInputCommandInteraction): Promise
   }
 }
 
-async function handleAnimatedDaily(interaction: ChatInputCommandInteraction): Promise<void> {
+export async function handleAnimatedDaily(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply({ ephemeral: true });
   try {
     const settings = await getOrCreateUbSettings(interaction.guildId!);
@@ -601,7 +602,7 @@ async function handleAnimatedDaily(interaction: ChatInputCommandInteraction): Pr
       "_Stacks with UnbelievaBoat’s own income rewards._",
     ].join("\n"));
     if (imageName) embed.setImage(`attachment://${imageName}`);
-    await replyThenPostAsUnbelievaBoat(interaction, { embeds: [embed], files });
+    await replyThenPostAsUnbelievaBoat(interaction, { embeds: [embed], files, slashHint: "/daily_ub" });
     void logEconomyEvent(
       interaction.client, interaction.guildId!, interaction.user,
       "Daily Check-In", `Claimed ${fmtCash(amount)} (streak ${streak})`,
@@ -612,7 +613,7 @@ async function handleAnimatedDaily(interaction: ChatInputCommandInteraction): Pr
   }
 }
 
-async function handleCollect(interaction: ChatInputCommandInteraction): Promise<void> {
+export async function handleCollect(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply({ ephemeral: true });
   try {
     const settings = await getOrCreateUbSettings(interaction.guildId!);
@@ -663,7 +664,7 @@ async function handleCollect(interaction: ChatInputCommandInteraction): Promise<
       `💵 Cash **${fmtCash(bal.cash)}** · 🏦 Bank **${fmtCash(bal.bank)}**`,
     ].join("\n"));
     if (imageName) embed.setImage(`attachment://${imageName}`);
-    await replyThenPostAsUnbelievaBoat(interaction, { embeds: [embed], files });
+    await replyThenPostAsUnbelievaBoat(interaction, { embeds: [embed], files, slashHint: "/collect_ub" });
     void logEconomyEvent(
       interaction.client, interaction.guildId!, interaction.user,
       "Role Collect", `Collected ${fmtCash(total)} from ${owned.length} role(s)`,
@@ -674,7 +675,7 @@ async function handleCollect(interaction: ChatInputCommandInteraction): Promise<
   }
 }
 
-async function handleCasinoTop(interaction: ChatInputCommandInteraction): Promise<void> {
+export async function handleCasinoTop(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply({ ephemeral: true });
   try {
     const settings = await getOrCreateUbSettings(interaction.guildId!);
@@ -747,7 +748,7 @@ async function handleCasinoTop(interaction: ChatInputCommandInteraction): Promis
       files.push(new AttachmentBuilder(gif.buffer, { name: "ub-leaderboard.gif" }));
       embed.setImage("attachment://ub-leaderboard.gif");
     }
-    await replyThenPostAsUnbelievaBoat(interaction, { embeds: [embed], files });
+    await replyThenPostAsUnbelievaBoat(interaction, { embeds: [embed], files, slashHint: "/top_ub" });
     void logGameEvent(
       interaction.client, interaction.guildId!, interaction.user,
       "Leaderboard viewed", `${interaction.user.username} opened the cash board`,

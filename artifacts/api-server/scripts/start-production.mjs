@@ -3,15 +3,15 @@
  * Production start wrapper for Railway (and similar hosts).
  *
  * 1. Applies the Drizzle schema when the DB is empty / AUTO_DB_PUSH=1
- * 2. Starts the bundled API + Discord bot
+ * 2. Ensures additive addon tables (quiet_*, ub_*, tatsu_*) when drizzle push
+ *    is skipped because guild_settings already exists
+ * 3. Starts the bundled API + Discord bot (which re-registers guild slash cmds
+ *    on ClientReady — including /casino and the *_ub shortcuts)
  *
  * Env:
  *   AUTO_DB_PUSH=1  — always run `drizzle-kit push` before start (first deploy)
- *   AUTO_DB_PUSH=0  — never push; only start
+ *   AUTO_DB_PUSH=0  — never push; only start (also skips addon CREATE IF NOT EXISTS)
  *   (unset)         — push only when `guild_settings` is missing
- *
- * Also ensures Quiet Mode (`quiet_*`) tables exist on already-provisioned DBs
- * (guild_settings present → drizzle push is skipped, so we CREATE IF NOT EXISTS).
  *
  * This is the default `pnpm start` for @workspace/api-server so Railway
  * custom start commands that call package start still bootstrap schema.
@@ -67,10 +67,7 @@ async function baseSchemaMissing() {
 }
 
 /** Quiet Mode tables — create when missing on an already-provisioned DB. */
-async function ensureQuietTables() {
-  const url = process.env.DATABASE_URL;
-  if (!url) return;
-  const pool = new pg.Pool(buildPoolConfig(url));
+async function ensureQuietTables(pool) {
   try {
     await pool.query("SELECT 1 FROM quiet_state LIMIT 1");
     return;
@@ -158,6 +155,197 @@ async function ensureQuietTables() {
   } catch (err) {
     console.error("Failed to create Quiet Mode tables:", err?.message ?? err);
     // Non-fatal here — boot migrations in the app also try; start anyway.
+  }
+}
+
+/**
+ * UnbelievaBoat + Tatsu tables — CREATE IF NOT EXISTS on already-provisioned DBs.
+ * Existing Railway DBs skip drizzle push (guild_settings present); this is how
+ * ub_* / tatsu_* land on the next redeploy without AUTO_DB_PUSH=1.
+ * Boot migrations in dist/index.mjs also run the same statements.
+ */
+async function ensureUbAndTatsuTables(pool) {
+  console.log("Ensuring UnbelievaBoat (ub_*) + Tatsu (tatsu_*) tables…");
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS ub_settings (
+        id                SERIAL PRIMARY KEY,
+        guild_id          TEXT NOT NULL UNIQUE,
+        ub_guild_id       TEXT NOT NULL,
+        enabled           BOOLEAN NOT NULL DEFAULT TRUE,
+        leaderboard_sort  TEXT NOT NULL DEFAULT 'total',
+        pets_spend_ub     BOOLEAN NOT NULL DEFAULT TRUE,
+        currency_label    TEXT,
+        games_enabled     BOOLEAN NOT NULL DEFAULT TRUE,
+        store_enabled     BOOLEAN NOT NULL DEFAULT TRUE,
+        daily_min         INTEGER NOT NULL DEFAULT 100,
+        daily_max         INTEGER NOT NULL DEFAULT 250,
+        created_at        TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at        TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    await pool.query(`ALTER TABLE ub_settings ADD COLUMN IF NOT EXISTS games_enabled BOOLEAN NOT NULL DEFAULT TRUE`);
+    await pool.query(`ALTER TABLE ub_settings ADD COLUMN IF NOT EXISTS store_enabled BOOLEAN NOT NULL DEFAULT TRUE`);
+    await pool.query(`ALTER TABLE ub_settings ADD COLUMN IF NOT EXISTS daily_min INTEGER NOT NULL DEFAULT 100`);
+    await pool.query(`ALTER TABLE ub_settings ADD COLUMN IF NOT EXISTS daily_max INTEGER NOT NULL DEFAULT 250`);
+    await pool.query(`ALTER TABLE ub_settings ADD COLUMN IF NOT EXISTS cooldowns JSONB NOT NULL DEFAULT '{}'::jsonb`);
+    await pool.query(`ALTER TABLE ub_settings ADD COLUMN IF NOT EXISTS log_channel_id TEXT`);
+    await pool.query(`ALTER TABLE ub_settings ADD COLUMN IF NOT EXISTS rob_immune_role_ids JSONB NOT NULL DEFAULT '[]'::jsonb`);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS ub_game_state (
+        id                  SERIAL PRIMARY KEY,
+        guild_id            TEXT NOT NULL,
+        user_id             TEXT NOT NULL,
+        last_daily_at       TIMESTAMP,
+        last_rob_at         TIMESTAMP,
+        last_beg_at         TIMESTAMP,
+        last_work_at        TIMESTAMP,
+        last_crime_at       TIMESTAMP,
+        last_roulette_at    TIMESTAMP,
+        last_blackjack_at   TIMESTAMP,
+        last_russian_at     TIMESTAMP,
+        last_collect_at     TIMESTAMP,
+        daily_streak        INTEGER NOT NULL DEFAULT 0,
+        meta                JSONB NOT NULL DEFAULT '{}'::jsonb,
+        updated_at          TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    await pool.query(`ALTER TABLE ub_game_state ADD COLUMN IF NOT EXISTS last_work_at TIMESTAMP`);
+    await pool.query(`ALTER TABLE ub_game_state ADD COLUMN IF NOT EXISTS last_crime_at TIMESTAMP`);
+    await pool.query(`ALTER TABLE ub_game_state ADD COLUMN IF NOT EXISTS last_collect_at TIMESTAMP`);
+    await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS ub_game_state_guild_user_uidx ON ub_game_state (guild_id, user_id)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS ub_game_state_guild_idx ON ub_game_state (guild_id)`);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS ub_role_links (
+        id                SERIAL PRIMARY KEY,
+        guild_id          TEXT NOT NULL,
+        discord_role_id   TEXT,
+        name              TEXT NOT NULL,
+        description       TEXT,
+        ub_item_id        TEXT,
+        price             INTEGER NOT NULL DEFAULT 0,
+        grant_cash        INTEGER NOT NULL DEFAULT 0,
+        income_amount     INTEGER NOT NULL DEFAULT 0,
+        category          TEXT NOT NULL DEFAULT 'custom',
+        emoji             TEXT,
+        enabled           BOOLEAN NOT NULL DEFAULT TRUE,
+        meta              JSONB NOT NULL DEFAULT '{}'::jsonb,
+        created_at        TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at        TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    await pool.query(`ALTER TABLE ub_role_links ADD COLUMN IF NOT EXISTS income_amount INTEGER NOT NULL DEFAULT 0`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS ub_role_links_guild_idx ON ub_role_links (guild_id)`);
+    await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS ub_role_links_guild_role_uidx ON ub_role_links (guild_id, discord_role_id)`);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS ub_store_catalog (
+        id                SERIAL PRIMARY KEY,
+        guild_id          TEXT NOT NULL,
+        name              TEXT NOT NULL,
+        description       TEXT,
+        price             INTEGER NOT NULL DEFAULT 0,
+        emoji             TEXT,
+        category          TEXT NOT NULL DEFAULT 'general',
+        ub_item_id        TEXT,
+        grant_role_id     TEXT,
+        is_inventory      BOOLEAN NOT NULL DEFAULT TRUE,
+        is_usable         BOOLEAN NOT NULL DEFAULT TRUE,
+        is_sellable       BOOLEAN NOT NULL DEFAULT TRUE,
+        unlimited_stock   BOOLEAN NOT NULL DEFAULT TRUE,
+        stock_remaining   INTEGER,
+        listed            BOOLEAN NOT NULL DEFAULT TRUE,
+        for_pets          BOOLEAN NOT NULL DEFAULT FALSE,
+        pet_effect        TEXT,
+        pet_effect_value  INTEGER NOT NULL DEFAULT 0,
+        meta              JSONB NOT NULL DEFAULT '{}'::jsonb,
+        created_at        TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at        TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS ub_store_catalog_guild_idx ON ub_store_catalog (guild_id)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS ub_store_catalog_ub_item_idx ON ub_store_catalog (ub_item_id)`);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS ub_audit_log (
+        id                SERIAL PRIMARY KEY,
+        guild_id          TEXT NOT NULL,
+        actor_id          TEXT NOT NULL,
+        target_user_id    TEXT,
+        action            TEXT NOT NULL,
+        detail            JSONB NOT NULL DEFAULT '{}'::jsonb,
+        created_at        TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS ub_audit_log_guild_idx ON ub_audit_log (guild_id)`);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS tatsu_settings (
+        id                SERIAL PRIMARY KEY,
+        guild_id          TEXT NOT NULL UNIQUE,
+        tatsu_guild_id    TEXT NOT NULL,
+        enabled           BOOLEAN NOT NULL DEFAULT TRUE,
+        ranking_period    TEXT NOT NULL DEFAULT 'all',
+        log_channel_id    TEXT,
+        spam_score_delta  INTEGER NOT NULL DEFAULT 5000,
+        created_at        TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at        TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS tatsu_audit_log (
+        id                SERIAL PRIMARY KEY,
+        guild_id          TEXT NOT NULL,
+        actor_id          TEXT NOT NULL,
+        target_user_id    TEXT,
+        action            TEXT NOT NULL,
+        detail            JSONB NOT NULL DEFAULT '{}'::jsonb,
+        created_at        TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS tatsu_audit_log_guild_idx ON tatsu_audit_log (guild_id)`);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS tatsu_watchlist (
+        id                SERIAL PRIMARY KEY,
+        guild_id          TEXT NOT NULL,
+        user_id           TEXT NOT NULL,
+        note              TEXT,
+        flagged_by        TEXT NOT NULL,
+        created_at        TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at        TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS tatsu_watchlist_guild_user_uidx ON tatsu_watchlist (guild_id, user_id)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS tatsu_watchlist_guild_idx ON tatsu_watchlist (guild_id)`);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS tatsu_snapshots (
+        id                SERIAL PRIMARY KEY,
+        guild_id          TEXT NOT NULL,
+        period            TEXT NOT NULL DEFAULT 'all',
+        rankings          JSONB NOT NULL DEFAULT '[]'::jsonb,
+        taken_by          TEXT,
+        created_at        TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS tatsu_snapshots_guild_idx ON tatsu_snapshots (guild_id)`);
+
+    console.log("UnbelievaBoat + Tatsu tables ready");
+  } catch (err) {
+    console.error("Failed to ensure ub_*/tatsu_* tables:", err?.message ?? err);
+    // Non-fatal — boot migrations in the app also try; start anyway.
+  }
+}
+
+/** Additive addon tables for already-provisioned DBs (drizzle push skipped). */
+async function ensureAddonTables() {
+  const url = process.env.DATABASE_URL;
+  if (!url) return;
+  const pool = new pg.Pool(buildPoolConfig(url));
+  try {
+    await ensureQuietTables(pool);
+    await ensureUbAndTatsuTables(pool);
   } finally {
     await pool.end().catch(() => {});
   }
@@ -215,9 +403,11 @@ async function main() {
   }
 
   // Existing Railway DBs skip drizzle push (guild_settings already present).
-  // Quiet Mode was added later — ensure its tables exist before the bot starts.
+  // Quiet / UB / Tatsu were added later — ensure those tables exist before boot.
+  // Slash commands (incl. *_ub) are registered by the bot on ClientReady — no
+  // separate register step is required on redeploy.
   if (mode !== "0") {
-    await ensureQuietTables();
+    await ensureAddonTables();
   }
 
   const child = spawnSync(process.execPath, ["--enable-source-maps", entry], {

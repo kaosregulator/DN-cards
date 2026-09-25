@@ -129,6 +129,7 @@ export async function handleRoulette(interaction: ChatInputCommandInteraction): 
     await openTableAsUnbelievaBoat(interaction, {
       embeds: [embed],
       components: colorButtons(interaction.user.id, session.color),
+      slashHint: `/roulette_ub bet:${bet}`,
     }, "✅ Roulette opened as **UnbelievaBoat** — play on the floor.");
   } catch (err) {
     await interaction.editReply(err instanceof CashError ? err.message : `Failed: ${err instanceof Error ? err.message : err}`);

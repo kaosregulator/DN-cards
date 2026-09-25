@@ -78,6 +78,11 @@ export type PostAsUnbelievaBoatOpts = {
   components?: ActionRowBuilder<MessageActionRowComponentBuilder>[];
   /** Prefer follow-up when the interaction was already deferred/replied. */
   ephemeralFallback?: boolean;
+  /**
+   * Public tip so bystanders know the slash to run, e.g. "/blackjack_ub bet:100".
+   * Appended to the first embed description.
+   */
+  slashHint?: string;
 };
 
 /**
@@ -93,6 +98,16 @@ export async function postAsUnbelievaBoat(
 
   const hook = await resolveWebhook(interaction.client, host);
   if (!hook) return null;
+
+  // Stamp slash tip on the first embed so bystanders know how to play.
+  if (opts.slashHint && opts.embeds?.[0]) {
+    const tip = `_▶️ Run \`${opts.slashHint}\` · all tables: \`/casino\`_`;
+    const emb = opts.embeds[0];
+    const desc = emb.data.description ?? "";
+    if (!desc.includes(opts.slashHint)) {
+      emb.setDescription(desc ? `${desc}\n\n${tip}` : tip);
+    }
+  }
 
   try {
     const sent = await hook.send({

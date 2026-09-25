@@ -13,6 +13,7 @@ import { buildQuoteCommandJson, buildQuoteContextMenuJson } from "../quote/defin
 import { buildPetCommandJson, buildPetAdminCommandJson } from "../pets/command.js";
 import { buildUbAdminCommandJson } from "../unbelievaboat/discord-admin.js";
 import { buildCasinoCommandJson } from "../unbelievaboat/casino.js";
+import { buildUbSlashCommandJsons } from "../unbelievaboat/ub-slash.js";
 import { buildTatsuAdminCommandJson } from "../tatsu/discord-admin.js";
 import { buildVaultValueCommandJson } from "./vaultvalue-hub.js";
 import { buildTradeHubCommandJson } from "./trade-hub.js";
@@ -70,6 +71,7 @@ function buildLegacyCommands() {
     buildPetAdminCommandJson(),
     buildUbAdminCommandJson(),
     buildCasinoCommandJson(),
+    ...buildUbSlashCommandJsons(),
     buildTatsuAdminCommandJson(),
 
     cmd("info", "Details, worth, and drop chance", s => s
