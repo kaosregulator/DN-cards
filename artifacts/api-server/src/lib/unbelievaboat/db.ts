@@ -30,7 +30,7 @@ export async function updateUbSettings(
   guildId: string,
   patch: Partial<Pick<UbSettings,
     "ubGuildId" | "enabled" | "leaderboardSort" | "petsSpendUb" | "currencyLabel" |
-    "gamesEnabled" | "storeEnabled" | "dailyMin" | "dailyMax" | "cooldowns" |
+    "gamesEnabled" | "storeEnabled" | "dailyMin" | "dailyMax" | "cooldowns" | "payouts" |
     "logChannelId" | "robImmuneRoleIds"
   >>,
 ): Promise<UbSettings> {

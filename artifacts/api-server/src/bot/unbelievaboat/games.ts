@@ -278,15 +278,14 @@ export async function handleCashCheck(interaction: ChatInputCommandInteraction):
   try {
     await assertGamesOn(interaction.guildId);
     await assertIncomeCooldown(interaction.guildId, interaction.user.id, "daily");
-    const settings = await getOrCreateUbSettings(interaction.guildId);
     const state = await getOrCreateGameState(interaction.guildId, interaction.user.id);
     const now = Date.now();
     const prev = state.lastDailyAt?.getTime() ?? 0;
     const cds = await getGuildCooldowns(interaction.guildId);
     const streak = prev && now - prev < cds.dailySec * 1000 * 2 ? (state.dailyStreak || 0) + 1 : 1;
-    const lo = Math.min(settings.dailyMin, settings.dailyMax);
-    const hi = Math.max(settings.dailyMin, settings.dailyMax);
-    const amount = lo + Math.floor(Math.random() * (hi - lo + 1));
+    const { getGuildPayouts, rollRange } = await import("./payouts.js");
+    const pay = await getGuildPayouts(interaction.guildId);
+    const amount = rollRange(pay.dailyMin, pay.dailyMax);
     const bal = await earnCash(interaction.guildId, interaction.user.id, amount, "Cash Check-In");
     await markIncomeCooldown(interaction.guildId, interaction.user.id, "daily");
     await touchGameState(interaction.guildId, interaction.user.id, { dailyStreak: streak });
@@ -504,7 +503,9 @@ export async function handleCashWork(interaction: ChatInputCommandInteraction): 
   try {
     await assertGamesOn(interaction.guildId);
     await assertIncomeCooldown(interaction.guildId, interaction.user.id, "work");
-    const payout = 20 + Math.floor(Math.random() * 231);
+    const { getGuildPayouts, rollRange } = await import("./payouts.js");
+    const pay = await getGuildPayouts(interaction.guildId);
+    const payout = rollRange(pay.workMin, pay.workMax);
     const bal = await earnCash(interaction.guildId, interaction.user.id, payout, "Cash work");
     await markIncomeCooldown(interaction.guildId, interaction.user.id, "work");
     const gif = await renderWorkGif({ payout });
@@ -526,12 +527,13 @@ export async function handleCashCrime(interaction: ChatInputCommandInteraction):
   try {
     await assertGamesOn(interaction.guildId);
     await assertIncomeCooldown(interaction.guildId, interaction.user.id, "crime");
-    const fail = Math.random() < 0.55;
+    const { getGuildPayouts, rollChance, rollCrimeFine, rollRange } = await import("./payouts.js");
+    const pay = await getGuildPayouts(interaction.guildId);
+    const fail = rollChance(pay.crimeFailChancePct);
     await markIncomeCooldown(interaction.guildId, interaction.user.id, "crime");
     if (fail) {
-      const finePct = 0.2 + Math.random() * 0.2;
       const bal0 = await getCashBalance(interaction.guildId, interaction.user.id);
-      const fine = Math.max(10, Math.floor((bal0.cash + bal0.bank) * finePct * 0.05));
+      const fine = rollCrimeFine((bal0.cash ?? 0) + (bal0.bank ?? 0), pay);
       const spent = await spendFunds(interaction.guildId, interaction.user.id, Math.min(fine, bal0.cash + bal0.bank), "Crime fine");
       const embed = brandEmbed("Crime — Caught", [
         `${interaction.user} got pinched.`,
@@ -541,7 +543,7 @@ export async function handleCashCrime(interaction: ChatInputCommandInteraction):
       await replyThenPostAsUnbelievaBoat(interaction, { embeds: [embed], slashHint: "/crime_ub" });
       return;
     }
-    const payout = 250 + Math.floor(Math.random() * 451);
+    const payout = rollRange(pay.crimeWinMin, pay.crimeWinMax);
     const bal = await earnCash(interaction.guildId, interaction.user.id, payout, "Crime payout");
     const embed = brandEmbed("Crime — Clean Getaway", [
       `${interaction.user} pulled it off · **+${fmtCash(payout)}** ${bal.symbol}`,
@@ -584,11 +586,13 @@ export async function handleRob(interaction: ChatInputCommandInteraction): Promi
       await interaction.editReply(`${target} is too broke to rob.`);
       return;
     }
-    const success = Math.random() < 0.4;
+    const { getGuildPayouts, rollChance, rollRobSteal, rollRange } = await import("./payouts.js");
+    const pay = await getGuildPayouts(interaction.guildId);
+    const success = rollChance(pay.robSuccessChancePct);
     await markIncomeCooldown(interaction.guildId, interaction.user.id, "rob");
     const { logGameEvent } = await import("../logging/channel-log.js");
     if (success) {
-      const amount = 25 + Math.floor(Math.random() * Math.min(500, Math.max(25, Math.floor(their.cash * 0.1))));
+      const amount = rollRobSteal(their.cash ?? 0, pay);
       await spendFunds(interaction.guildId, target.id, amount, `Robbed by ${interaction.user.id}`);
       const bal = await earnCash(interaction.guildId, interaction.user.id, amount, `Robbed ${target.id}`);
       const gif = await renderRobGif({ success: true });
@@ -603,7 +607,7 @@ export async function handleRob(interaction: ChatInputCommandInteraction): Promi
         `Stole ${fmtCash(amount)} from ${target.tag}`,
         [{ name: "Target", value: `${target}`, inline: true }]);
     } else {
-      const fine = 50 + Math.floor(Math.random() * 150);
+      const fine = rollRange(pay.robFailFineMin, pay.robFailFineMax);
       const spent = await spendFunds(interaction.guildId, interaction.user.id, fine, `Failed rob`);
       const gif = await renderRobGif({ success: false });
       const { files, imageName } = await attachGif(gif, "rob.gif");
@@ -627,8 +631,10 @@ export async function handleSlut(interaction: ChatInputCommandInteraction): Prom
   try {
     await assertGamesOn(interaction.guildId);
     await assertIncomeCooldown(interaction.guildId, interaction.user.id, "beg");
-    const pity = Math.random() < 0.55;
-    const amount = pity ? 15 + Math.floor(Math.random() * 90) : 0;
+    const { getGuildPayouts, rollChance, rollRange } = await import("./payouts.js");
+    const pay = await getGuildPayouts(interaction.guildId);
+    const pity = rollChance(pay.begChancePct);
+    const amount = pity ? rollRange(pay.begMin, pay.begMax) : 0;
     let bal = await getCashBalance(interaction.guildId, interaction.user.id);
     if (amount > 0) bal = await earnCash(interaction.guildId, interaction.user.id, amount, "PG cash beg");
     await markIncomeCooldown(interaction.guildId, interaction.user.id, "beg");

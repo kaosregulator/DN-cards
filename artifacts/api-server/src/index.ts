@@ -1026,6 +1026,7 @@ async function runBootMigrations() {
   await pool.query(`ALTER TABLE ub_settings ADD COLUMN IF NOT EXISTS daily_min INTEGER NOT NULL DEFAULT 100`);
   await pool.query(`ALTER TABLE ub_settings ADD COLUMN IF NOT EXISTS daily_max INTEGER NOT NULL DEFAULT 250`);
   await pool.query(`ALTER TABLE ub_settings ADD COLUMN IF NOT EXISTS cooldowns JSONB NOT NULL DEFAULT '{}'::jsonb`);
+  await pool.query(`ALTER TABLE ub_settings ADD COLUMN IF NOT EXISTS payouts JSONB NOT NULL DEFAULT '{}'::jsonb`);
   await pool.query(`ALTER TABLE ub_settings ADD COLUMN IF NOT EXISTS log_channel_id TEXT`);
   await pool.query(`ALTER TABLE ub_settings ADD COLUMN IF NOT EXISTS rob_immune_role_ids JSONB NOT NULL DEFAULT '[]'::jsonb`);
 

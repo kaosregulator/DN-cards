@@ -35,6 +35,8 @@ export const ubSettingsTable = pgTable("ub_settings", {
   dailyMax: integer("daily_max").notNull().default(250),
   // Income + gambling cooldowns (UnbelievaBoat API does not expose theirs).
   cooldowns: jsonb("cooldowns").$type<Record<string, number>>().notNull().default({}),
+  // Income payout ranges / chances (work, crime, beg, rob, daily). Empty = defaults.
+  payouts: jsonb("payouts").$type<Record<string, number>>().notNull().default({}),
   // Discord log channel for economy / casino events (universal logger also checks guild bot_log).
   logChannelId: text("log_channel_id"),
   // Roles that cannot be robbed (Discord role snowflakes).
