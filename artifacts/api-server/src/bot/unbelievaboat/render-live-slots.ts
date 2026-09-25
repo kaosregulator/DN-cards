@@ -435,7 +435,7 @@ export async function renderLiveSlotsMachine(opts: SlotsMachineOpts): Promise<An
   const betMult = opts.betMult ?? 1;
   const coinLabel = opts.coinValueLabel ?? "";
   const insertCount = opts.insertCount ?? 1;
-  // Spin GIFs include the land + brief win/lose so we only edit the floor once.
+  // One GIF: normal-speed spin → land → long hold so you can read the line.
   const spinShowsResult = mode === "spin" && !!opts.tier;
 
   const mod = await getCanvas();
@@ -447,11 +447,12 @@ export async function renderLiveSlotsMachine(opts: SlotsMachineOpts): Promise<An
   const durationMs =
     mode === "insert" ? 2400
       : mode === "idle" ? 1400
-        : mode === "spin" ? (spinShowsResult ? 7800 : 6500)
-          : mode === "win" ? 3600
+        // ~9s with result: reels lock early, rest of GIF holds what you hit
+        : mode === "spin" ? (spinShowsResult ? 9200 : 5200)
+          : mode === "win" ? 4000
             : 1800;
   const maxFrames =
-    mode === "spin" ? (spinShowsResult ? 52 : 44)
+    mode === "spin" ? (spinShowsResult ? 56 : 36)
       : mode === "win" ? 28
         : mode === "insert" ? 20
           : 10;
@@ -472,14 +473,13 @@ export async function renderLiveSlotsMachine(opts: SlotsMachineOpts): Promise<An
     width: W, height: H, durationMs, speed: "normal", maxFrames, quality: 14, renderScale: 0.82,
     render: async ({ ctx, t }) => {
       const leverDown =
-        mode === "spin" ? clamp01(t / 0.12)
+        mode === "spin" ? clamp01(t / 0.1)
           : mode === "idle" || mode === "insert" ? 0.04 + Math.sin(t * Math.PI * 2) * 0.02
             : 0.85;
 
-      // Soft shake only while reels are still moving
       const shake =
-        mode === "spin" && t > 0.1 && t < 0.72
-          ? shakeOffset(`sp-${Math.floor(t * 24)}`, 1.4 * (1 - t))
+        mode === "spin" && t > 0.06 && t < 0.42
+          ? shakeOffset(`sp-${Math.floor(t * 30)}`, 1.6 * (1 - t))
           : { dx: 0, dy: 0 };
 
       ctx.save();
@@ -492,10 +492,13 @@ export async function renderLiveSlotsMachine(opts: SlotsMachineOpts): Promise<An
       const gap = 10;
       const total = 3 * reelW + 2 * gap;
       const startX = bx + (bw - total) / 2;
-      // Slower staggered stop — last reel lands near 0.78
-      const stopAt = [0.48, 0.64, 0.78];
-      const landed = mode === "spin" ? t >= (stopAt[2] ?? 0.8) : mode === "win" || mode === "lose";
-      const winGlow = (mode === "win" || (spinShowsResult && opts.tier !== "lose" && landed)) && t > 0.8;
+      // Regular spin speed — lock by ~halfway so the rest holds the landed line.
+      const stopAt = spinShowsResult ? [0.22, 0.32, 0.42] : [0.4, 0.58, 0.76];
+      const lastStop = stopAt[2] ?? 0.42;
+      const landed = mode === "spin" ? t >= lastStop : mode === "win" || mode === "lose";
+      const winGlow =
+        (mode === "win" || (spinShowsResult && opts.tier !== "lose" && landed))
+        && t > lastStop + 0.04;
 
       for (let i = 0; i < 3; i++) {
         const spinning = mode === "spin" && t < (stopAt[i] ?? 0.8);
@@ -508,13 +511,12 @@ export async function renderLiveSlotsMachine(opts: SlotsMachineOpts): Promise<An
           reelH,
           faces[i]!,
           neighbors[i] ?? [pool[0]!, faces[i]!, pool[1]!],
-          t * 14 + i * 3.2, // slower scroll
+          t * 26 + i * 4,
           spinning,
           winGlow,
         );
       }
 
-      // Payline
       ctx.strokeStyle = "rgba(255, 68, 102, 0.55)";
       ctx.lineWidth = 2;
       ctx.beginPath();
@@ -524,7 +526,6 @@ export async function renderLiveSlotsMachine(opts: SlotsMachineOpts): Promise<An
 
       consoleLeds(ctx, bx, by, bw, bh, credits, betMult, coinLabel, symbol);
 
-      // Bottom neon plate
       roundRectPath(ctx, bx + 40, by + bh - 24, bw - 80, 18, 5);
       ctx.fillStyle = "#1a0820";
       ctx.fill();
@@ -548,40 +549,45 @@ export async function renderLiveSlotsMachine(opts: SlotsMachineOpts): Promise<An
         ctx.fillText(credits > 0 ? "Ready — hit SPIN" : "Insert coins to play", W / 2 + 30, H - 14);
       }
 
-      if (mode === "spin" && t < 0.78) {
+      if (mode === "spin" && t < lastStop) {
         ctx.fillStyle = "#94a3b8";
         ctx.font = "13px sans-serif";
         ctx.textAlign = "center";
         ctx.fillText("spinning…", W / 2 + 30, H - 14);
+      } else if (mode === "spin" && landed && t < lastStop + 0.1) {
+        ctx.fillStyle = "#fde68a";
+        ctx.font = "bold 14px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(faces.join("  "), W / 2 + 30, H - 14);
       }
 
       ctx.restore();
 
-      // End of spin (or dedicated win mode) — hopper pour / lose line
+      const resultStart = spinShowsResult ? lastStop + 0.06 : 0.82;
       const showWin =
         mode === "win"
-        || (spinShowsResult && opts.tier && opts.tier !== "lose" && t > 0.82);
+        || (spinShowsResult && opts.tier && opts.tier !== "lose" && t > resultStart);
       const showLose =
         mode === "lose"
-        || (spinShowsResult && opts.tier === "lose" && t > 0.82);
+        || (spinShowsResult && opts.tier === "lose" && t > resultStart);
 
       if (showWin) {
-        const localT = mode === "win" ? t : clamp01((t - 0.82) / 0.18);
+        const localT = mode === "win" ? t : clamp01((t - resultStart) / Math.max(0.01, 1 - resultStart));
         const intensity = opts.tier === "jackpot" ? 1 : opts.tier === "line" ? 0.65 : 0.4;
         drawHopperCascade(ctx, localT, symbol, intensity, hopperY);
-        if (localT > 0.15) {
+        if (localT > 0.08) {
           const glow = ctx.createRadialGradient(W / 2 - 20, hopperY + 20, 4, W / 2 - 20, hopperY + 20, 120);
           glow.addColorStop(0, hexToRgba(0xffd54a, 0.35 * (1 - localT * 0.3)));
           glow.addColorStop(1, "rgba(0,0,0,0)");
           ctx.fillStyle = glow;
           ctx.fillRect(0, hopperY - 40, W, H - hopperY + 40);
         }
-        if (opts.tier === "jackpot" && localT > 0.25) {
+        if (opts.tier === "jackpot" && localT > 0.15) {
           drawSparks(ctx, W / 2 - 20, hopperY + 8, {
             count: 6, color: 0xffd54a, seed: `jp-${Math.floor(localT * 5)}`, maxLen: 22,
           });
         }
-        const fade = easeOutBack(clamp01((localT - 0.1) / 0.25));
+        const fade = easeOutBack(clamp01((localT - 0.05) / 0.2));
         ctx.globalAlpha = Math.min(1, fade);
         roundRectPath(ctx, W / 2 - 150, 10, 260, 34, 10);
         ctx.fillStyle = "rgba(20, 8, 28, 0.88)";
@@ -602,13 +608,19 @@ export async function renderLiveSlotsMachine(opts: SlotsMachineOpts): Promise<An
           ctx.font = "bold 16px sans-serif";
           ctx.fillText(opts.payoutLabel, W / 2 - 20, H - 16);
         }
+        ctx.fillStyle = "#f8fafc";
+        ctx.font = "bold 15px sans-serif";
+        ctx.fillText(faces.join("   "), W / 2 - 20, H - 36);
         ctx.globalAlpha = 1;
       }
 
       if (showLose) {
-        ctx.fillStyle = "rgba(148,163,184,0.9)";
-        ctx.font = "bold 14px sans-serif";
+        ctx.fillStyle = "rgba(248,250,252,0.95)";
+        ctx.font = "bold 15px sans-serif";
         ctx.textAlign = "center";
+        ctx.fillText(faces.join("   "), W / 2 + 20, H - 32);
+        ctx.fillStyle = "rgba(148,163,184,0.9)";
+        ctx.font = "bold 13px sans-serif";
         ctx.fillText("No line — insert more or spin again", W / 2 + 20, H - 14);
       }
     },
