@@ -164,7 +164,7 @@ export function buildSlotsCommandJson() {
     .setName("slots")
     .setDescription("Vegas slots — buy credits, bet, spin until empty, cash out")
     .setDMPermission(false)
-    .addIntegerOption(o => o.setName("bet").setDescription("Credits to load onto the machine").setRequired(true).setMinValue(10).setMaxValue(100_000))
+    .addIntegerOption(o => o.setName("bet").setDescription("Credits to load (max 5,000)").setRequired(true).setMinValue(10).setMaxValue(5_000))
     .toJSON();
 }
 

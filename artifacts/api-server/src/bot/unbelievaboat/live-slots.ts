@@ -37,7 +37,7 @@ import {
 const EPHEMERAL = { flags: MessageFlags.Ephemeral } as const;
 
 const MIN_BUY = 10;
-const MAX_BUY = 100_000;
+const MAX_BUY = 5_000;
 const MIN_BET = 10;
 
 export const RESPONSIBLE_PLAY =
@@ -121,10 +121,12 @@ function clampBet(session: SlotsSession) {
 }
 
 function sessionStatus(session: SlotsSession): string {
+  const wallet = session.cash + session.bank;
   return [
     `**CREDITS** ${fmtCash(session.credits)} ${session.symbol}  ·  **BET** ${fmtCash(session.bet)} ${session.symbol}/spin`,
     `_Credits stay on the machine. Wins add credits. **Cash out** sends them to your UB wallet._`,
-    `Wallet: cash **${fmtCash(session.cash)}** · bank **${fmtCash(session.bank)}** ${session.symbol}`,
+    `Wallet: cash **${fmtCash(session.cash)}** · bank **${fmtCash(session.bank)}** ${session.symbol}` +
+      (wallet < MIN_BUY ? ` — _too low to top up_` : ` — top-ups take **cash first, then bank**`),
     `Spins **${session.spins}** · session net **${session.net >= 0 ? "+" : ""}${fmtCash(session.net)}**`,
   ].join("\n");
 }
@@ -132,6 +134,7 @@ function sessionStatus(session: SlotsSession): string {
 function machineButtons(session: SlotsSession, opts: { busy?: boolean } = {}) {
   const uid = session.userId;
   const canSpin = !opts.busy && session.credits >= session.bet && session.bet >= MIN_BET;
+  const canTopUp = !opts.busy && (session.cash + session.bank) >= MIN_BUY;
 
   if (opts.busy) {
     return [
@@ -168,9 +171,10 @@ function machineButtons(session: SlotsSession, opts: { busy?: boolean } = {}) {
       .setDisabled(!canSpin),
     new ButtonBuilder()
       .setCustomId(`unbgame:slots:add:${uid}`)
-      .setLabel("+ Add credits")
+      .setLabel(canTopUp ? "+ Add credits" : "Wallet empty")
       .setEmoji("🪙")
-      .setStyle(ButtonStyle.Primary),
+      .setStyle(ButtonStyle.Primary)
+      .setDisabled(!canTopUp),
     new ButtonBuilder()
       .setCustomId(`unbgame:slots:leave:${uid}`)
       .setLabel("Cash out")
@@ -256,12 +260,12 @@ export async function handleSlots(interaction: ChatInputCommandInteraction): Pro
     const { files, imageName } = await attachGif(gif, "slots-idle.gif");
     const embed = brandEmbed("🎰 Vegas Slots", [
       `${interaction.user} loaded **${fmtCash(buyIn)}** ${session.symbol} onto the machine.`,
-      formatSpendNote(spent.fromCash, spent.fromBank, session.symbol),
+      formatSpendNote(spent.fromCash, spent.fromBank, session.symbol) + " _(cash first, then bank)_",
       "",
       sessionStatus(session),
       "",
-      `Jackpot: **${session.symbol}${session.symbol}${session.symbol}** pays big — wins stay as credits until you **Cash out**.`,
-      "Pick a **BET** → hit **SPIN** → play until empty or cash out.",
+      `Max load / top-up: **${fmtCash(MAX_BUY)}** per buy. Jackpot: **${session.symbol}${session.symbol}${session.symbol}** — wins stay as credits until **Cash out**.`,
+      "Pick a **BET** → hit **SPIN**. Run dry? **+ Add credits** (same cash→bank). Wallet empty? You're done for now.",
     ].join("\n"));
     if (imageName) embed.setImage(`attachment://${imageName}`);
 
@@ -295,7 +299,7 @@ async function runAddCredits(
   const { files, imageName } = await attachGif(gif, "slots-add.gif");
   const embed = brandEmbed("🎰 Vegas Slots", [
     `${interaction.user} added **${fmtCash(amount)}** ${session.symbol} credits.`,
-    formatSpendNote(spent.fromCash, spent.fromBank, session.symbol),
+    formatSpendNote(spent.fromCash, spent.fromBank, session.symbol) + " _(cash first, then bank)_",
     sessionStatus(session),
     "",
     "Pick a **BET** and hit **SPIN**.",
@@ -356,8 +360,8 @@ async function runSpin(interaction: ButtonInteraction, session: SlotsSession) {
       canSpin
         ? "Hit **SPIN** again anytime."
         : canBuy
-          ? `_Out of credits — **+ Add credits** to keep playing, or **Cash out**._`
-          : `_Broke — cash+bank can't reload. **Cash out** (nothing left) or earn more UB._`,
+          ? `_Out of credits — **+ Add credits** (cash first, then bank) or **Cash out**._`
+          : `_Out of credits and wallet is empty — **Cash out** or come back when you have more cash/bank._`,
     ].join("\n"),
   );
   if (imageName) embed.setImage(`attachment://${imageName}`);
@@ -411,25 +415,6 @@ export async function handleSlotsComponent(interaction: ButtonInteraction): Prom
     return true;
   }
 
-  if (action === "add") {
-    const modal = new ModalBuilder()
-      .setCustomId(`unbgame:slots:modal:add:${ownerId}`)
-      .setTitle("Add credits")
-      .addComponents(
-        new ActionRowBuilder<TextInputBuilder>().addComponents(
-          new TextInputBuilder()
-            .setCustomId("bet")
-            .setLabel(`How much to add (${MIN_BUY}–${MAX_BUY})`)
-            .setStyle(TextInputStyle.Short)
-            .setRequired(true)
-            .setMaxLength(12)
-            .setPlaceholder("e.g. 500"),
-        ),
-      );
-    await interaction.showModal(modal);
-    return true;
-  }
-
   if (action === "busy") {
     await interaction.deferUpdate();
     return true;
@@ -438,6 +423,35 @@ export async function handleSlotsComponent(interaction: ButtonInteraction): Prom
   if (!session || session.expires < Date.now()) {
     sessions.delete(k);
     await interaction.reply({ content: "Session expired — open `/casino` → Slots again.", ...EPHEMERAL });
+    return true;
+  }
+
+  if (action === "add") {
+    await refreshWallet(session).catch(() => null);
+    if (session.cash + session.bank < MIN_BUY) {
+      await interaction.reply({
+        content:
+          `Not enough in cash+bank to top up (need at least **${fmtCash(MIN_BUY)}** ${session.symbol}). ` +
+          `Have **${fmtCash(session.cash)}** cash + **${fmtCash(session.bank)}** bank.`,
+        ...EPHEMERAL,
+      });
+      return true;
+    }
+    const modal = new ModalBuilder()
+      .setCustomId(`unbgame:slots:modal:add:${ownerId}`)
+      .setTitle("Add credits (cash → bank)")
+      .addComponents(
+        new ActionRowBuilder<TextInputBuilder>().addComponents(
+          new TextInputBuilder()
+            .setCustomId("bet")
+            .setLabel(`Amount to add (${MIN_BUY}–${MAX_BUY})`)
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true)
+            .setMaxLength(12)
+            .setPlaceholder("e.g. 500 — paid from cash, then bank"),
+        ),
+      );
+    await interaction.showModal(modal);
     return true;
   }
 
@@ -459,16 +473,14 @@ export async function handleSlotsComponent(interaction: ButtonInteraction): Prom
     session.expires = Date.now() + 30 * 60_000;
     try {
       await refreshWallet(session);
-      const gif = await renderMachine(session, "idle");
-      const { files, imageName } = await attachGif(gif, "slots-bet.gif");
+      // Text-only update — skip GIF re-encode so Discord edit/rate limits stay happy
       const embed = brandEmbed("🎰 Vegas Slots", [
         `${interaction.user} set BET to **${fmtCash(amount)}** ${session.symbol} per spin.`,
         sessionStatus(session),
         "",
         "Hit **SPIN** — that amount comes off your credits.",
       ].join("\n"));
-      if (imageName) embed.setImage(`attachment://${imageName}`);
-      await interaction.editReply({ embeds: [embed], files, components: machineButtons(session) });
+      await interaction.editReply({ embeds: [embed], components: machineButtons(session) });
     } catch (err) {
       await interaction.followUp({
         content: err instanceof CashError ? err.message : `Failed: ${err instanceof Error ? err.message : err}`,
@@ -529,7 +541,9 @@ export async function handleSlotsModal(interaction: ModalSubmitInteraction): Pro
     await refreshWallet(session);
     if (session.cash + session.bank < amount) {
       throw new CashError(
-        `Need **${fmtCash(amount)}** ${session.symbol} (cash+bank). Have **${fmtCash(session.cash + session.bank)}**.`,
+        `Not enough cash+bank to add **${fmtCash(amount)}** ${session.symbol}. ` +
+        `Have **${fmtCash(session.cash)}** cash + **${fmtCash(session.bank)}** bank. ` +
+        `Top-ups pull **cash first, then bank**.`,
       );
     }
     await runAddCredits(interaction, session, amount);
