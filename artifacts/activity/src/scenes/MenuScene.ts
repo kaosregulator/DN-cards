@@ -118,25 +118,21 @@ export class MenuScene extends Phaser.Scene {
 
     this.button(W / 2, firstY, btnW, bh,
       hasRun ? "▶  Continue Adventure" : "▶  Start Adventure",
-      hasRun ? `${beaten} duelist${beaten === 1 ? "" : "s"} beaten · explore the worlds` : "Explore Limezu City, DN Plaza & duel everyone",
-      0x2f8f5a, () => this.go("World", { mapKey: "modern-city" }));
+      hasRun ? `${beaten} duelist${beaten === 1 ? "" : "s"} beaten · explore DN City` : "Explore DN City, the Village & duel everyone",
+      0x2f8f5a, () => this.go("World"));
 
-    this.button(W / 2, firstY + gap, btnW, bh, "🌆  Limezu City",
-      "Brand-new Modern Exteriors world — parks, metro, markets & more", 0x15803d,
-      () => this.go("World", { mapKey: "modern-city" }));
-
-    this.button(W / 2, firstY + gap * 2, btnW, bh, "⚔  Quick Duel",
+    this.button(W / 2, firstY + gap, btnW, bh, "⚔  Quick Duel",
       "Jump straight into a duel vs the AI", 0x2b57b8,
       () => this.go("Duel", { returnTo: "Menu" }));
 
-    this.button(W / 2, firstY + gap * 3, btnW, bh, "🌐  Online Duel",
+    this.button(W / 2, firstY + gap * 2, btnW, bh, "🌐  Online Duel",
       "Match against another player in this Activity", 0xa8324f,
       () => this.go("Matchmaking"));
 
-    this.button(W / 2, firstY + gap * 4, btnW, bh, "👥  Local PvP",
+    this.button(W / 2, firstY + gap * 3, btnW, bh, "👥  Local PvP",
       "Pass & play — two duelists, one device", 0xb8792b, () => this.launchPvp());
 
-    this.button(W / 2, firstY + gap * 5, btnW, bh, "🧍  Choose Character & Pet",
+    this.button(W / 2, firstY + gap * 4, btnW, bh, "🧍  Choose Character & Pet",
       "Pick your avatar and a pet companion", 0x6d4bd0, () => new CharacterPicker());
 
     this.ui.add(this.add.text(W / 2, H - 14, "Your cards · your art · true Yu-Gi-Oh rules", {
